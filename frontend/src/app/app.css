@@ -1,0 +1,40 @@
+.cabecera {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--borde);
+  background: var(--panel);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--acento);
+}
+
+.cabecera nav {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.cabecera nav a {
+  text-decoration: none;
+  color: var(--suave);
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+}
+
+.cabecera nav a.activo {
+  color: var(--texto);
+  border-bottom-color: var(--acento);
+}
+
+.contenido {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}

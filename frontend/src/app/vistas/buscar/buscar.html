@@ -1,0 +1,72 @@
+<h1>Buscar en el corpus</h1>
+
+<form class="barra" (submit)="alEnviar($event)">
+  <input
+    #campo
+    type="search"
+    appUMas
+    placeholder="Palabra damana o española… (u+ → ʉ)"
+    [value]="termino()"
+    (input)="termino.set(campo.value)"
+    autofocus
+  />
+  <select #selIdioma [value]="idioma()" (change)="cambiarIdioma(selIdioma.value)" aria-label="Idioma">
+    <option value="damana">damana</option>
+    <option value="espanol">español</option>
+  </select>
+  <select #selFuente [value]="fuente()" (change)="cambiarFuente(selFuente.value)" aria-label="Fuente">
+    <option value="">todas las fuentes</option>
+    <option value="capitulos">capítulos</option>
+    <option value="frases">frases</option>
+    <option value="vocabulario">vocabulario</option>
+  </select>
+  <button type="submit" class="boton">Buscar</button>
+</form>
+
+@if (cargando()) {
+  <p class="suave">Buscando…</p>
+} @else if (error()) {
+  <p class="error">{{ error() }}</p>
+} @else if (respuesta(); as r) {
+  <p class="suave">
+    {{ r.total }} {{ r.total === 1 ? 'ocurrencia' : 'ocurrencias' }} de
+    «{{ r.consulta }}» en {{ r.idioma === 'damana' ? 'damana' : 'español' }}
+    @if (r.total > r.resultados.length) {
+      (mostrando las primeras {{ r.resultados.length }})
+    }
+  </p>
+
+  <div class="encabezado-columnas suave" aria-hidden="true">
+    <span>damana</span>
+    <span>español</span>
+  </div>
+
+  @for (c of r.resultados; track $index) {
+    <article class="resultado panel">
+      <header class="referencia suave">{{ c.referencia }}</header>
+      <div class="columnas">
+        <div lang="mbp">
+          @if (r.idioma === 'damana') {
+            <app-fragmento-clicable [html]="c.fragmento" (palabra)="buscarPalabra($event)" />
+          } @else {
+            <app-fragmento-clicable [html]="c.textoParalelo" (palabra)="buscarPalabra($event)" />
+          }
+        </div>
+        <div class="espanol">
+          @if (r.idioma === 'damana') {
+            {{ c.textoParalelo }}
+          } @else {
+            <app-fragmento-clicable [html]="c.fragmento" [clicable]="false" />
+          }
+        </div>
+      </div>
+    </article>
+  } @empty {
+    <p>Sin resultados para «{{ r.consulta }}».</p>
+  }
+} @else {
+  <p class="suave">
+    Escribe una palabra para ver sus concordancias. En cualquier resultado,
+    haz clic sobre una palabra damana para saltar a ella.
+  </p>
+}

@@ -1,0 +1,48 @@
+<p><a routerLink="/diccionario">‹ diccionario</a></p>
+
+@if (cargando()) {
+  <p class="suave">Cargando…</p>
+} @else if (noEncontrada()) {
+  <h1 lang="mbp">{{ noEncontrada() }}</h1>
+  <p>Esta palabra no aparece en el corpus damana.</p>
+} @else if (ficha(); as f) {
+  <header class="encabezado">
+    <h1 lang="mbp">{{ f.palabra }}</h1>
+    <p class="suave">
+      {{ f.frecuenciaTotal }} {{ f.frecuenciaTotal === 1 ? 'aparición' : 'apariciones' }}:
+      @for (ff of f.frecuenciaPorFuente; track ff.fuente) {
+        <span class="chip">{{ ff.fuente }} · {{ ff.frecuencia }}</span>
+      }
+    </p>
+  </header>
+
+  <section>
+    <h2>Traducciones candidatas</h2>
+    <p class="suave chiquito">
+      Palabras españolas que más co-ocurren en los textos paralelos; clic
+      para buscarlas en español.
+    </p>
+    <div class="candidatas">
+      @for (c of f.traduccionesCandidatas; track c.palabra) {
+        <button type="button" class="boton-suave" (click)="buscarEnEspanol(c.palabra)">
+          {{ c.palabra }} <span class="suave">· {{ c.coocurrencias }}</span>
+        </button>
+      } @empty {
+        <p class="suave">Sin candidatas.</p>
+      }
+    </div>
+  </section>
+
+  <section>
+    <h2>Concordancias</h2>
+    @for (c of f.concordancias; track $index) {
+      <article class="panel concordancia">
+        <header class="suave chiquito">{{ c.referencia }}</header>
+        <p lang="mbp">
+          <app-fragmento-clicable [html]="c.fragmento" (palabra)="verPalabra($event)" />
+        </p>
+        <p class="suave paralelo">{{ c.textoParalelo }}</p>
+      </article>
+    }
+  </section>
+}

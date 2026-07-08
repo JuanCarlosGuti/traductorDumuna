@@ -1,0 +1,19 @@
+.paginador {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+table.tabla td:first-child,
+table.tabla th:first-child {
+  width: 4rem;
+}
+
+table.tabla a {
+  text-decoration: none;
+}
+table.tabla a:hover {
+  text-decoration: underline;
+}

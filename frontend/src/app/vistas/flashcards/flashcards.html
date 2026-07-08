@@ -1,0 +1,47 @@
+<h1>Flashcards</h1>
+<p class="suave">
+  Repaso con repetición espaciada (SM-2 simplificado) sobre el vocabulario
+  y las 300 palabras damana más frecuentes.
+</p>
+
+@if (error()) {
+  <p class="error">{{ error() }}</p>
+} @else if (estado(); as e) {
+  <p class="contadores suave">
+    pendientes: <strong>{{ e.pendientes }}</strong> · nuevas:
+    <strong>{{ e.nuevas }}</strong>
+  </p>
+
+  @if (e.tarjeta; as t) {
+    <div class="tarjeta panel">
+      <span class="tipo suave">{{ t.tipo === 'vocabulario' ? 'vocabulario' : 'palabra frecuente' }}</span>
+      <p class="anverso" lang="mbp">{{ t.palabra }}</p>
+
+      @if (revelada()) {
+        <p class="reverso">{{ t.traduccion }}</p>
+        <div class="calificaciones">
+          @for (o of opciones; track o.clave) {
+            <button
+              type="button"
+              class="boton-suave"
+              [class.peligro]="o.clave === 'otra_vez'"
+              [disabled]="ocupado()"
+              (click)="responder(o.clave)"
+            >
+              {{ o.etiqueta }} <kbd>{{ o.tecla }}</kbd>
+            </button>
+          }
+        </div>
+      } @else {
+        <button type="button" class="boton" (click)="revelar()">
+          Mostrar respuesta <kbd>espacio</kbd>
+        </button>
+      }
+    </div>
+  } @else {
+    <div class="tarjeta panel">
+      <p class="anverso">🎉</p>
+      <p>No queda nada por repasar por ahora. Vuelve más tarde.</p>
+    </div>
+  }
+}

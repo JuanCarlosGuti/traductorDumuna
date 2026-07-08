@@ -1,0 +1,45 @@
+<h1>Diccionario de frecuencias</h1>
+<p class="suave">
+  Palabras damana por frecuencia descendente (sin probables nombres
+  propios). Haz clic en una palabra para ver su ficha.
+</p>
+
+@if (cargando()) {
+  <p class="suave">Cargando…</p>
+} @else {
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>palabra</th>
+        <th>frecuencia</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (f of visibles(); track f.palabra) {
+        <tr>
+          <td class="suave">{{ pagina() * porPagina + $index + 1 }}</td>
+          <td><a [routerLink]="['/diccionario', f.palabra]">{{ f.palabra }}</a></td>
+          <td>{{ f.frecuencia }}</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="3">No hay palabras. ¿Se ejecutó el importador?</td></tr>
+      }
+    </tbody>
+  </table>
+
+  <nav class="paginador">
+    <button type="button" class="boton-suave" (click)="anterior()" [disabled]="pagina() === 0">
+      ‹ Anterior
+    </button>
+    <span class="suave">página {{ pagina() + 1 }} de {{ totalPaginas() }}</span>
+    <button
+      type="button"
+      class="boton-suave"
+      (click)="siguiente()"
+      [disabled]="pagina() >= totalPaginas() - 1"
+    >
+      Siguiente ›
+    </button>
+  </nav>
+}

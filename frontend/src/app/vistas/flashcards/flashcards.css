@@ -1,0 +1,42 @@
+.contadores {
+  margin-bottom: 1rem;
+}
+
+.tarjeta {
+  max-width: 30rem;
+  margin: 0 auto;
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.tipo {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.anverso {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0.75rem 0;
+}
+
+.reverso {
+  font-size: 1.15rem;
+  margin: 0 0 1.25rem;
+}
+
+.calificaciones {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.peligro {
+  border-color: #b91c1c;
+}
+
+.error {
+  color: #b91c1c;
+}
