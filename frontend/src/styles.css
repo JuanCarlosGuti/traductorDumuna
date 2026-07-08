@@ -1,0 +1,125 @@
+/* Corpus Damana — una sola fuente del sistema, modo claro/oscuro. */
+:root {
+  color-scheme: light dark;
+  --fondo: #faf9f7;
+  --panel: #ffffff;
+  --texto: #1c1c1e;
+  --suave: #6b6b70;
+  --borde: #e3e2df;
+  --acento: #0e7490;
+  --acento-contraste: #ffffff;
+  --marca: #fde68a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #151517;
+    --panel: #1e1e21;
+    --texto: #ececef;
+    --suave: #98989f;
+    --borde: #333337;
+    --acento: #22a5c9;
+    --acento-contraste: #0b0b0d;
+    --marca: #6b5310;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+  line-height: 1.55;
+}
+
+h1, h2, h3 { line-height: 1.2; }
+a { color: var(--acento); }
+
+button, input, select {
+  font: inherit;
+  color: inherit;
+}
+
+input[type='search'], input[type='text'], select {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+
+input:focus-visible, select:focus-visible, button:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+}
+
+.boton {
+  background: var(--acento);
+  color: var(--acento-contraste);
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+.boton:disabled { opacity: 0.5; cursor: default; }
+
+.boton-suave {
+  background: transparent;
+  color: var(--texto);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+.boton-suave:hover:not(:disabled) { border-color: var(--acento); }
+.boton-suave:disabled { opacity: 0.5; cursor: default; }
+
+.suave { color: var(--suave); }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+/* Palabra damana clicable (navegación tipo diccionario) */
+button.palabra {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  border-radius: 3px;
+}
+button.palabra:hover { color: var(--acento); text-decoration: underline; }
+
+.resaltada {
+  background: var(--marca);
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 600;
+}
+
+table.tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+table.tabla th, table.tabla td {
+  text-align: left;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--borde);
+}
+table.tabla th { color: var(--suave); font-weight: 600; }
+
+kbd {
+  border: 1px solid var(--borde);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 0.35rem;
+  font-family: inherit;
+  font-size: 0.85em;
+  color: var(--suave);
+}
