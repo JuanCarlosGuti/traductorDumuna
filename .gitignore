@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+
+# Base SQLite regenerable con el importador
+datos/corpus.db
+datos/corpus.db-wal
+datos/corpus.db-shm

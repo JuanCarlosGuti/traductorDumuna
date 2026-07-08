@@ -1,0 +1,15 @@
+{
+  "name": "corpus-damana-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aplicación local de estudio del damana (dʉmʉna), lengua del pueblo Wiwa",
+  "workspaces": [
+    "backend"
+  ],
+  "scripts": {
+    "start": "npm run start:dev -w backend",
+    "importar": "npm run importar -w backend",
+    "test": "npm test -w backend",
+    "test:e2e": "npm run test:e2e -w backend"
+  }
+}
