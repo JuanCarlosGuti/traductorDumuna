@@ -8,5 +8,6 @@ import { PalabraService } from './palabra.service';
 @Module({
   controllers: [ConsultaController],
   providers: [CorpusRepository, BusquedaService, PalabraService, FrecuenciasService],
+  exports: [CorpusRepository, PalabraService, FrecuenciasService],
 })
 export class ConsultaModule {}

@@ -37,6 +37,18 @@ const MIGRACIONES: string[] = [
 
   CREATE INDEX idx_tokens_palabra ON tokens_damana (palabra_normalizada);
   `,
+  // v2: progreso de repetición espaciada (SM-2 simplificado). No la toca
+  // el importador: sobrevive a las reimportaciones del corpus.
+  `
+  CREATE TABLE progreso_srs (
+    palabra TEXT PRIMARY KEY,
+    repeticiones INTEGER NOT NULL DEFAULT 0,
+    factor_facilidad REAL NOT NULL DEFAULT 2.5,
+    intervalo_dias REAL NOT NULL DEFAULT 0,
+    proxima_revision TEXT NOT NULL,
+    actualizado_en TEXT NOT NULL
+  );
+  `,
 ];
 
 export function ejecutarMigraciones(db: Database): void {

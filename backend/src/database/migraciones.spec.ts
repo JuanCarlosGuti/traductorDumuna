@@ -12,7 +12,13 @@ describe('ejecutarMigraciones', () => {
       )
       .all()
       .map((f: any) => f.name);
-    expect(tablas).toEqual(['capitulos', 'frases', 'tokens_damana', 'vocabulario']);
+    expect(tablas).toEqual([
+      'capitulos',
+      'frases',
+      'progreso_srs',
+      'tokens_damana',
+      'vocabulario',
+    ]);
 
     const indices = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'index'")
@@ -26,7 +32,7 @@ describe('ejecutarMigraciones', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     expect(() => ejecutarMigraciones(db)).not.toThrow();
-    expect(db.pragma('user_version', { simple: true })).toBe(1);
+    expect(db.pragma('user_version', { simple: true })).toBe(2);
     db.close();
   });
 
