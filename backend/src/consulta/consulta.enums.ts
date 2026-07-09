@@ -4,7 +4,8 @@ export enum Idioma {
 }
 
 export enum FuenteCorpus {
-  capitulos = 'capitulos',
+  oraciones = 'oraciones',
   frases = 'frases',
   vocabulario = 'vocabulario',
+  conjugaciones = 'conjugaciones',
 }

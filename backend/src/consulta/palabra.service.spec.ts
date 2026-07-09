@@ -12,27 +12,27 @@ describe('PalabraService', () => {
   beforeEach(() => {
     db = new Database(':memory:');
     ejecutarMigraciones(db);
-    // Contenido: nʉnka aparece en las tres fuentes; ñingui solo en capítulos.
+    // Contenido: nʉnka aparece en las tres fuentes; ñingui solo en oraciones.
     db.prepare(
-      `INSERT INTO capitulos (capitulo, titulo_damana, titulo_espanol, damana, espanol)
-       VALUES (1, 'Ñingui shkua', 'El agua', 'nʉnka gontka nʉnka', 'Dios hizo el agua del cielo')`,
+      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
+       VALUES ('o1', 'Ñingui nʉnka gontka nʉnka', 'Dios hizo el agua del cielo', 'aprobado', 'lfb')`,
     ).run();
     db.prepare(
       `INSERT INTO frases (fuente, damana, espanol, notas)
        VALUES ('Prueba', 'nʉnka nanu', 'agua fresca de aquí', NULL)`,
     ).run();
     db.prepare(
-      `INSERT INTO vocabulario (espanol, damana, notas) VALUES ('agua', 'nʉnka', NULL)`,
+      `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+       VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')`,
     ).run();
     const insToken = db.prepare(
       `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
        VALUES (?, ?, ?, ?, ?)`,
     );
-    insToken.run('ñingui', 'Ñingui', 'capitulos', 1, 0);
-    insToken.run('shkua', 'shkua', 'capitulos', 1, 1);
-    insToken.run('nʉnka', 'nʉnka', 'capitulos', 1, 2);
-    insToken.run('gontka', 'gontka', 'capitulos', 1, 3);
-    insToken.run('nʉnka', 'nʉnka', 'capitulos', 1, 4);
+    insToken.run('ñingui', 'Ñingui', 'oraciones', 1, 0);
+    insToken.run('nʉnka', 'nʉnka', 'oraciones', 1, 1);
+    insToken.run('gontka', 'gontka', 'oraciones', 1, 2);
+    insToken.run('nʉnka', 'nʉnka', 'oraciones', 1, 3);
     insToken.run('nʉnka', 'nʉnka', 'frases', 1, 0);
     insToken.run('nanu', 'nanu', 'frases', 1, 1);
     insToken.run('nʉnka', 'nʉnka', 'vocabulario', 1, 0);
@@ -46,9 +46,10 @@ describe('PalabraService', () => {
     const ficha = servicio.ficha('nʉnka');
     expect(ficha.palabra).toBe('nʉnka');
     expect(ficha.frecuenciaTotal).toBe(4);
+    // GROUP BY tabla_origen con ORDER BY alfabético
     expect(ficha.frecuenciaPorFuente).toEqual([
-      { fuente: 'capitulos', frecuencia: 2 },
       { fuente: 'frases', frecuencia: 1 },
+      { fuente: 'oraciones', frecuencia: 2 },
       { fuente: 'vocabulario', frecuencia: 1 },
     ]);
   });
@@ -66,19 +67,18 @@ describe('PalabraService', () => {
   it('propone traducciones candidatas excluyendo stopwords', () => {
     const ficha = servicio.ficha('nʉnka');
     const palabras = ficha.traduccionesCandidatas.map((c) => c.palabra);
-    // 'agua' co-ocurre 4 veces (título + cuerpo del capítulo, frase y
-    // vocabulario); 'el', 'de', 'del' son stopwords
-    expect(ficha.traduccionesCandidatas[0]).toEqual({ palabra: 'agua', coocurrencias: 4 });
+    // 'agua' co-ocurre en oración, frase y vocabulario; 'el'/'de'/'del' son stopwords
+    expect(ficha.traduccionesCandidatas[0]).toEqual({ palabra: 'agua', coocurrencias: 3 });
     expect(palabras).not.toContain('el');
     expect(palabras).not.toContain('de');
     expect(palabras).not.toContain('del');
   });
 
-  it('funciona con ñ y usa también el título español del capítulo (caso con ñ)', () => {
+  it('funciona con ñ y usa el español de la oración (caso con ñ)', () => {
     const ficha = servicio.ficha('ñingui');
     expect(ficha.frecuenciaTotal).toBe(1);
     const palabras = ficha.traduccionesCandidatas.map((c) => c.palabra);
-    expect(palabras).toContain('agua'); // de 'El agua' (título) y del cuerpo
+    expect(palabras).toContain('agua'); // del paralelo 'Dios hizo el agua del cielo'
   });
 
   it('lanza 404 para palabras que no están en el corpus', () => {

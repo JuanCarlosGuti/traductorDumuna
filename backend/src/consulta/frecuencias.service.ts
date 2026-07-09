@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { normalizar } from '../comun/texto/normalizador';
 import { CorpusRepository } from './corpus.repository';
 import { FrecuenciaDto } from './dto/consulta.dto';
 
@@ -15,14 +16,27 @@ export class FrecuenciasService {
 
   /**
    * Palabras damana por frecuencia descendente, excluyendo probables
-   * nombres propios: tokens que en los originales solo aparecen con
-   * mayúscula inicial.
+   * nombres propios (tokens que en los originales solo aparecen con
+   * mayúscula inicial). Si la palabra coincide con una entrada de
+   * vocabulario, lleva su categoría.
    */
   listar(limite: number): FrecuenciaDto[] {
+    const categorias = new Map<string, string>();
+    for (const entrada of this.repo.listarVocabulario()) {
+      if (entrada.categoria) {
+        const clave = normalizar(entrada.damana);
+        if (!categorias.has(clave)) categorias.set(clave, entrada.categoria);
+      }
+    }
+
     return this.repo
       .frecuenciasConOriginales()
       .filter((f) => f.originales.some(empiezaEnMinuscula))
       .slice(0, limite)
-      .map((f) => ({ palabra: f.palabra, frecuencia: f.frecuencia }));
+      .map((f) => ({
+        palabra: f.palabra,
+        frecuencia: f.frecuencia,
+        categoria: categorias.get(f.palabra) ?? null,
+      }));
   }
 }

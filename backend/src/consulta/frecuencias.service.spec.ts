@@ -10,6 +10,11 @@ describe('FrecuenciasService', () => {
   beforeEach(() => {
     db = new Database(':memory:');
     ejecutarMigraciones(db);
+    // Entrada de vocabulario con categoría para kʉnʉnka
+    db.prepare(
+      `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+       VALUES ('tiene', 'kʉnʉnka', 'Verbos', NULL, 'diccionario wiwa')`,
+    ).run();
     const ins = db.prepare(
       `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
        VALUES (?, ?, 'frases', 1, ?)`,
@@ -26,6 +31,8 @@ describe('FrecuenciasService', () => {
     ins.run('shkua', 'shkua', 6);
     // ñandu: SOLO con Ñ mayúscula (caso con ñ) → probable nombre propio
     ins.run('ñandu', 'Ñandú', 7);
+    // kʉnʉnka: en vocabulario con categoría Verbos
+    ins.run('kʉnʉnka', 'kʉnʉnka', 8);
     servicio = new FrecuenciasService(new CorpusRepository(db));
   });
 
@@ -41,8 +48,13 @@ describe('FrecuenciasService', () => {
 
   it('ordena por frecuencia descendente', () => {
     const filas = servicio.listar(500);
-    expect(filas[0]).toEqual({ palabra: 'nʉnka', frecuencia: 2 });
-    expect(filas[1]).toEqual({ palabra: 'shkua', frecuencia: 2 });
+    expect(filas[0]).toEqual({ palabra: 'nʉnka', frecuencia: 2, categoria: null });
+    expect(filas[1]).toEqual({ palabra: 'shkua', frecuencia: 2, categoria: null });
+  });
+
+  it('trae la categoría del vocabulario cuando el damana coincide (caso con ʉ)', () => {
+    const fila = servicio.listar(500).find((f) => f.palabra === 'kʉnʉnka');
+    expect(fila).toEqual({ palabra: 'kʉnʉnka', frecuencia: 1, categoria: 'Verbos' });
   });
 
   it('respeta el límite', () => {

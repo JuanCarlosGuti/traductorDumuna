@@ -116,6 +116,12 @@ export class FrecuenciaDto {
 
   @ApiProperty()
   frecuencia!: number;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'Categoría de la entrada de vocabulario cuyo damana coincide con la palabra, si existe',
+  })
+  categoria!: string | null;
 }
 
 export class VocabularioDto {
@@ -128,16 +134,22 @@ export class VocabularioDto {
   @ApiProperty()
   damana!: string;
 
+  @ApiProperty({ nullable: true, example: 'Verbos' })
+  categoria!: string | null;
+
   @ApiProperty({ nullable: true })
   notas!: string | null;
+
+  @ApiProperty({ nullable: true })
+  fuente!: string | null;
 }
 
 export class FraseDto {
   @ApiProperty({ description: 'rowid en la tabla frases' })
   id!: number;
 
-  @ApiProperty()
-  fuente!: string;
+  @ApiProperty({ nullable: true })
+  fuente!: string | null;
 
   @ApiProperty()
   damana!: string;
@@ -147,4 +159,40 @@ export class FraseDto {
 
   @ApiProperty({ nullable: true })
   notas!: string | null;
+}
+
+export class LemaDto {
+  @ApiProperty({ example: 'tener' })
+  lema!: string;
+
+  @ApiProperty({ description: 'Número de formas conjugadas' })
+  formas!: number;
+}
+
+export class ConjugacionDto {
+  @ApiProperty({ description: 'rowid en la tabla conjugaciones' })
+  id!: number;
+
+  @ApiProperty({ example: 'nujkunananka' })
+  damana!: string;
+
+  @ApiProperty({ example: 'yo tuve', description: 'Glosa en español' })
+  espanol!: string;
+
+  @ApiProperty({ example: 'tener' })
+  lema!: string;
+
+  @ApiProperty({ nullable: true })
+  fuente!: string | null;
+
+  @ApiProperty({ nullable: true })
+  notas!: string | null;
+}
+
+export class TablaConjugacionDto {
+  @ApiProperty()
+  lema!: string;
+
+  @ApiProperty({ type: [ConjugacionDto] })
+  conjugaciones!: ConjugacionDto[];
 }

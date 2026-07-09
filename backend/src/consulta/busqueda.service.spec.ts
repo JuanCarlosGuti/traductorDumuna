@@ -12,32 +12,49 @@ describe('BusquedaService', () => {
     db = new Database(':memory:');
     ejecutarMigraciones(db);
     db.prepare(
-      `INSERT INTO capitulos (capitulo, titulo_damana, titulo_espanol, damana, espanol)
-       VALUES (1, 'Ñingui shkua', 'Título uno', 'Jehovága nʉnka kʉñingui gontka', 'Jehová hizo el agua')`,
+      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
+       VALUES ('o1', 'Jehovága nʉnka kʉñingui gontka', 'Jehová hizo el agua', 'aprobado', 'lfb')`,
+    ).run();
+    db.prepare(
+      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
+       VALUES ('o2', 'ñingui tua ukurra', 'otra vez al monte', 'revisar', 'lfb')`,
     ).run();
     db.prepare(
       `INSERT INTO frases (fuente, damana, espanol, notas)
        VALUES ('Prueba', '¿Zhinzhoma nʉnka nanu?', '¿Conoces el agua?', NULL)`,
     ).run();
     db.prepare(
-      `INSERT INTO vocabulario (espanol, damana, notas) VALUES ('agua', 'nʉnka', NULL)`,
+      `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+       VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')`,
+    ).run();
+    db.prepare(
+      `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+       VALUES ('nʉnkanka', 'él fue', 'ser', 'doc', NULL)`,
     ).run();
     servicio = new BusquedaService(new CorpusRepository(db));
   });
 
   afterEach(() => db.close());
 
-  it('encuentra en damana en las tres fuentes, con <mark> y ʉ intacta', () => {
+  it('encuentra en damana en las cuatro fuentes, con <mark> y ʉ intacta', () => {
     const r = servicio.buscar({ q: 'nʉnka', idioma: Idioma.damana, limite: 100 });
-    expect(r.total).toBe(3);
+    expect(r.total).toBe(3); // oración 1, frase, vocabulario (nʉnkanka NO matchea nʉnka)
     expect(r.resultados.map((c) => c.fuente)).toEqual([
-      FuenteCorpus.capitulos,
+      FuenteCorpus.oraciones,
       FuenteCorpus.frases,
       FuenteCorpus.vocabulario,
     ]);
     for (const c of r.resultados) {
       expect(c.fragmento).toContain('<mark>nʉnka</mark>');
     }
+  });
+
+  it('las conjugaciones son buscables con referencia «conjugación N (lema)»', () => {
+    const r = servicio.buscar({ q: 'nʉnkanka', idioma: Idioma.damana, limite: 10 });
+    expect(r.total).toBe(1);
+    expect(r.resultados[0].fuente).toBe(FuenteCorpus.conjugaciones);
+    expect(r.resultados[0].referencia).toBe('conjugación 1 (ser)');
+    expect(r.resultados[0].textoParalelo).toBe('él fue');
   });
 
   it('no confunde ʉ con u ni ñ con n', () => {
@@ -64,9 +81,9 @@ describe('BusquedaService', () => {
     expect(r.resultados[0].referencia).toBe('frase 1 (Prueba)');
   });
 
-  it('el título del capítulo es buscable y la referencia es "capítulo N"', () => {
+  it('la referencia de una oración marca el estado revisar', () => {
     const r = servicio.buscar({ q: 'ñingui', idioma: Idioma.damana, limite: 10 });
-    expect(r.resultados[0].referencia).toBe('capítulo 1');
+    expect(r.resultados[0].referencia).toBe('oración 2 (revisar)');
   });
 
   it('respeta el límite pero informa el total real', () => {

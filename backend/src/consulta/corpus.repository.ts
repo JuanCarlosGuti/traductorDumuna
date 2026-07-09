@@ -2,13 +2,15 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Database } from 'better-sqlite3';
 import { CONEXION_DB } from '../database/database.constants';
 import { FuenteCorpus } from './consulta.enums';
-import { FraseDto, VocabularioDto } from './dto/consulta.dto';
+import { ConjugacionDto, FraseDto, LemaDto, VocabularioDto } from './dto/consulta.dto';
 
 export interface FilaTexto {
   id: number;
   referencia: string;
   textoDamana: string;
   textoEspanol: string;
+  /** Solo oraciones: 'aprobado' | 'revisar' (calidad de la alineación). */
+  estado?: string;
 }
 
 export interface FrecuenciaPalabra {
@@ -23,7 +25,9 @@ export class CorpusRepository {
 
   listarVocabulario(): VocabularioDto[] {
     return this.db
-      .prepare('SELECT rowid AS id, espanol, damana, notas FROM vocabulario ORDER BY rowid')
+      .prepare(
+        'SELECT rowid AS id, espanol, damana, categoria, notas, fuente FROM vocabulario ORDER BY rowid',
+      )
       .all() as VocabularioDto[];
   }
 
@@ -33,26 +37,44 @@ export class CorpusRepository {
       .all() as FraseDto[];
   }
 
+  /** Lemas verbales con su número de formas conjugadas. */
+  listarLemas(): LemaDto[] {
+    return this.db
+      .prepare(
+        'SELECT lema, COUNT(*) AS formas FROM conjugaciones GROUP BY lema ORDER BY lema',
+      )
+      .all() as LemaDto[];
+  }
+
+  conjugacionesDe(lema: string): ConjugacionDto[] {
+    return this.db
+      .prepare(
+        `SELECT rowid AS id, damana, espanol, lema, fuente, notas
+         FROM conjugaciones WHERE lema = ? ORDER BY rowid`,
+      )
+      .all(lema) as ConjugacionDto[];
+  }
+
   /**
    * Filas de una fuente con su texto damana y español ya ensamblados para
-   * concordancia (en capítulos el título forma parte del texto buscable,
-   * igual que en la tokenización del importador).
+   * concordancia y retrieval. En oraciones la referencia marca las de
+   * alineación dudosa con «(revisar)».
    */
   textosDe(fuente: FuenteCorpus): FilaTexto[] {
     switch (fuente) {
-      case FuenteCorpus.capitulos:
+      case FuenteCorpus.oraciones:
         return (
           this.db
             .prepare(
-              `SELECT rowid AS id, capitulo, titulo_damana, titulo_espanol, damana, espanol
-               FROM capitulos ORDER BY capitulo`,
+              'SELECT rowid AS id, damana, espanol, estado FROM oraciones ORDER BY rowid',
             )
             .all() as any[]
         ).map((f) => ({
           id: f.id,
-          referencia: `capítulo ${f.capitulo}`,
-          textoDamana: `${f.titulo_damana}\n${f.damana}`,
-          textoEspanol: `${f.titulo_espanol}\n${f.espanol}`,
+          referencia: f.estado === 'revisar' ? `oración ${f.id} (revisar)` : `oración ${f.id}`,
+          textoDamana: f.damana,
+          textoEspanol: f.espanol ?? '',
+          estado: f.estado,
         }));
       case FuenteCorpus.frases:
         return (
@@ -61,7 +83,7 @@ export class CorpusRepository {
             .all() as any[]
         ).map((f) => ({
           id: f.id,
-          referencia: `frase ${f.id} (${f.fuente})`,
+          referencia: f.fuente ? `frase ${f.id} (${f.fuente})` : `frase ${f.id}`,
           textoDamana: f.damana,
           textoEspanol: f.espanol ?? '',
         }));
@@ -73,6 +95,17 @@ export class CorpusRepository {
         ).map((f) => ({
           id: f.id,
           referencia: `vocabulario ${f.id}`,
+          textoDamana: f.damana,
+          textoEspanol: f.espanol,
+        }));
+      case FuenteCorpus.conjugaciones:
+        return (
+          this.db
+            .prepare('SELECT rowid AS id, damana, espanol, lema FROM conjugaciones ORDER BY rowid')
+            .all() as any[]
+        ).map((f) => ({
+          id: f.id,
+          referencia: `conjugación ${f.id} (${f.lema})`,
           textoDamana: f.damana,
           textoEspanol: f.espanol,
         }));
@@ -103,26 +136,16 @@ export class CorpusRepository {
   }
 
   textoEspanolDe(fuente: FuenteCorpus, id: number): string {
-    switch (fuente) {
-      case FuenteCorpus.capitulos: {
-        const f = this.db
-          .prepare('SELECT titulo_espanol, espanol FROM capitulos WHERE rowid = ?')
-          .get(id) as any;
-        return f ? `${f.titulo_espanol}\n${f.espanol}` : '';
-      }
-      case FuenteCorpus.frases: {
-        const f = this.db
-          .prepare('SELECT espanol FROM frases WHERE rowid = ?')
-          .get(id) as any;
-        return f?.espanol ?? '';
-      }
-      case FuenteCorpus.vocabulario: {
-        const f = this.db
-          .prepare('SELECT espanol FROM vocabulario WHERE rowid = ?')
-          .get(id) as any;
-        return f?.espanol ?? '';
-      }
-    }
+    const columna: Record<FuenteCorpus, string> = {
+      [FuenteCorpus.oraciones]: 'oraciones',
+      [FuenteCorpus.frases]: 'frases',
+      [FuenteCorpus.vocabulario]: 'vocabulario',
+      [FuenteCorpus.conjugaciones]: 'conjugaciones',
+    };
+    const fila = this.db
+      .prepare(`SELECT espanol FROM ${columna[fuente]} WHERE rowid = ?`)
+      .get(id) as { espanol: string | null } | undefined;
+    return fila?.espanol ?? '';
   }
 
   /**

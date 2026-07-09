@@ -13,27 +13,32 @@ import { SrsModule } from '../src/srs/srs.module';
 
 const BOM = String.fromCharCode(0xfeff);
 
-describe('SRS (e2e)', () => {
+describe('SRS (e2e, corpus v3)', () => {
   let dirTmp: string;
   let app: INestApplication;
 
   beforeAll(async () => {
     dirTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'corpus-srs-'));
     fs.writeFileSync(
-      path.join(dirTmp, 'corpus_capitulos.csv'),
+      path.join(dirTmp, 'corpus_oraciones.csv'),
       BOM +
-        'capitulo,titulo_damana,titulo_espanol,damana,espanol\n' +
-        '1,Shkua,Uno,"nʉnka gontka nʉnka ñingui",Dios hizo el agua otra vez\n',
+        'id,damana,espanol,estado,fuente\n' +
+        'o1,nʉnka gontka nʉnka ñingui,Dios hizo el agua otra vez,aprobado,lfb\n',
       'utf8',
     );
     fs.writeFileSync(
-      path.join(dirTmp, 'corpus_frases.csv'),
+      path.join(dirTmp, 'corpus_frases_v2.csv'),
       BOM + 'fuente,damana,espanol,notas\n' + 'Prueba,gontka nanu,hizo esto,\n',
       'utf8',
     );
     fs.writeFileSync(
-      path.join(dirTmp, 'corpus_vocabulario.csv'),
-      BOM + 'espanol,damana,notas\n' + 'agua,nʉnka,\n',
+      path.join(dirTmp, 'corpus_vocabulario_v2.csv'),
+      BOM + 'espanol,damana,categoria,notas,fuente\n' + 'agua,nʉnka,Otros,,dic\n',
+      'utf8',
+    );
+    fs.writeFileSync(
+      path.join(dirTmp, 'corpus_conjugaciones.csv'),
+      BOM + 'damana,espanol,lema,fuente,notas\n' + 'gontkanka,él hizo,hacer,doc,\n',
       'utf8',
     );
 

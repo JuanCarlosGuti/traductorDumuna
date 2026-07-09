@@ -21,7 +21,12 @@ export class BusquedaService {
   buscar(params: ParametrosBusqueda): RespuestaBusquedaDto {
     const fuentes = params.fuente
       ? [params.fuente]
-      : [FuenteCorpus.capitulos, FuenteCorpus.frases, FuenteCorpus.vocabulario];
+      : [
+          FuenteCorpus.oraciones,
+          FuenteCorpus.frases,
+          FuenteCorpus.vocabulario,
+          FuenteCorpus.conjugaciones,
+        ];
 
     let total = 0;
     const resultados: ConcordanciaDto[] = [];
