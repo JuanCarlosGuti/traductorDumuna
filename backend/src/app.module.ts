@@ -7,6 +7,7 @@ import { DatabaseModule } from './database/database.module';
 import { ImportadorModule } from './importador/importador.module';
 import { rutaDbPorDefecto } from './importador/rutas-datos';
 import { SrsModule } from './srs/srs.module';
+import { TraduccionModule } from './traduccion/traduccion.module';
 
 // backend/public: ahí deja su build el frontend (npm run build -w frontend).
 // En dev __dirname es backend/src y compilado es backend/dist; en ambos
@@ -20,6 +21,7 @@ const RUTA_PUBLICO = path.resolve(__dirname, '..', 'public');
     ImportadorModule,
     ConsultaModule,
     SrsModule,
+    TraduccionModule,
     ...(fs.existsSync(RUTA_PUBLICO)
       ? [
           ServeStaticModule.forRoot({
