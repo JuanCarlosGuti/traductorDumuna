@@ -3,14 +3,19 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
   Calificacion,
+  DireccionTraduccion,
   EntradaVocabulario,
   EstadoSrs,
+  EstadoTraductor,
   FichaPalabra,
   Frase,
   Frecuencia,
   Idioma,
+  Lema,
   ProgresoActualizado,
   RespuestaBusqueda,
+  RespuestaTraduccion,
+  TablaConjugacion,
 } from './modelos';
 
 @Injectable({ providedIn: 'root' })
@@ -59,6 +64,26 @@ export class ApiService {
   srsResponder(palabra: string, calificacion: Calificacion): Promise<ProgresoActualizado> {
     return firstValueFrom(
       this.http.post<ProgresoActualizado>('/api/srs/respuesta', { palabra, calificacion }),
+    );
+  }
+
+  gramaticaLemas(): Promise<Lema[]> {
+    return firstValueFrom(this.http.get<Lema[]>('/api/gramatica/lemas'));
+  }
+
+  gramaticaTabla(lema: string): Promise<TablaConjugacion> {
+    return firstValueFrom(
+      this.http.get<TablaConjugacion>(`/api/gramatica/lemas/${encodeURIComponent(lema)}`),
+    );
+  }
+
+  traductorEstado(): Promise<EstadoTraductor> {
+    return firstValueFrom(this.http.get<EstadoTraductor>('/api/traducir/estado'));
+  }
+
+  traducir(texto: string, direccion: DireccionTraduccion): Promise<RespuestaTraduccion> {
+    return firstValueFrom(
+      this.http.post<RespuestaTraduccion>('/api/traducir', { texto, direccion }),
     );
   }
 }

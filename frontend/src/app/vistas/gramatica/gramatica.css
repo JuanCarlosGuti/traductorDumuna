@@ -1,0 +1,24 @@
+.lemas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.lemas .activo {
+  border-color: var(--acento);
+  color: var(--acento);
+  font-weight: 600;
+}
+
+.forma {
+  font-weight: 600;
+}
+
+.chiquito {
+  font-size: 0.85rem;
+}
+
+.error {
+  color: #b91c1c;
+}

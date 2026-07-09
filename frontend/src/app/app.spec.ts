@@ -10,11 +10,11 @@ describe('App', () => {
     }).compileComponents();
   });
 
-  it('crea la app con la navegación de las tres vistas', async () => {
+  it('crea la app con la navegación de las cinco vistas', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const html = fixture.nativeElement as HTMLElement;
     const enlaces = Array.from(html.querySelectorAll('nav a')).map((a) => a.textContent?.trim());
-    expect(enlaces).toEqual(['Buscar', 'Diccionario', 'Flashcards']);
+    expect(enlaces).toEqual(['Buscar', 'Diccionario', 'Gramática', 'Flashcards', 'Traductor']);
   });
 });

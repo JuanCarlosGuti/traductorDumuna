@@ -1,0 +1,122 @@
+<h1>Traductor asistido</h1>
+<p class="suave">
+  Traducción con IA apoyada en el corpus: el modelo recibe los fragmentos
+  más parecidos y el vocabulario relevante como contexto. Verifica siempre
+  contra los ejemplos — el corpus es pequeño y el modelo puede equivocarse.
+</p>
+
+@if (estado()?.disponible === false) {
+  <div class="panel aviso">
+    <h2>Falta configurar un motor de traducción</h2>
+    <p>Hay dos opciones; en ambos casos se definen variables de entorno y se reinicia el backend:</p>
+
+    <h3>Opción A — Gratis, local (Ollama)</h3>
+    <ol>
+      <li>Instala <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> y ejecuta <code>ollama pull qwen2.5:7b</code>.</li>
+      <li>
+        Define en PowerShell:
+        <pre>setx TRADUCTOR_BASE_URL "http://localhost:11434/v1"
+setx TRADUCTOR_MODELO "qwen2.5:7b"
+setx TRADUCTOR_TIMEOUT_MS "300000"</pre>
+      </li>
+    </ol>
+    <p class="suave chiquito">
+      También sirve cualquier API compatible con OpenAI: Google Gemini
+      (clave gratis en aistudio.google.com), Groq, Hugging Face… definiendo
+      además <code>TRADUCTOR_API_KEY</code>.
+    </p>
+
+    <h3>Opción B — Claude (mejor calidad, de pago)</h3>
+    <ol>
+      <li>Crea una clave en <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> (~US$0.01 por traducción).</li>
+      <li><code>setx ANTHROPIC_API_KEY "sk-ant-..."</code></li>
+    </ol>
+
+    <p>Después: abre una <strong>terminal nueva</strong>, reinicia el backend (<code>npm start</code>) y recarga esta página.</p>
+    <p class="suave">El resto de la aplicación funciona normalmente sin motor.</p>
+  </div>
+} @else {
+  @if (estado(); as e) {
+    <p class="suave chiquito motor">
+      Motor: <strong>{{ e.modelo }}</strong>
+      ({{ e.proveedor === 'anthropic' ? 'Claude · API de Anthropic' : 'proveedor compatible OpenAI' }})
+    </p>
+  }
+
+  <form class="formulario" (submit)="traducir($event)">
+    <textarea
+      #campo
+      appUMas
+      rows="4"
+      placeholder="Texto a traducir… (u+ → ʉ)"
+      [value]="texto()"
+      (input)="texto.set(campo.value)"
+    ></textarea>
+    <div class="controles">
+      <select #selDir [value]="direccion()" (change)="direccion.set($any(selDir.value))" aria-label="Dirección">
+        <option value="damana_a_espanol">damana → español</option>
+        <option value="espanol_a_damana">español → damana</option>
+      </select>
+      <button type="button" class="boton-suave" (click)="intercambiarDireccion()" title="Invertir dirección">⇄</button>
+      <button type="submit" class="boton" [disabled]="cargando() || !texto().trim()">
+        {{ cargando() ? 'Traduciendo…' : 'Traducir' }}
+      </button>
+    </div>
+    @if (cargando() && estado()?.proveedor === 'compatible') {
+      <p class="suave chiquito">Los modelos locales pueden tardar un par de minutos…</p>
+    }
+  </form>
+
+  @if (error()) {
+    <p class="error panel">{{ error() }}</p>
+  }
+
+  @if (resultado(); as r) {
+    <section class="panel resultado">
+      <h2 class="suave chiquito">Traducción</h2>
+      <p class="traduccion">
+        @for (s of segmentos(); track $index) {
+          @if (s.dudosa) {
+            <mark class="dudosa" title="El modelo marcó esta palabra como dudosa">{{ s.texto }}</mark>
+          } @else {
+            <span>{{ s.texto }}</span>
+          }
+        }
+      </p>
+
+      @if (r.palabrasDudosas.length > 0) {
+        <p class="suave chiquito">
+          ⚠ Palabras dudosas: {{ r.palabrasDudosas.join(', ') }}
+        </p>
+      }
+      @if (r.explicacionBreve) {
+        <p class="explicacion suave">{{ r.explicacionBreve }}</p>
+      }
+      @if (r.vocabularioUsado.length > 0) {
+        <p class="chiquito">
+          Vocabulario aplicado:
+          @for (v of r.vocabularioUsado; track v.damana) {
+            <span class="chip" lang="mbp">{{ v.damana }} = {{ v.espanol }}</span>
+          }
+        </p>
+      }
+    </section>
+
+    <details class="ejemplos">
+      <summary>
+        Fragmentos del corpus usados como ejemplos ({{ r.ejemplos.length }})
+      </summary>
+      @for (e of r.ejemplos; track $index) {
+        <article class="panel ejemplo">
+          <header class="suave chiquito">
+            {{ e.referencia }} · similitud {{ e.puntaje.toFixed(2) }}
+          </header>
+          <p lang="mbp">{{ e.damana }}</p>
+          <p class="suave">{{ e.espanol }}</p>
+        </article>
+      } @empty {
+        <p class="suave">No se encontraron fragmentos similares en el corpus.</p>
+      }
+    </details>
+  }
+}

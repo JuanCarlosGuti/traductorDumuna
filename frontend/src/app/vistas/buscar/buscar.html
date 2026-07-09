@@ -16,9 +16,10 @@
   </select>
   <select #selFuente [value]="fuente()" (change)="cambiarFuente(selFuente.value)" aria-label="Fuente">
     <option value="">todas las fuentes</option>
-    <option value="capitulos">capítulos</option>
+    <option value="oraciones">oraciones</option>
     <option value="frases">frases</option>
     <option value="vocabulario">vocabulario</option>
+    <option value="conjugaciones">conjugaciones</option>
   </select>
   <button type="submit" class="boton">Buscar</button>
 </form>

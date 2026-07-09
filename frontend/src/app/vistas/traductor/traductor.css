@@ -1,0 +1,101 @@
+.formulario textarea {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  resize: vertical;
+}
+
+.controles {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  align-items: center;
+}
+
+.resultado {
+  margin-top: 1.25rem;
+}
+
+.traduccion {
+  font-size: 1.2rem;
+  margin: 0.25rem 0 0.75rem;
+  white-space: pre-line;
+}
+
+mark.dudosa {
+  background: transparent;
+  color: inherit;
+  border-bottom: 2px dashed #b45309;
+  border-radius: 0;
+  padding: 0;
+  font-weight: 600;
+  cursor: help;
+}
+
+.explicacion {
+  margin: 0.5rem 0;
+}
+
+.chip {
+  display: inline-block;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 0 0.6rem;
+  margin: 0.15rem 0.3rem 0.15rem 0;
+  font-size: 0.85rem;
+}
+
+.chiquito {
+  font-size: 0.85rem;
+}
+
+.ejemplos {
+  margin-top: 1rem;
+}
+
+.ejemplos summary {
+  cursor: pointer;
+  color: var(--acento);
+  padding: 0.5rem 0;
+}
+
+.ejemplo {
+  margin: 0.5rem 0;
+}
+
+.ejemplo p {
+  margin: 0.25rem 0;
+}
+
+.aviso h2 {
+  margin-top: 0;
+}
+
+.aviso h3 {
+  margin-bottom: 0.25rem;
+}
+
+.aviso pre {
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  overflow-x: auto;
+}
+
+.motor {
+  margin: 0 0 0.75rem;
+}
+
+.aviso code {
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 4px;
+  padding: 0 0.3rem;
+}
+
+.error {
+  color: #b91c1c;
+}
