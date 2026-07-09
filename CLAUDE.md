@@ -12,14 +12,21 @@ experiencia en TypeScript/Angular y backend.
 - Frontend: Angular 18+ standalone components con señales.
 - Producción: un solo proceso; NestJS sirve el build de Angular con
   @nestjs/serve-static. Sin autenticación: app local de un usuario.
-- Tests: Jest en backend (unitarios + e2e con SQLite en memoria).
+- Tests: Jest en backend (unitarios + e2e con SQLite en memoria),
+  Vitest en frontend.
+- Traductor asistido: Claude vía @anthropic-ai/sdk (ANTHROPIC_API_KEY,
+  prioridad) o cualquier API compatible OpenAI (TRADUCTOR_BASE_URL +
+  TRADUCTOR_MODELO [+ TRADUCTOR_API_KEY]; p. ej. Ollama local).
 
-## Datos (carpeta /datos, encoding UTF-8 con BOM)
-- corpus_capitulos.csv: capitulo, titulo_damana, titulo_espanol,
-  damana, espanol (103 capítulos paralelos; celdas largas con saltos
-  de línea internos)
-- corpus_frases.csv: fuente, damana, espanol, notas (66 frases)
-- corpus_vocabulario.csv: espanol, damana, notas (115 entradas)
+## Datos — corpus v3 (carpeta /datos, encoding UTF-8 con BOM)
+- corpus_oraciones.csv: id, damana, espanol, estado, fuente (~2.800
+  pares oración a oración; estado = "aprobado" ~1.957 alta confianza
+  o "revisar" ~843 alineación dudosa). Fuente principal.
+- corpus_frases_v2.csv: fuente, damana, espanol, notas (~131 frases)
+- corpus_vocabulario_v2.csv: espanol, damana, categoria, notas, fuente
+  (~918 entradas; categoria: Verbos, Animales, Adverbios…)
+- corpus_conjugaciones.csv: damana, espanol, lema, fuente, notas
+  (~267 formas verbales de 23 lemas)
 
 ## Reglas del dominio (verificadas)
 - ʉ (U+0289) es letra plena del alfabeto damana. Búsqueda, tokenización
@@ -34,10 +41,19 @@ experiencia en TypeScript/Angular y backend.
   ñ en n + tilde combinante); la recomposición previa es obligatoria.
 - Tokenizar damana con /[^\p{L}ʉ']+/u (separar por todo lo que no sea
   letra Unicode, ʉ o apóstrofe interno).
+- El importador corrige ü/Ü → ʉ/Ʉ en las columnas damana (la ü no existe
+  en damana; algunas fuentes Word la usan como apaño para ʉ). Ver
+  corregirOrtografiaDamana() en backend/src/comun/texto/ortografia.ts.
+  La u simple NUNCA se convierte (u y ʉ son letras distintas) y las
+  comillas tipográficas «' '» se conservan (son puntuación de citas,
+  no apóstrofes internos). Los CSV fuente no se modifican.
 - Leer CSV con csv-parse: { columns: true, bom: true }.
+- Las oraciones estado="revisar" participan en el retrieval del
+  traductor con la mitad del puntaje (PESO_REVISAR = 0.5).
 
 ## Convenciones
 - Cada servicio con tests; incluir siempre un caso con ʉ y uno con ñ.
 - Commits pequeños por funcionalidad, mensajes en español.
 - La base SQLite (datos/corpus.db) va en .gitignore; se regenera con
-  el importador.
+  el importador. La tabla progreso_srs sobrevive a reimportaciones y
+  migraciones (nunca borrarla).

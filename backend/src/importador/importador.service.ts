@@ -3,6 +3,7 @@ import type { Database } from 'better-sqlite3';
 import { parse } from 'csv-parse/sync';
 import * as fs from 'fs';
 import * as path from 'path';
+import { corregirOrtografiaDamana } from '../comun/texto/ortografia';
 import { tokenizarDamana } from '../comun/texto/tokenizador';
 import { CONEXION_DB } from '../database/database.constants';
 
@@ -67,21 +68,25 @@ export class ImportadorService {
           'DELETE FROM vocabulario; DELETE FROM conjugaciones;',
       );
 
+      // Las columnas damana pasan por corregirOrtografiaDamana (ü→ʉ, ver
+      // comun/texto/ortografia.ts); los CSV fuente quedan intactos.
       const insOracion = this.db.prepare(
         `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
          VALUES (?, ?, ?, ?, ?)`,
       );
       for (const fila of oraciones) {
-        const info = insOracion.run(fila.id, fila.damana, fila.espanol, fila.estado, fila.fuente);
-        this.tokenizar(fila.damana, 'oraciones', info.lastInsertRowid as number);
+        const damana = corregirOrtografiaDamana(fila.damana);
+        const info = insOracion.run(fila.id, damana, fila.espanol, fila.estado, fila.fuente);
+        this.tokenizar(damana, 'oraciones', info.lastInsertRowid as number);
       }
 
       const insFrase = this.db.prepare(
         'INSERT INTO frases (fuente, damana, espanol, notas) VALUES (?, ?, ?, ?)',
       );
       for (const fila of frases) {
-        const info = insFrase.run(fila.fuente, fila.damana, fila.espanol, fila.notas);
-        this.tokenizar(fila.damana, 'frases', info.lastInsertRowid as number);
+        const damana = corregirOrtografiaDamana(fila.damana);
+        const info = insFrase.run(fila.fuente, damana, fila.espanol, fila.notas);
+        this.tokenizar(damana, 'frases', info.lastInsertRowid as number);
       }
 
       const insVocabulario = this.db.prepare(
@@ -89,14 +94,15 @@ export class ImportadorService {
          VALUES (?, ?, ?, ?, ?)`,
       );
       for (const fila of vocabulario) {
+        const damana = corregirOrtografiaDamana(fila.damana);
         const info = insVocabulario.run(
           fila.espanol,
-          fila.damana,
+          damana,
           fila.categoria,
           fila.notas,
           fila.fuente,
         );
-        this.tokenizar(fila.damana, 'vocabulario', info.lastInsertRowid as number);
+        this.tokenizar(damana, 'vocabulario', info.lastInsertRowid as number);
       }
 
       const insConjugacion = this.db.prepare(
@@ -104,8 +110,9 @@ export class ImportadorService {
          VALUES (?, ?, ?, ?, ?)`,
       );
       for (const fila of conjugaciones) {
-        const info = insConjugacion.run(fila.damana, fila.espanol, fila.lema, fila.fuente, fila.notas);
-        this.tokenizar(fila.damana, 'conjugaciones', info.lastInsertRowid as number);
+        const damana = corregirOrtografiaDamana(fila.damana);
+        const info = insConjugacion.run(damana, fila.espanol, fila.lema, fila.fuente, fila.notas);
+        this.tokenizar(damana, 'conjugaciones', info.lastInsertRowid as number);
       }
     });
     insertarTodo();

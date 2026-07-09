@@ -13,10 +13,13 @@ const CSV_ORACIONES =
   'o1,"nʉnka kʉñingui gontka\nñingui tua ukurra",Dios hizo el agua,aprobado,lfb\n' +
   'o2,¿Zhinzhoma nanu? 42,¿Conoces? cuarenta y dos,revisar,lfb\n';
 
+const U_DIERESIS = String.fromCharCode(0x00fc); // ü — apaño de Word para ʉ
+
 const CSV_FRASES =
   BOM +
   'fuente,damana,espanol,notas\n' +
-  "Prueba,shke'ta ukurra,anda ligero,\n";
+  "Prueba,shke'ta ukurra,anda ligero,\n" +
+  `Prueba,bug${U_DIERESIS}i we ugunga,en la casa de arriba,\n`;
 
 const CSV_VOCABULARIO =
   BOM +
@@ -60,10 +63,24 @@ describe('ImportadorService (corpus v3)', () => {
   it('importa los conteos correctos de cada CSV', () => {
     const stats = servicio.importarTodo(dirTmp);
     expect(stats.oraciones).toBe(2);
-    expect(stats.frases).toBe(1);
+    expect(stats.frases).toBe(2);
     expect(stats.vocabulario).toBe(2);
     expect(stats.conjugaciones).toBe(2);
     expect(stats.totalTokens).toBeGreaterThan(0);
+  });
+
+  it('corrige la ü de Word a ʉ en el damana almacenado y en los tokens', () => {
+    servicio.importarTodo(dirTmp);
+    const fila = db
+      .prepare('SELECT damana FROM frases WHERE rowid = 2')
+      .get() as { damana: string };
+    expect(fila.damana).toBe('bugʉi we ugunga');
+    const palabras = db
+      .prepare('SELECT DISTINCT palabra_normalizada AS p FROM tokens_damana')
+      .all()
+      .map((f: any) => f.p);
+    expect(palabras).toContain('bugʉi');
+    expect(palabras).not.toContain('bugui'); // la ü no se degrada a u
   });
 
   it('guarda id_externo y estado de las oraciones (celdas multilínea intactas)', () => {
