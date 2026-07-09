@@ -24,10 +24,11 @@ async function main(): Promise<void> {
   const stats = app.get(ImportadorService).importarTodo(dirDatos);
 
   console.log('\n=== Importación completada ===');
-  console.log(`Capítulos:    ${stats.capitulos}`);
-  console.log(`Frases:       ${stats.frases}`);
-  console.log(`Vocabulario:  ${stats.vocabulario}`);
-  console.log(`Tokens:       ${stats.totalTokens}`);
+  console.log(`Oraciones:     ${stats.oraciones}`);
+  console.log(`Frases:        ${stats.frases}`);
+  console.log(`Vocabulario:   ${stats.vocabulario}`);
+  console.log(`Conjugaciones: ${stats.conjugaciones}`);
+  console.log(`Tokens:        ${stats.totalTokens}`);
   console.log('\nTop 20 palabras damana más frecuentes:');
   console.table(stats.topPalabras);
 

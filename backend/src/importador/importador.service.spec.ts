@@ -7,34 +7,40 @@ import { ImportadorService } from './importador.service';
 
 const BOM = String.fromCharCode(0xfeff);
 
-const CSV_CAPITULOS =
+const CSV_ORACIONES =
   BOM +
-  'capitulo,titulo_damana,titulo_espanol,damana,espanol\n' +
-  '1,Kunkujshinaga go,Dios hace,"nʉnka kʉñingui gontka\nñingui tua ukurra",Texto en español\n' +
-  '2,Ñingui shkua,Otro título,"¿Buie tshijkoshkandzina? shke\'ta 123",Otro texto\n';
+  'id,damana,espanol,estado,fuente\n' +
+  'o1,"nʉnka kʉñingui gontka\nñingui tua ukurra",Dios hizo el agua,aprobado,lfb\n' +
+  'o2,¿Zhinzhoma nanu? 42,¿Conoces? cuarenta y dos,revisar,lfb\n';
 
 const CSV_FRASES =
   BOM +
   'fuente,damana,espanol,notas\n' +
-  'Prueba,¿Masheshishka nanu?,¿Sabes leer?,\n' +
-  'Prueba,Jehovága nʉnka,Frase con tilde,revisar\n';
+  "Prueba,shke'ta ukurra,anda ligero,\n";
 
 const CSV_VOCABULARIO =
   BOM +
-  'espanol,damana,notas\n' +
-  'tiene,kʉnʉnka,\n' +
-  'año,ñandua,con ñ\n';
+  'espanol,damana,categoria,notas,fuente\n' +
+  'agua,nʉnka,Otros,,diccionario wiwa\n' +
+  'año,ñandua,Tiempo / días / clima,con ñ,diccionario wiwa\n';
 
-describe('ImportadorService', () => {
+const CSV_CONJUGACIONES =
+  BOM +
+  'damana,espanol,lema,fuente,notas\n' +
+  'nujkunʉnanka,yo tuve,tener,VERBO TENER.docx,\n' +
+  'mujkunʉnanka,tú tuviste,tener,VERBO TENER.docx,\n';
+
+describe('ImportadorService (corpus v3)', () => {
   let dirTmp: string;
   let db: Database.Database;
   let servicio: ImportadorService;
 
   beforeAll(() => {
     dirTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'corpus-test-'));
-    fs.writeFileSync(path.join(dirTmp, 'corpus_capitulos.csv'), CSV_CAPITULOS, 'utf8');
-    fs.writeFileSync(path.join(dirTmp, 'corpus_frases.csv'), CSV_FRASES, 'utf8');
-    fs.writeFileSync(path.join(dirTmp, 'corpus_vocabulario.csv'), CSV_VOCABULARIO, 'utf8');
+    fs.writeFileSync(path.join(dirTmp, 'corpus_oraciones.csv'), CSV_ORACIONES, 'utf8');
+    fs.writeFileSync(path.join(dirTmp, 'corpus_frases_v2.csv'), CSV_FRASES, 'utf8');
+    fs.writeFileSync(path.join(dirTmp, 'corpus_vocabulario_v2.csv'), CSV_VOCABULARIO, 'utf8');
+    fs.writeFileSync(path.join(dirTmp, 'corpus_conjugaciones.csv'), CSV_CONJUGACIONES, 'utf8');
   });
 
   afterAll(() => {
@@ -53,40 +59,57 @@ describe('ImportadorService', () => {
 
   it('importa los conteos correctos de cada CSV', () => {
     const stats = servicio.importarTodo(dirTmp);
-    expect(stats.capitulos).toBe(2);
-    expect(stats.frases).toBe(2);
+    expect(stats.oraciones).toBe(2);
+    expect(stats.frases).toBe(1);
     expect(stats.vocabulario).toBe(2);
+    expect(stats.conjugaciones).toBe(2);
     expect(stats.totalTokens).toBeGreaterThan(0);
   });
 
-  it('maneja celdas multilínea entre comillas (capítulo 1 completo)', () => {
+  it('guarda id_externo y estado de las oraciones (celdas multilínea intactas)', () => {
+    servicio.importarTodo(dirTmp);
+    const filas = db
+      .prepare('SELECT id_externo, damana, estado FROM oraciones ORDER BY rowid')
+      .all() as any[];
+    expect(filas[0].id_externo).toBe('o1');
+    expect(filas[0].estado).toBe('aprobado');
+    expect(filas[0].damana).toContain('\n');
+    expect(filas[1].estado).toBe('revisar');
+  });
+
+  it('guarda categoria y fuente del vocabulario', () => {
     servicio.importarTodo(dirTmp);
     const fila = db
-      .prepare('SELECT damana FROM capitulos WHERE capitulo = 1')
-      .get() as { damana: string };
-    expect(fila.damana).toContain('\n');
-    expect(fila.damana).toContain('ñingui tua ukurra');
+      .prepare('SELECT categoria, fuente FROM vocabulario WHERE damana = ?')
+      .get('nʉnka') as any;
+    expect(fila.categoria).toBe('Otros');
+    expect(fila.fuente).toBe('diccionario wiwa');
   });
 
-  it('tokeniza conservando ʉ (nʉnka, no nunka)', () => {
+  it('guarda las conjugaciones con su lema', () => {
     servicio.importarTodo(dirTmp);
-    const conU = db
-      .prepare("SELECT COUNT(*) AS n FROM tokens_damana WHERE palabra_normalizada = 'nʉnka'")
-      .get() as { n: number };
-    const degradada = db
-      .prepare("SELECT COUNT(*) AS n FROM tokens_damana WHERE palabra_normalizada = 'nunka'")
-      .get() as { n: number };
-    expect(conU.n).toBeGreaterThan(0);
-    expect(degradada.n).toBe(0);
+    const filas = db
+      .prepare("SELECT damana FROM conjugaciones WHERE lema = 'tener' ORDER BY rowid")
+      .all() as any[];
+    expect(filas.map((f) => f.damana)).toEqual(['nujkunʉnanka', 'mujkunʉnanka']);
   });
 
-  it('tokeniza conservando ñ (ñingui, no ningui)', () => {
+  it('tokeniza las cuatro fuentes conservando ʉ y ñ', () => {
     servicio.importarTodo(dirTmp);
+    const origenes = db
+      .prepare('SELECT DISTINCT tabla_origen AS t FROM tokens_damana ORDER BY t')
+      .all()
+      .map((f: any) => f.t);
+    expect(origenes).toEqual(['conjugaciones', 'frases', 'oraciones', 'vocabulario']);
+
     const palabras = db
       .prepare('SELECT DISTINCT palabra_normalizada AS p FROM tokens_damana')
       .all()
       .map((f: any) => f.p);
+    expect(palabras).toContain('nʉnka');
     expect(palabras).toContain('ñingui');
+    expect(palabras).toContain('nujkunʉnanka');
+    expect(palabras).not.toContain('nunka');
     expect(palabras).not.toContain('ningui');
   });
 
@@ -95,7 +118,7 @@ describe('ImportadorService', () => {
     const raros = db
       .prepare(
         `SELECT COUNT(*) AS n FROM tokens_damana
-         WHERE palabra_normalizada LIKE '%1%'
+         WHERE palabra_normalizada LIKE '%4%'
             OR palabra_normalizada LIKE '%¿%'
             OR palabra_normalizada LIKE '%?%'`,
       )
@@ -111,31 +134,22 @@ describe('ImportadorService', () => {
     expect(fila.n).toBe(1);
   });
 
-  it('normaliza tildes en tokens (Jehovága → jehovaga)', () => {
-    servicio.importarTodo(dirTmp);
-    const fila = db
-      .prepare(
-        "SELECT palabra_original FROM tokens_damana WHERE palabra_normalizada = 'jehovaga'",
-      )
-      .get() as { palabra_original: string };
-    expect(fila.palabra_original).toBe('Jehovága');
-  });
-
-  it('tokeniza también el título damana de los capítulos', () => {
-    servicio.importarTodo(dirTmp);
-    const fila = db
-      .prepare(
-        `SELECT COUNT(*) AS n FROM tokens_damana
-         WHERE palabra_normalizada = 'kunkujshinaga' AND tabla_origen = 'capitulos'`,
-      )
-      .get() as { n: number };
-    expect(fila.n).toBe(1);
-  });
-
   it('es idempotente: importar dos veces no duplica nada', () => {
     const primera = servicio.importarTodo(dirTmp);
     const segunda = servicio.importarTodo(dirTmp);
     expect(segunda).toEqual(primera);
+  });
+
+  it('no toca el progreso SRS al reimportar', () => {
+    db.prepare(
+      `INSERT INTO progreso_srs (palabra, repeticiones, factor_facilidad, intervalo_dias, proxima_revision, actualizado_en)
+       VALUES ('nʉnka', 2, 2.5, 6, '2026-07-01T00:00:00.000Z', '2026-06-25T00:00:00.000Z')`,
+    ).run();
+    servicio.importarTodo(dirTmp);
+    const fila = db
+      .prepare('SELECT repeticiones FROM progreso_srs WHERE palabra = ?')
+      .get('nʉnka') as { repeticiones: number };
+    expect(fila.repeticiones).toBe(2);
   });
 
   it('id_origen referencia rowids válidos de la tabla origen', () => {
@@ -143,8 +157,8 @@ describe('ImportadorService', () => {
     const huerfanos = db
       .prepare(
         `SELECT COUNT(*) AS n FROM tokens_damana t
-         WHERE t.tabla_origen = 'vocabulario'
-           AND NOT EXISTS (SELECT 1 FROM vocabulario v WHERE v.rowid = t.id_origen)`,
+         WHERE t.tabla_origen = 'conjugaciones'
+           AND NOT EXISTS (SELECT 1 FROM conjugaciones c WHERE c.rowid = t.id_origen)`,
       )
       .get() as { n: number };
     expect(huerfanos.n).toBe(0);

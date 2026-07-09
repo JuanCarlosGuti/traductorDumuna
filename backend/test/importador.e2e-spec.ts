@@ -17,30 +17,33 @@ describe('Importador (e2e, módulo Nest completo con SQLite en memoria)', () => 
   beforeAll(async () => {
     dirTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'corpus-e2e-'));
     fs.writeFileSync(
-      path.join(dirTmp, 'corpus_capitulos.csv'),
+      path.join(dirTmp, 'corpus_oraciones.csv'),
       BOM +
-        'capitulo,titulo_damana,titulo_espanol,damana,espanol\n' +
-        '1,Ñingui shkua,Título uno,"nʉnka kʉñingui gontka\nshke\'ta ukurra ¿nanu? 42",Texto español\n',
+        'id,damana,espanol,estado,fuente\n' +
+        'o1,"nʉnka kʉñingui gontka\nshke\'ta ukurra ¿nanu? 42",Dios hizo el agua,aprobado,lfb\n' +
+        'o2,ñingui tua,otra vez,revisar,lfb\n',
       'utf8',
     );
     fs.writeFileSync(
-      path.join(dirTmp, 'corpus_frases.csv'),
+      path.join(dirTmp, 'corpus_frases_v2.csv'),
       BOM +
         'fuente,damana,espanol,notas\n' +
         'Prueba,¿Zhinzhoma mʉntuka nanu?,¿Conoces los libros?,\n',
       'utf8',
     );
     fs.writeFileSync(
-      path.join(dirTmp, 'corpus_vocabulario.csv'),
-      BOM + 'espanol,damana,notas\n' + 'tiene,kʉnʉnka,\n' + 'ñandú,ñandua,\n',
+      path.join(dirTmp, 'corpus_vocabulario_v2.csv'),
+      BOM + 'espanol,damana,categoria,notas,fuente\n' + 'tiene,kʉnʉnka,Verbos,,dic\n',
+      'utf8',
+    );
+    fs.writeFileSync(
+      path.join(dirTmp, 'corpus_conjugaciones.csv'),
+      BOM + 'damana,espanol,lema,fuente,notas\n' + 'nujkunʉnanka,yo tuve,tener,doc,\n',
       'utf8',
     );
 
     const moduleRef = await Test.createTestingModule({
-      imports: [
-        DatabaseModule.forRoot({ rutaDb: ':memory:' }),
-        ImportadorModule,
-      ],
+      imports: [DatabaseModule.forRoot({ rutaDb: ':memory:' }), ImportadorModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -52,15 +55,14 @@ describe('Importador (e2e, módulo Nest completo con SQLite en memoria)', () => 
     fs.rmSync(dirTmp, { recursive: true, force: true });
   });
 
-  it('importa y reporta estadísticas coherentes', () => {
+  it('importa y reporta estadísticas coherentes de las 4 fuentes', () => {
     const stats = servicio.importarTodo(dirTmp);
-    expect(stats.capitulos).toBe(1);
+    expect(stats.oraciones).toBe(2);
     expect(stats.frases).toBe(1);
-    expect(stats.vocabulario).toBe(2);
-    // capítulo: titulo (2) + cuerpo (6 palabras, sin ¿nanu?->nanu sí, sin 42)
+    expect(stats.vocabulario).toBe(1);
+    expect(stats.conjugaciones).toBe(1);
     expect(stats.totalTokens).toBeGreaterThan(8);
     expect(stats.topPalabras.length).toBeGreaterThan(0);
-    expect(stats.topPalabras[0].frecuencia).toBeGreaterThanOrEqual(1);
   });
 
   it('los tokens conservan ʉ y ñ (nunca degradadas a u/n)', () => {
