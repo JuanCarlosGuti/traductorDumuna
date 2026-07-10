@@ -27,6 +27,16 @@ const RUTA_PUBLICO = path.resolve(__dirname, '..', 'public');
           ServeStaticModule.forRoot({
             rootPath: RUTA_PUBLICO,
             exclude: ['/api/{*splat}'],
+            serveStaticOptions: {
+              // Los bundles de Angular llevan hash en el nombre (inmutables),
+              // pero index.html no: sin esto el navegador se queda con la
+              // versión vieja de la app tras cada build.
+              setHeaders: (res, ruta) => {
+                if (ruta.endsWith('index.html')) {
+                  res.setHeader('Cache-Control', 'no-cache');
+                }
+              },
+            },
           }),
         ]
       : []),
