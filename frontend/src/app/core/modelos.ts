@@ -30,8 +30,22 @@ export interface TraduccionCandidata {
   coocurrencias: number;
 }
 
+export interface EntradaVocabularioFicha {
+  espanol: string;
+  categoria: string | null;
+  notas: string | null;
+  fuente: string | null;
+}
+
+export interface FormaVerbal {
+  espanol: string;
+  lema: string;
+}
+
 export interface FichaPalabra {
   palabra: string;
+  entradasVocabulario: EntradaVocabularioFicha[];
+  formasVerbales: FormaVerbal[];
   frecuenciaTotal: number;
   frecuenciaPorFuente: FrecuenciaFuente[];
   concordancias: Concordancia[];
@@ -41,6 +55,7 @@ export interface FichaPalabra {
 export interface Frecuencia {
   palabra: string;
   frecuencia: number;
+  traduccion: string | null;
   categoria: string | null;
 }
 

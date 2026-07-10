@@ -26,6 +26,10 @@ describe('PalabraService', () => {
       `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
        VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')`,
     ).run();
+    db.prepare(
+      `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+       VALUES ('ñingui', 'él volvió', 'volver', 'doc', NULL)`,
+    ).run();
     const insToken = db.prepare(
       `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
        VALUES (?, ?, ?, ?, ?)`,
@@ -60,6 +64,27 @@ describe('PalabraService', () => {
 
   it('normaliza el token de entrada (Nʉnka → nʉnka)', () => {
     expect(servicio.ficha('Nʉnka').palabra).toBe('nʉnka');
+  });
+
+  it('trae la traducción directa del vocabulario (caso con ʉ)', () => {
+    const ficha = servicio.ficha('nʉnka');
+    expect(ficha.entradasVocabulario).toEqual([
+      { espanol: 'agua', categoria: 'Otros', notas: null, fuente: 'dic' },
+    ]);
+    expect(ficha.formasVerbales).toEqual([]);
+  });
+
+  it('reconoce formas verbales conjugadas con su glosa y lema (caso con ñ)', () => {
+    const ficha = servicio.ficha('ñingui');
+    expect(ficha.formasVerbales).toEqual([{ espanol: 'él volvió', lema: 'volver' }]);
+    expect(ficha.entradasVocabulario).toEqual([]);
+  });
+
+  it('palabra sin vocabulario ni conjugación: listas vacías pero candidatas presentes', () => {
+    const ficha = servicio.ficha('gontka');
+    expect(ficha.entradasVocabulario).toEqual([]);
+    expect(ficha.formasVerbales).toEqual([]);
+    expect(ficha.traduccionesCandidatas.length).toBeGreaterThan(0);
   });
 
   it('devuelve concordancias con <mark>', () => {

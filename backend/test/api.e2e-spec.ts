@@ -160,6 +160,9 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
         .get(`/api/palabra/${encodeURIComponent('nʉnka')}`)
         .expect(200);
       expect(res.body.palabra).toBe('nʉnka');
+      expect(res.body.entradasVocabulario).toEqual([
+        { espanol: 'agua', categoria: 'Otros', notas: '', fuente: 'dic' },
+      ]);
       expect(res.body.frecuenciaTotal).toBe(4);
       expect(res.body.frecuenciaPorFuente).toEqual([
         { fuente: 'frases', frecuencia: 1 },
@@ -187,7 +190,12 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       const palabras = res.body.map((f: any) => f.palabra);
       expect(palabras).toContain('nʉnka');
       expect(palabras).not.toContain('jehovaga'); // solo 'Jehovága'
-      expect(res.body[0]).toEqual({ palabra: 'nʉnka', frecuencia: 4, categoria: 'Otros' });
+      expect(res.body[0]).toEqual({
+        palabra: 'nʉnka',
+        frecuencia: 4,
+        traduccion: 'agua',
+        categoria: 'Otros',
+      });
     });
 
     it('respeta limite y valida que sea entero positivo', async () => {

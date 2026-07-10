@@ -16,11 +16,37 @@
     </p>
   </header>
 
+  @if (f.entradasVocabulario.length > 0 || f.formasVerbales.length > 0) {
+    <section class="panel traduccion-directa">
+      <h2>Traducción</h2>
+      @for (e of f.entradasVocabulario; track $index) {
+        <p class="entrada">
+          <strong>{{ e.espanol }}</strong>
+          @if (e.categoria) { <span class="chip">{{ e.categoria }}</span> }
+          @if (e.notas) { <span class="suave chiquito"> — {{ e.notas }}</span> }
+        </p>
+      }
+      @for (v of f.formasVerbales; track $index) {
+        <p class="entrada">
+          <strong>{{ v.espanol }}</strong>
+          <span class="suave chiquito"> — forma del verbo</span>
+          <a [routerLink]="['/gramatica']">{{ v.lema }}</a>
+        </p>
+      }
+    </section>
+  }
+
   <section>
     <h2>Traducciones candidatas</h2>
     <p class="suave chiquito">
-      Palabras españolas que más co-ocurren en los textos paralelos; clic
-      para buscarlas en español.
+      @if (f.entradasVocabulario.length === 0 && f.formasVerbales.length === 0) {
+        Esta palabra no está en el vocabulario; estas son las palabras
+        españolas que más co-ocurren en los textos paralelos (estimación
+        estadística). Clic para buscarlas en español.
+      } @else {
+        Palabras españolas que más co-ocurren en los textos paralelos; clic
+        para buscarlas en español.
+      }
     </p>
     <div class="candidatas">
       @for (c of f.traduccionesCandidatas; track c.palabra) {

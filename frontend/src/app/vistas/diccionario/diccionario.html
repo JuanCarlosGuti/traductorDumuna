@@ -12,6 +12,7 @@
       <tr>
         <th>#</th>
         <th>palabra</th>
+        <th>traducción</th>
         <th>frecuencia</th>
         <th>categoría</th>
       </tr>
@@ -21,11 +22,12 @@
         <tr>
           <td class="suave">{{ pagina() * porPagina + $index + 1 }}</td>
           <td><a [routerLink]="['/diccionario', f.palabra]">{{ f.palabra }}</a></td>
+          <td>{{ f.traduccion ?? '' }}</td>
           <td>{{ f.frecuencia }}</td>
           <td class="suave">{{ f.categoria ?? '' }}</td>
         </tr>
       } @empty {
-        <tr><td colspan="4">No hay palabras. ¿Se ejecutó el importador?</td></tr>
+        <tr><td colspan="5">No hay palabras. ¿Se ejecutó el importador?</td></tr>
       }
     </tbody>
   </table>

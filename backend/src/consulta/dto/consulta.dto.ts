@@ -105,9 +105,43 @@ export class TraduccionCandidataDto {
   coocurrencias!: number;
 }
 
+export class EntradaVocabularioFichaDto {
+  @ApiProperty({ description: 'Traducción directa registrada en el vocabulario' })
+  espanol!: string;
+
+  @ApiProperty({ nullable: true })
+  categoria!: string | null;
+
+  @ApiProperty({ nullable: true })
+  notas!: string | null;
+
+  @ApiProperty({ nullable: true })
+  fuente!: string | null;
+}
+
+export class FormaVerbalDto {
+  @ApiProperty({ example: 'yo tuve', description: 'Glosa de la forma conjugada' })
+  espanol!: string;
+
+  @ApiProperty({ example: 'tener' })
+  lema!: string;
+}
+
 export class FichaPalabraDto {
   @ApiProperty({ description: 'La palabra en forma normalizada' })
   palabra!: string;
+
+  @ApiProperty({
+    type: [EntradaVocabularioFichaDto],
+    description: 'Traducciones directas: entradas de vocabulario cuyo damana coincide con la palabra',
+  })
+  entradasVocabulario!: EntradaVocabularioFichaDto[];
+
+  @ApiProperty({
+    type: [FormaVerbalDto],
+    description: 'Si la palabra es una forma conjugada, su glosa y lema',
+  })
+  formasVerbales!: FormaVerbalDto[];
 
   @ApiProperty()
   frecuenciaTotal!: number;
@@ -118,7 +152,7 @@ export class FichaPalabraDto {
   @ApiProperty({ type: [ConcordanciaDto], description: 'Primeras 10 concordancias' })
   concordancias!: ConcordanciaDto[];
 
-  @ApiProperty({ type: [TraduccionCandidataDto], description: '10 palabras españolas que más co-ocurren en los textos paralelos (excluyendo stopwords)' })
+  @ApiProperty({ type: [TraduccionCandidataDto], description: '10 palabras españolas que más co-ocurren en los textos paralelos (traducciones candidatas estadísticas, sin stopwords)' })
   traduccionesCandidatas!: TraduccionCandidataDto[];
 }
 
@@ -128,6 +162,12 @@ export class FrecuenciaDto {
 
   @ApiProperty()
   frecuencia!: number;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'Traducción directa del vocabulario (o glosa de conjugación) cuando el damana coincide con la palabra',
+  })
+  traduccion!: string | null;
 
   @ApiProperty({
     nullable: true,

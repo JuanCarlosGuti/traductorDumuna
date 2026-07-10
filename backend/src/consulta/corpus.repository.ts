@@ -46,6 +46,14 @@ export class CorpusRepository {
       .all() as LemaDto[];
   }
 
+  listarConjugaciones(): ConjugacionDto[] {
+    return this.db
+      .prepare(
+        'SELECT rowid AS id, damana, espanol, lema, fuente, notas FROM conjugaciones ORDER BY rowid',
+      )
+      .all() as ConjugacionDto[];
+  }
+
   conjugacionesDe(lema: string): ConjugacionDto[] {
     return this.db
       .prepare(

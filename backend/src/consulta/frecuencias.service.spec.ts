@@ -48,13 +48,41 @@ describe('FrecuenciasService', () => {
 
   it('ordena por frecuencia descendente', () => {
     const filas = servicio.listar(500);
-    expect(filas[0]).toEqual({ palabra: 'nʉnka', frecuencia: 2, categoria: null });
-    expect(filas[1]).toEqual({ palabra: 'shkua', frecuencia: 2, categoria: null });
+    expect(filas[0]).toEqual({
+      palabra: 'nʉnka',
+      frecuencia: 2,
+      traduccion: null,
+      categoria: null,
+    });
+    expect(filas[1]).toEqual({
+      palabra: 'shkua',
+      frecuencia: 2,
+      traduccion: null,
+      categoria: null,
+    });
   });
 
-  it('trae la categoría del vocabulario cuando el damana coincide (caso con ʉ)', () => {
+  it('trae traducción y categoría del vocabulario cuando el damana coincide (caso con ʉ)', () => {
     const fila = servicio.listar(500).find((f) => f.palabra === 'kʉnʉnka');
-    expect(fila).toEqual({ palabra: 'kʉnʉnka', frecuencia: 1, categoria: 'Verbos' });
+    expect(fila).toEqual({
+      palabra: 'kʉnʉnka',
+      frecuencia: 1,
+      traduccion: 'tiene',
+      categoria: 'Verbos',
+    });
+  });
+
+  it('usa la glosa de conjugación como traducción cuando no hay vocabulario (caso con ñ)', () => {
+    db.prepare(
+      `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+       VALUES ('ñingunka', 'él volvió', 'volver', 'doc', NULL)`,
+    ).run();
+    db.prepare(
+      `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
+       VALUES ('ñingunka', 'ñingunka', 'conjugaciones', 1, 0)`,
+    ).run();
+    const fila = servicio.listar(500).find((f) => f.palabra === 'ñingunka');
+    expect(fila).toMatchObject({ traduccion: 'él volvió', categoria: null });
   });
 
   it('respeta el límite', () => {

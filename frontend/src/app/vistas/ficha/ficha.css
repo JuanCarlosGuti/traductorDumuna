@@ -2,6 +2,20 @@
   margin-bottom: 0.25rem;
 }
 
+.traduccion-directa {
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--acento);
+}
+
+.traduccion-directa h2 {
+  margin-top: 0;
+}
+
+.entrada {
+  margin: 0.25rem 0;
+  font-size: 1.1rem;
+}
+
 .chip {
   display: inline-block;
   border: 1px solid var(--borde);

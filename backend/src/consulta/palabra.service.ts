@@ -5,7 +5,12 @@ import { tokenizarDamana } from '../comun/texto/tokenizador';
 import { BusquedaService } from './busqueda.service';
 import { Idioma } from './consulta.enums';
 import { CorpusRepository } from './corpus.repository';
-import { FichaPalabraDto, TraduccionCandidataDto } from './dto/consulta.dto';
+import {
+  EntradaVocabularioFichaDto,
+  FichaPalabraDto,
+  FormaVerbalDto,
+  TraduccionCandidataDto,
+} from './dto/consulta.dto';
 
 const MAX_CONCORDANCIAS = 10;
 const MAX_CANDIDATAS = 10;
@@ -38,11 +43,34 @@ export class PalabraService {
 
     return {
       palabra,
+      entradasVocabulario: this.entradasVocabulario(palabra),
+      formasVerbales: this.formasVerbales(palabra),
       frecuenciaTotal,
       frecuenciaPorFuente,
       concordancias,
       traduccionesCandidatas: this.traduccionesCandidatas(palabra),
     };
+  }
+
+  /** Traducciones directas: entradas de vocabulario cuyo damana ES la palabra. */
+  private entradasVocabulario(palabraNormalizada: string): EntradaVocabularioFichaDto[] {
+    return this.repo
+      .listarVocabulario()
+      .filter((e) => normalizar(e.damana) === palabraNormalizada)
+      .map((e) => ({
+        espanol: e.espanol,
+        categoria: e.categoria,
+        notas: e.notas,
+        fuente: e.fuente,
+      }));
+  }
+
+  /** Si la palabra es una forma conjugada, su glosa y lema. */
+  private formasVerbales(palabraNormalizada: string): FormaVerbalDto[] {
+    return this.repo
+      .listarConjugaciones()
+      .filter((c) => normalizar(c.damana) === palabraNormalizada)
+      .map((c) => ({ espanol: c.espanol, lema: c.lema }));
   }
 
   /**

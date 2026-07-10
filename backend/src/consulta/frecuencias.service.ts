@@ -18,15 +18,23 @@ export class FrecuenciasService {
    * Palabras damana por frecuencia descendente, excluyendo probables
    * nombres propios (tokens que en los originales solo aparecen con
    * mayúscula inicial). Si la palabra coincide con una entrada de
-   * vocabulario, lleva su categoría.
+   * vocabulario lleva su traducción y categoría; si es una forma
+   * conjugada, su glosa.
    */
   listar(limite: number): FrecuenciaDto[] {
     const categorias = new Map<string, string>();
+    const traducciones = new Map<string, string>();
     for (const entrada of this.repo.listarVocabulario()) {
-      if (entrada.categoria) {
-        const clave = normalizar(entrada.damana);
-        if (!categorias.has(clave)) categorias.set(clave, entrada.categoria);
+      const clave = normalizar(entrada.damana);
+      if (entrada.categoria && !categorias.has(clave)) {
+        categorias.set(clave, entrada.categoria);
       }
+      if (!traducciones.has(clave)) traducciones.set(clave, entrada.espanol);
+    }
+    // Glosas de conjugación como respaldo cuando no hay entrada de vocabulario
+    for (const conjugacion of this.repo.listarConjugaciones()) {
+      const clave = normalizar(conjugacion.damana);
+      if (!traducciones.has(clave)) traducciones.set(clave, conjugacion.espanol);
     }
 
     return this.repo
@@ -36,6 +44,7 @@ export class FrecuenciasService {
       .map((f) => ({
         palabra: f.palabra,
         frecuencia: f.frecuencia,
+        traduccion: traducciones.get(f.palabra) ?? null,
         categoria: categorias.get(f.palabra) ?? null,
       }));
   }
