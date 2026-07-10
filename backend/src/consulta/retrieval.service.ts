@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { FuenteCorpus, Idioma } from '../consulta/consulta.enums';
-import { CorpusRepository } from '../consulta/corpus.repository';
+import { FuenteCorpus, Idioma } from './consulta.enums';
+import { CorpusRepository } from './corpus.repository';
 
 export const K_FRAGMENTOS = 8;
 

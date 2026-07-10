@@ -9,11 +9,13 @@ export interface Concordancia {
   referencia: string;
   fragmento: string;
   textoParalelo: string;
+  puntaje: number | null;
 }
 
 export interface RespuestaBusqueda {
   consulta: string;
   idioma: Idioma;
+  modo: 'concordancia' | 'similitud';
   total: number;
   resultados: Concordancia[];
 }

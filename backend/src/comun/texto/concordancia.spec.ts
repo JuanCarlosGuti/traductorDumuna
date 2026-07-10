@@ -1,4 +1,8 @@
-import { buscarOcurrencias, extraerFragmento } from './concordancia';
+import {
+  buscarOcurrencias,
+  extraerFragmento,
+  marcarOcurrencias,
+} from './concordancia';
 
 describe('buscarOcurrencias', () => {
   it('encuentra sin importar mayúsculas ni tildes: jehova ↔ Jehová', () => {
@@ -38,6 +42,29 @@ describe('buscarOcurrencias', () => {
     const texto = '¿Masheshishka 42 nanu?';
     const oc = buscarOcurrencias(texto, 'nanu');
     expect(texto.slice(oc[0].inicio, oc[0].fin)).toBe('nanu');
+  });
+});
+
+describe('marcarOcurrencias', () => {
+  it('marca todas las ocurrencias de varias palabras (con ʉ y ñ)', () => {
+    const texto = 'nʉnka gontka ñingui nʉnka';
+    const ocurrencias = [
+      ...buscarOcurrencias(texto, 'nʉnka'),
+      ...buscarOcurrencias(texto, 'ñingui'),
+    ];
+    expect(marcarOcurrencias(texto, ocurrencias)).toBe(
+      '<mark>nʉnka</mark> gontka <mark>ñingui</mark> <mark>nʉnka</mark>',
+    );
+  });
+
+  it('sin ocurrencias devuelve el texto escapado y con espacios colapsados', () => {
+    expect(marcarOcurrencias('a <b>\ncosa', [])).toBe('a &lt;b&gt; cosa');
+  });
+
+  it('ignora ocurrencias solapadas', () => {
+    const texto = 'nʉnka';
+    const oc = buscarOcurrencias(texto, 'nʉnka');
+    expect(marcarOcurrencias(texto, [...oc, ...oc])).toBe('<mark>nʉnka</mark>');
   });
 });
 

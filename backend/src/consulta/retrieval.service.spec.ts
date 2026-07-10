@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
-import { Idioma } from '../consulta/consulta.enums';
-import { CorpusRepository } from '../consulta/corpus.repository';
+import { Idioma } from './consulta.enums';
+import { CorpusRepository } from './corpus.repository';
 import { ejecutarMigraciones } from '../database/migraciones';
 import { PESO_REVISAR, RetrievalService } from './retrieval.service';
 

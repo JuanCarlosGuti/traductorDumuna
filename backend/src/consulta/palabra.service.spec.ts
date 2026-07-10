@@ -4,6 +4,7 @@ import { ejecutarMigraciones } from '../database/migraciones';
 import { BusquedaService } from './busqueda.service';
 import { CorpusRepository } from './corpus.repository';
 import { PalabraService } from './palabra.service';
+import { RetrievalService } from './retrieval.service';
 
 describe('PalabraService', () => {
   let db: Database.Database;
@@ -37,7 +38,10 @@ describe('PalabraService', () => {
     insToken.run('nanu', 'nanu', 'frases', 1, 1);
     insToken.run('nʉnka', 'nʉnka', 'vocabulario', 1, 0);
     const repo = new CorpusRepository(db);
-    servicio = new PalabraService(repo, new BusquedaService(repo));
+    servicio = new PalabraService(
+      repo,
+      new BusquedaService(repo, new RetrievalService(repo)),
+    );
   });
 
   afterEach(() => db.close());

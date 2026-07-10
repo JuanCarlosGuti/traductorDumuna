@@ -3,6 +3,7 @@ import { ejecutarMigraciones } from '../database/migraciones';
 import { BusquedaService } from './busqueda.service';
 import { FuenteCorpus, Idioma } from './consulta.enums';
 import { CorpusRepository } from './corpus.repository';
+import { RetrievalService } from './retrieval.service';
 
 describe('BusquedaService', () => {
   let db: Database.Database;
@@ -31,13 +32,15 @@ describe('BusquedaService', () => {
       `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
        VALUES ('nʉnkanka', 'él fue', 'ser', 'doc', NULL)`,
     ).run();
-    servicio = new BusquedaService(new CorpusRepository(db));
+    const repo = new CorpusRepository(db);
+    servicio = new BusquedaService(repo, new RetrievalService(repo));
   });
 
   afterEach(() => db.close());
 
   it('encuentra en damana en las cuatro fuentes, con <mark> y ʉ intacta', () => {
     const r = servicio.buscar({ q: 'nʉnka', idioma: Idioma.damana, limite: 100 });
+    expect(r.modo).toBe('concordancia');
     expect(r.total).toBe(3); // oración 1, frase, vocabulario (nʉnkanka NO matchea nʉnka)
     expect(r.resultados.map((c) => c.fuente)).toEqual([
       FuenteCorpus.oraciones,
@@ -90,5 +93,61 @@ describe('BusquedaService', () => {
     const r = servicio.buscar({ q: 'nʉnka', idioma: Idioma.damana, limite: 2 });
     expect(r.total).toBe(3);
     expect(r.resultados).toHaveLength(2);
+  });
+
+  describe('modo similitud (consultas de varias palabras)', () => {
+    it('una frase damana devuelve oraciones similares con puntaje y palabras resaltadas', () => {
+      const r = servicio.buscar({
+        q: 'nʉnka kʉñingui',
+        idioma: Idioma.damana,
+        limite: 10,
+      });
+      expect(r.modo).toBe('similitud');
+      expect(r.total).toBeGreaterThan(0);
+      const primero = r.resultados[0];
+      expect(primero.referencia).toBe('oración 1');
+      expect(primero.puntaje).toBeGreaterThan(0);
+      // ambas palabras de la consulta quedan resaltadas
+      expect(primero.fragmento).toContain('<mark>nʉnka</mark>');
+      expect(primero.fragmento).toContain('<mark>kʉñingui</mark>');
+      expect(primero.textoParalelo).toBe('Jehová hizo el agua');
+    });
+
+    it('una frase en español encuentra por similitud (insensible a tildes)', () => {
+      const r = servicio.buscar({
+        q: 'jehova hizo agua',
+        idioma: Idioma.espanol,
+        limite: 10,
+      });
+      expect(r.modo).toBe('similitud');
+      expect(r.resultados[0].referencia).toBe('oración 1');
+      expect(r.resultados[0].fragmento).toContain('<mark>Jehová</mark>');
+      expect(r.resultados[0].fragmento).toContain('<mark>agua</mark>');
+      expect(r.resultados[0].textoParalelo).toContain('Jehovága');
+    });
+
+    it('filtra por fuente también en modo similitud', () => {
+      const r = servicio.buscar({
+        q: 'nʉnka nanu',
+        idioma: Idioma.damana,
+        fuente: FuenteCorpus.frases,
+        limite: 10,
+      });
+      expect(r.modo).toBe('similitud');
+      for (const c of r.resultados) {
+        expect(c.fuente).toBe(FuenteCorpus.frases);
+      }
+    });
+
+    it('una frase sin palabras del corpus devuelve vacío sin romper', () => {
+      const r = servicio.buscar({
+        q: 'zzz www qqq',
+        idioma: Idioma.damana,
+        limite: 10,
+      });
+      expect(r.modo).toBe('similitud');
+      expect(r.total).toBe(0);
+      expect(r.resultados).toEqual([]);
+    });
   });
 });

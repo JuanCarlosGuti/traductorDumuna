@@ -12,6 +12,10 @@ import { esStopwordEspanol } from '../comun/texto/stopwords-es';
 import { tokenizarDamana } from '../comun/texto/tokenizador';
 import { Idioma } from '../consulta/consulta.enums';
 import { CorpusRepository } from '../consulta/corpus.repository';
+import {
+  FragmentoRecuperado,
+  RetrievalService,
+} from '../consulta/retrieval.service';
 import { CLIENTE_ANTHROPIC } from './anthropic.provider';
 import {
   CONFIG_TRADUCTOR,
@@ -24,7 +28,6 @@ import {
   RespuestaTraduccionDto,
   TraducirDto,
 } from './dto/traduccion.dto';
-import { FragmentoRecuperado, RetrievalService } from './retrieval.service';
 
 const MAX_TOKENS_RESPUESTA = 2048;
 const MAX_ENTRADAS_VOCABULARIO = 20;

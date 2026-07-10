@@ -126,6 +126,21 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       expect(conjugaciones.body.resultados[0].textoParalelo).toBe('yo tuve');
     });
 
+    it('una frase de varias palabras busca por similitud con puntaje y resaltado', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/buscar')
+        .query({ q: 'jehova hizo el agua', idioma: 'espanol' })
+        .expect(200);
+      expect(res.body.modo).toBe('similitud');
+      expect(res.body.total).toBeGreaterThan(0);
+      const primero = res.body.resultados[0];
+      expect(primero.referencia).toBe('oración 1');
+      expect(primero.puntaje).toBeGreaterThan(0);
+      expect(primero.fragmento).toContain('<mark>Jehová</mark>');
+      expect(primero.fragmento).toContain('<mark>agua</mark>');
+      expect(primero.textoParalelo).toContain('Jehovága');
+    });
+
     it('valida idioma y q: 400 para valores inválidos', async () => {
       await request(app.getHttpServer())
         .get('/api/buscar')

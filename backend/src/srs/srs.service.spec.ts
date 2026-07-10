@@ -4,6 +4,7 @@ import { BusquedaService } from '../consulta/busqueda.service';
 import { CorpusRepository } from '../consulta/corpus.repository';
 import { FrecuenciasService } from '../consulta/frecuencias.service';
 import { PalabraService } from '../consulta/palabra.service';
+import { RetrievalService } from '../consulta/retrieval.service';
 import { ejecutarMigraciones } from '../database/migraciones';
 import { Calificacion } from './sm2';
 import { SrsService } from './srs.service';
@@ -41,7 +42,7 @@ describe('SrsService', () => {
       db,
       repo,
       new FrecuenciasService(repo),
-      new PalabraService(repo, new BusquedaService(repo)),
+      new PalabraService(repo, new BusquedaService(repo, new RetrievalService(repo))),
     );
   });
 

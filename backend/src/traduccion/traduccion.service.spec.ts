@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 import Database from 'better-sqlite3';
 import { CorpusRepository } from '../consulta/corpus.repository';
+import { RetrievalService } from '../consulta/retrieval.service';
 import { ejecutarMigraciones } from '../database/migraciones';
 import { ConfigTraductor, MODELO_CLAUDE } from './config-traductor.provider';
 import { DireccionTraduccion } from './dto/traduccion.dto';
-import { RetrievalService } from './retrieval.service';
 import { extraerJson, TraduccionService } from './traduccion.service';
 
 const JSON_TRADUCCION =

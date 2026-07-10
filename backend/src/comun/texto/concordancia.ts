@@ -41,6 +41,26 @@ function limpiarEspacios(s: string): string {
 }
 
 /**
+ * Marca en un texto completo TODAS las ocurrencias dadas con <mark>,
+ * escapando el resto como HTML y colapsando saltos de línea. Pensado
+ * para textos cortos (oraciones, frases) donde no hace falta recortar
+ * contexto. Las ocurrencias solapadas se ignoran.
+ */
+export function marcarOcurrencias(texto: string, ocurrencias: Ocurrencia[]): string {
+  const ordenadas = [...ocurrencias].sort((a, b) => a.inicio - b.inicio);
+  let resultado = '';
+  let posicion = 0;
+  for (const oc of ordenadas) {
+    if (oc.inicio < posicion) continue;
+    resultado += escaparHtml(limpiarEspacios(texto.slice(posicion, oc.inicio)));
+    resultado += '<mark>' + escaparHtml(texto.slice(oc.inicio, oc.fin)) + '</mark>';
+    posicion = oc.fin;
+  }
+  resultado += escaparHtml(limpiarEspacios(texto.slice(posicion)));
+  return resultado;
+}
+
+/**
  * Extrae el fragmento de contexto de una ocurrencia: ±radio caracteres a
  * cada lado, cortando en límite de palabra (nunca por la mitad), con la
  * palabra encontrada envuelta en <mark>. Los recortes se señalan con «…»

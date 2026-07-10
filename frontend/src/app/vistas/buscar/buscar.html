@@ -29,13 +29,21 @@
 } @else if (error()) {
   <p class="error">{{ error() }}</p>
 } @else if (respuesta(); as r) {
-  <p class="suave">
-    {{ r.total }} {{ r.total === 1 ? 'ocurrencia' : 'ocurrencias' }} de
-    «{{ r.consulta }}» en {{ r.idioma === 'damana' ? 'damana' : 'español' }}
-    @if (r.total > r.resultados.length) {
-      (mostrando las primeras {{ r.resultados.length }})
-    }
-  </p>
+  @if (r.modo === 'similitud') {
+    <p class="suave">
+      {{ r.total }} {{ r.total === 1 ? 'texto similar' : 'textos similares' }} a
+      «{{ r.consulta }}» en {{ r.idioma === 'damana' ? 'damana' : 'español' }},
+      ordenados por parecido (varias palabras → búsqueda por similitud)
+    </p>
+  } @else {
+    <p class="suave">
+      {{ r.total }} {{ r.total === 1 ? 'ocurrencia' : 'ocurrencias' }} de
+      «{{ r.consulta }}» en {{ r.idioma === 'damana' ? 'damana' : 'español' }}
+      @if (r.total > r.resultados.length) {
+        (mostrando las primeras {{ r.resultados.length }})
+      }
+    </p>
+  }
 
   <div class="encabezado-columnas suave" aria-hidden="true">
     <span>damana</span>
@@ -44,7 +52,12 @@
 
   @for (c of r.resultados; track $index) {
     <article class="resultado panel">
-      <header class="referencia suave">{{ c.referencia }}</header>
+      <header class="referencia suave">
+        {{ c.referencia }}
+        @if (c.puntaje !== null) {
+          · similitud {{ c.puntaje.toFixed(2) }}
+        }
+      </header>
       <div class="columnas">
         <div lang="mbp">
           @if (r.idioma === 'damana') {

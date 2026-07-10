@@ -61,6 +61,12 @@ export class ConcordanciaDto {
 
   @ApiProperty({ description: 'Texto completo paralelo en el otro idioma' })
   textoParalelo!: string;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'Solo en modo similitud: puntaje coseno TF-IDF (las oraciones estado=revisar pesan la mitad)',
+  })
+  puntaje!: number | null;
 }
 
 export class RespuestaBusquedaDto {
@@ -69,6 +75,12 @@ export class RespuestaBusquedaDto {
 
   @ApiProperty({ enum: Idioma })
   idioma!: Idioma;
+
+  @ApiProperty({
+    enum: ['concordancia', 'similitud'],
+    description: 'concordancia = consulta de una palabra (ocurrencias exactas); similitud = varias palabras (TF-IDF sobre oraciones, frases y conjugaciones)',
+  })
+  modo!: 'concordancia' | 'similitud';
 
   @ApiProperty({ description: 'Total de ocurrencias encontradas (puede superar a las devueltas si excede el límite)' })
   total!: number;
