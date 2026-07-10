@@ -65,12 +65,12 @@ export class PalabraService {
       }));
   }
 
-  /** Si la palabra es una forma conjugada, su glosa y lema. */
+  /** Conjugaciones en cuya forma damana aparece la palabra (exacta o dentro
+   *  de una forma de varias palabras), con su glosa y lema. */
   private formasVerbales(palabraNormalizada: string): FormaVerbalDto[] {
     return this.repo
-      .listarConjugaciones()
-      .filter((c) => normalizar(c.damana) === palabraNormalizada)
-      .map((c) => ({ espanol: c.espanol, lema: c.lema }));
+      .conjugacionesConPalabra(palabraNormalizada)
+      .map((c) => ({ damana: c.damana, espanol: c.espanol, lema: c.lema }));
   }
 
   /**

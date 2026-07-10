@@ -38,6 +38,7 @@ export interface EntradaVocabularioFicha {
 }
 
 export interface FormaVerbal {
+  damana: string;
   espanol: string;
   lema: string;
 }

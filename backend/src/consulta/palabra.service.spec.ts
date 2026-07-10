@@ -41,6 +41,7 @@ describe('PalabraService', () => {
     insToken.run('nʉnka', 'nʉnka', 'frases', 1, 0);
     insToken.run('nanu', 'nanu', 'frases', 1, 1);
     insToken.run('nʉnka', 'nʉnka', 'vocabulario', 1, 0);
+    insToken.run('ñingui', 'ñingui', 'conjugaciones', 1, 0);
     const repo = new CorpusRepository(db);
     servicio = new PalabraService(
       repo,
@@ -76,7 +77,9 @@ describe('PalabraService', () => {
 
   it('reconoce formas verbales conjugadas con su glosa y lema (caso con ñ)', () => {
     const ficha = servicio.ficha('ñingui');
-    expect(ficha.formasVerbales).toEqual([{ espanol: 'él volvió', lema: 'volver' }]);
+    expect(ficha.formasVerbales).toEqual([
+      { damana: 'ñingui', espanol: 'él volvió', lema: 'volver' },
+    ]);
     expect(ficha.entradasVocabulario).toEqual([]);
   });
 
@@ -105,7 +108,7 @@ describe('PalabraService', () => {
 
   it('funciona con ñ y usa el español de la oración (caso con ñ)', () => {
     const ficha = servicio.ficha('ñingui');
-    expect(ficha.frecuenciaTotal).toBe(1);
+    expect(ficha.frecuenciaTotal).toBe(2); // oración + conjugación
     const palabras = ficha.traduccionesCandidatas.map((c) => c.palabra);
     expect(palabras).toContain('agua'); // del paralelo 'Dios hizo el agua del cielo'
   });

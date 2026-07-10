@@ -120,6 +120,9 @@ export class EntradaVocabularioFichaDto {
 }
 
 export class FormaVerbalDto {
+  @ApiProperty({ example: 'nujkunananka', description: 'La forma conjugada completa en la que aparece la palabra' })
+  damana!: string;
+
   @ApiProperty({ example: 'yo tuve', description: 'Glosa de la forma conjugada' })
   espanol!: string;
 

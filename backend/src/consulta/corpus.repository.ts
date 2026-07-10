@@ -46,6 +46,20 @@ export class CorpusRepository {
       .all() as LemaDto[];
   }
 
+  /** Conjugaciones en cuya forma damana aparece la palabra (vía tokens). */
+  conjugacionesConPalabra(palabraNormalizada: string): ConjugacionDto[] {
+    return this.db
+      .prepare(
+        `SELECT DISTINCT c.rowid AS id, c.damana, c.espanol, c.lema, c.fuente, c.notas
+         FROM conjugaciones c
+         JOIN tokens_damana t
+           ON t.tabla_origen = 'conjugaciones' AND t.id_origen = c.rowid
+         WHERE t.palabra_normalizada = ?
+         ORDER BY c.lema, c.rowid`,
+      )
+      .all(palabraNormalizada) as ConjugacionDto[];
+  }
+
   listarConjugaciones(): ConjugacionDto[] {
     return this.db
       .prepare(

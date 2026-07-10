@@ -1,42 +1,111 @@
-<h1>Diccionario de frecuencias</h1>
-<p class="suave">
-  Palabras damana por frecuencia descendente (sin probables nombres
-  propios). Haz clic en una palabra para ver su ficha.
-</p>
+<h1>Diccionario</h1>
+
+<div class="controles">
+  <div class="modos" role="tablist">
+    <button
+      type="button"
+      class="boton-suave"
+      [class.activo]="modo() === 'damana'"
+      (click)="cambiarModo('damana')"
+    >
+      damana → español
+    </button>
+    <button
+      type="button"
+      class="boton-suave"
+      [class.activo]="modo() === 'espanol'"
+      (click)="cambiarModo('espanol')"
+    >
+      español → damana
+    </button>
+  </div>
+  <input
+    #campoFiltro
+    type="search"
+    appUMas
+    [placeholder]="modo() === 'damana' ? 'Filtrar palabra damana… (u+ → ʉ)' : 'Filtrar por español…'"
+    [value]="filtro()"
+    (input)="filtrar(campoFiltro.value)"
+  />
+</div>
+
+@if (modo() === 'damana') {
+  <p class="suave">
+    Todas las palabras del corpus por frecuencia (sin probables nombres
+    propios). La traducción sale del vocabulario o de las conjugaciones;
+    haz clic en la palabra para ver su ficha.
+  </p>
+} @else {
+  <p class="suave">
+    Las {{ vocabulario().length }} entradas del vocabulario ordenadas por
+    español. Haz clic en la palabra damana para ver su ficha.
+  </p>
+}
 
 @if (cargando()) {
   <p class="suave">Cargando…</p>
 } @else {
-  <table class="tabla">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>palabra</th>
-        <th>traducción</th>
-        <th>frecuencia</th>
-        <th>categoría</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (f of visibles(); track f.palabra) {
+  @if (modo() === 'damana') {
+    <table class="tabla">
+      <thead>
         <tr>
-          <td class="suave">{{ pagina() * porPagina + $index + 1 }}</td>
-          <td><a [routerLink]="['/diccionario', f.palabra]">{{ f.palabra }}</a></td>
-          <td>{{ f.traduccion ?? '' }}</td>
-          <td>{{ f.frecuencia }}</td>
-          <td class="suave">{{ f.categoria ?? '' }}</td>
+          <th>#</th>
+          <th>palabra</th>
+          <th>traducción</th>
+          <th>frecuencia</th>
+          <th>categoría</th>
         </tr>
-      } @empty {
-        <tr><td colspan="5">No hay palabras. ¿Se ejecutó el importador?</td></tr>
-      }
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        @for (f of visibles(); track f.palabra) {
+          <tr>
+            <td class="suave">{{ pagina() * porPagina + $index + 1 }}</td>
+            <td><a [routerLink]="['/diccionario', f.palabra]">{{ f.palabra }}</a></td>
+            <td>{{ f.traduccion ?? '' }}</td>
+            <td>{{ f.frecuencia }}</td>
+            <td class="suave">{{ f.categoria ?? '' }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5">Sin resultados para «{{ filtro() }}».</td></tr>
+        }
+      </tbody>
+    </table>
+  } @else {
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>español</th>
+          <th>damana</th>
+          <th>categoría</th>
+          <th>notas</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of entradasVisibles(); track e.id) {
+          <tr>
+            <td class="suave">{{ pagina() * porPagina + $index + 1 }}</td>
+            <td>{{ e.espanol }}</td>
+            <td lang="mbp">
+              <a [routerLink]="['/diccionario', e.damana]">{{ e.damana }}</a>
+            </td>
+            <td class="suave">{{ e.categoria ?? '' }}</td>
+            <td class="suave chiquito">{{ e.notas ?? '' }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5">Sin resultados para «{{ filtro() }}».</td></tr>
+        }
+      </tbody>
+    </table>
+  }
 
   <nav class="paginador">
     <button type="button" class="boton-suave" (click)="anterior()" [disabled]="pagina() === 0">
       ‹ Anterior
     </button>
-    <span class="suave">página {{ pagina() + 1 }} de {{ totalPaginas() }}</span>
+    <span class="suave">
+      página {{ pagina() + 1 }} de {{ totalPaginas() }} · {{ totalFilas() }} filas
+    </span>
     <button
       type="button"
       class="boton-suave"
