@@ -16,8 +16,11 @@ async function bootstrap(): Promise<void> {
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, config));
 
-  await app.listen(3000);
-  console.log('Backend escuchando en http://localhost:3000 (docs en /api/docs)');
+  // Configurable por env para convivir con otras apps en la misma máquina (p. ej. otro
+  // proyecto ocupando el 3000) y para despliegues donde el puerto lo asigna la plataforma.
+  const puerto = Number(process.env.PORT) || 3000;
+  await app.listen(puerto);
+  console.log(`Backend escuchando en http://localhost:${puerto} (docs en /api/docs)`);
 }
 
 void bootstrap();

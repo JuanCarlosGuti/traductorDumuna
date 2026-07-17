@@ -1,0 +1,29 @@
+# Blueprint de Render (plan gratuito): en render.com → New → Blueprint → elegir este repo.
+# Construye backend (Nest) + frontend (Angular → backend/public) y regenera la base SQLite
+# desde los CSV del corpus con el importador (corpus.db no se versiona; el runtime la lee
+# en solo-lectura, así que el filesystem efímero de Render no es problema).
+#
+# Motor de traducción: Groq (API compatible con OpenAI). La clave TRADUCTOR_API_KEY se pide
+# al crear el servicio (sync: false = secreto, nunca en el repo).
+#
+# Nota del plan gratis: el servicio se "duerme" tras ~15 min sin visitas y la primera
+# petición siguiente tarda ~30-60s en despertarlo.
+
+services:
+  - type: web
+    name: corpus-damana
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci && npm run build && npm run importar && cd ../frontend && npm ci && npm run build
+    startCommand: node dist/main.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: TRADUCTOR_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: TRADUCTOR_MODELO
+        value: llama-3.3-70b-versatile
+      - key: TRADUCTOR_API_KEY
+        sync: false
