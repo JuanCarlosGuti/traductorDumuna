@@ -1,22 +1,25 @@
 # Blueprint de Render (plan gratuito): en render.com → New → Blueprint → elegir este repo.
-# Construye backend (Nest) + frontend (Angular → backend/public) y regenera la base SQLite
-# desde los CSV del corpus con el importador (corpus.db no se versiona; el runtime la lee
-# en solo-lectura, así que el filesystem efímero de Render no es problema).
 #
-# Motor de traducción: Groq (API compatible con OpenAI). La clave TRADUCTOR_API_KEY se pide
-# al crear el servicio (sync: false = secreto, nunca en el repo).
+# El proyecto es un monorepo con npm workspaces (package-lock único en la raíz), así que
+# TODO corre desde la raíz con los scripts del package.json raíz:
+#   - build:      compila Angular (→ backend/public) y el backend Nest
+#   - importar:   regenera datos/corpus.db desde los CSV (corpus.db no se versiona; el
+#                 runtime la lee en solo-lectura → el filesystem efímero de Render sirve)
+#   - start:prod: node dist/main.js con cwd en backend/ (así '../datos' resuelve bien)
 #
-# Nota del plan gratis: el servicio se "duerme" tras ~15 min sin visitas y la primera
-# petición siguiente tarda ~30-60s en despertarlo.
+# Motor de traducción: Groq (API compatible con OpenAI). TRADUCTOR_API_KEY se pide al crear
+# el servicio (sync: false = secreto, nunca en el repo).
+#
+# Plan gratis: el servicio se "duerme" tras ~15 min sin visitas; la siguiente petición
+# tarda ~30-60s en despertarlo.
 
 services:
   - type: web
     name: corpus-damana
     runtime: node
     plan: free
-    rootDir: backend
-    buildCommand: npm ci && npm run build && npm run importar && cd ../frontend && npm ci && npm run build
-    startCommand: node dist/main.js
+    buildCommand: npm ci && npm run build && npm run importar
+    startCommand: npm run start:prod
     healthCheckPath: /
     envVars:
       - key: NODE_VERSION
