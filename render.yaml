@@ -20,7 +20,7 @@ services:
     healthCheckPath: /
     envVars:
       - key: NODE_VERSION
-        value: 22.12.0
+        value: 24.15.0
       - key: TRADUCTOR_BASE_URL
         value: https://api.groq.com/openai/v1
       - key: TRADUCTOR_MODELO
