@@ -1,8 +1,32 @@
 # Corpus Damana App
 
-Aplicación local de estudio del damana (dʉmʉna), lengua del pueblo Wiwa
+Aplicación de estudio del damana (dʉmʉna), lengua del pueblo Wiwa
 (Sierra Nevada de Santa Marta, Colombia). Usuario: desarrollador con
 experiencia en TypeScript/Angular y backend.
+
+## Estado del despliegue (jul 2026) — leer antes de tocar infra
+
+- **EN PRODUCCIÓN: https://corpus-damana.onrender.com** — Render plan
+  gratuito vía [`render.yaml`](render.yaml) (blueprint). Cada push a
+  `main` redespliega automáticamente; el build regenera `corpus.db`
+  desde los CSV (por eso agregar corpus = editar CSV + `npm run
+  importar` para probar en local + push, nada más).
+- **Motor de traducción vigente: Groq** `llama-3.3-70b-versatile`
+  (~2 s/traducción). Ollama quedó abandonado como motor por lentitud
+  (~29 s con qwen2.5:7b), aunque el soporte por variables sigue
+  existiendo. La clave vive: en local como variable de usuario de
+  Windows `TRADUCTOR_API_KEY`; en Render como secreto del servicio.
+- Trampas ya sufridas en Render (no repetir): exige
+  `NODE_VERSION >= 24.15.0` (la CLI de Angular rechaza menores) y,
+  por ser monorepo con npm workspaces (lock único en la raíz), TODO
+  se instala/construye desde la raíz — `npm ci` por subcarpeta deja
+  `node_modules` donde el runtime no resuelve (`Cannot find module`).
+- El filesystem de Render es efímero: `corpus.db` se regenera en cada
+  deploy (bien: es solo-lectura en runtime) y `progreso_srs` NO
+  persiste en producción (solo en local).
+- `main.ts` acepta `PORT` (en local se usa 3001 cuando otro proyecto
+  ocupa el 3000). Demo puntual sin Render:
+  `cloudflared tunnel --url http://localhost:<puerto>`.
 
 ## Stack (todo TypeScript)
 - Monorepo con npm workspaces: /backend y /frontend.
