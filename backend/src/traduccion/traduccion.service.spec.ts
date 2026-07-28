@@ -8,6 +8,7 @@ import Database from 'better-sqlite3';
 import { CorpusRepository } from '../consulta/corpus.repository';
 import { RetrievalService } from '../consulta/retrieval.service';
 import { ejecutarMigraciones } from '../database/migraciones';
+import { TraduccionesRepository } from './traducciones.repository';
 import { ConfigTraductor, MODELO_CLAUDE } from './config-traductor.provider';
 import { DireccionTraduccion } from './dto/traduccion.dto';
 import { extraerJson, TraduccionService } from './traduccion.service';
@@ -59,15 +60,23 @@ describe('TraduccionService', () => {
   let db: Database.Database;
   const fetchOriginal = global.fetch;
 
-  function crearServicio(cliente: unknown, config: ConfigTraductor): TraduccionService {
+  function crearServicio(
+    cliente: unknown,
+    config: ConfigTraductor,
+    registro?: TraduccionesRepository,
+  ): TraduccionService {
     const repo = new CorpusRepository(db);
     return new TraduccionService(
       cliente as Anthropic | null,
       config,
       new RetrievalService(repo),
       repo,
+      registro ?? new TraduccionesRepository(db),
     );
   }
+
+  const filasRegistradas = () =>
+    db.prepare('SELECT * FROM traducciones ORDER BY rowid').all() as any[];
 
   function clienteFalso(textoRespuesta: string) {
     return {
@@ -171,6 +180,78 @@ describe('TraduccionService', () => {
         { espanol: 'agua', damana: 'nʉnka' },
         { espanol: 'tiene agua', damana: 'kʉnʉnka nʉnka' },
       ]);
+    });
+
+    it('registra la traducción con sus señales de apoyo (caso con ʉ)', async () => {
+      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      await servicio.traducir({
+        texto: 'nʉnka gontka',
+        direccion: DireccionTraduccion.damana_a_espanol,
+      });
+
+      const filas = filasRegistradas();
+      expect(filas).toHaveLength(1);
+      expect(filas[0]).toMatchObject({
+        texto: 'nʉnka gontka',
+        traduccion: 'el agua',
+        direccion: 'damana_a_espanol',
+        modelo: MODELO_CLAUDE,
+      });
+      expect(filas[0].ejemplos_recuperados).toBeGreaterThan(0);
+      expect(filas[0].puntaje_top).toBeGreaterThan(0);
+      expect(filas[0].fuente_top).toBe('frases'); // el mejor match del fixture
+      expect(JSON.parse(filas[0].vocabulario_usado)).toEqual([
+        { espanol: 'agua', damana: 'nʉnka' },
+      ]);
+      expect(typeof filas[0].creado_en).toBe('string');
+    });
+
+    it('la media de los K es la media aritmética de los puntajes', async () => {
+      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      const r = await servicio.traducir({
+        texto: 'nʉnka gontka',
+        direccion: DireccionTraduccion.damana_a_espanol,
+      });
+      const esperada =
+        r.ejemplos.reduce((s, e) => s + e.puntaje, 0) / r.ejemplos.length;
+      expect(filasRegistradas()[0].puntaje_medio).toBeCloseTo(esperada, 10);
+    });
+
+    it('sin ejemplos recuperados registra ceros y fuente nula', async () => {
+      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      await servicio.traducir({
+        texto: 'zzzz qqqq',
+        direccion: DireccionTraduccion.damana_a_espanol,
+      });
+      expect(filasRegistradas()[0]).toMatchObject({
+        puntaje_top: 0,
+        puntaje_medio: 0,
+        fuente_top: null,
+        ejemplos_recuperados: 0,
+      });
+    });
+
+    it('SEGURIDAD: si el registro falla, la traducción se entrega igual', async () => {
+      const registroRoto = {
+        registrar: jest.fn(() => {
+          throw new Error('disco lleno');
+        }),
+      } as unknown as TraduccionesRepository;
+      const servicio = crearServicio(
+        clienteFalso(JSON_TRADUCCION),
+        CONFIG_ANTHROPIC,
+        registroRoto,
+      );
+
+      const r = await servicio.traducir({
+        texto: 'nʉnka gontka',
+        direccion: DireccionTraduccion.damana_a_espanol,
+      });
+
+      expect(r.traduccion).toBe('el agua'); // la traducción llega intacta
+      expect(r.ejemplos.length).toBeGreaterThan(0);
+      expect(registroRoto.registrar).toHaveBeenCalled(); // sí se intentó
+      expect(filasRegistradas()).toHaveLength(0); // y no se guardó nada
     });
 
     it('tokeniza el vocabulario una sola vez aunque se traduzca varias veces', async () => {

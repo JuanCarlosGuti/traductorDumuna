@@ -157,6 +157,21 @@ describe('ImportadorService (corpus v3)', () => {
     expect(segunda).toEqual(primera);
   });
 
+  it('no toca el registro de traducciones al reimportar', () => {
+    db.prepare(
+      `INSERT INTO traducciones
+         (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
+          fuente_top, ejemplos_recuperados, palabras_dudosas, vocabulario_usado, modelo)
+       VALUES ('2026-07-20T10:00:00.000Z', 'nʉnka', 'es', 'damana_a_espanol',
+               0.9, 0.4, 'oraciones', 8, '[]', '[]', 'modelo-prueba')`,
+    ).run();
+    servicio.importarTodo(dirTmp);
+    const fila = db
+      .prepare('SELECT texto FROM traducciones')
+      .get() as { texto: string };
+    expect(fila.texto).toBe('nʉnka');
+  });
+
   it('no toca el progreso SRS al reimportar', () => {
     db.prepare(
       `INSERT INTO progreso_srs (palabra, repeticiones, factor_facilidad, intervalo_dias, proxima_revision, actualizado_en)

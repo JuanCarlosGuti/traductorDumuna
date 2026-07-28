@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { esStopwordEspanol } from '../comun/texto/stopwords-es';
@@ -28,6 +29,7 @@ import {
   RespuestaTraduccionDto,
   TraducirDto,
 } from './dto/traduccion.dto';
+import { TraduccionesRepository } from './traducciones.repository';
 
 const MAX_TOKENS_RESPUESTA = 2048;
 const MAX_ENTRADAS_VOCABULARIO = 20;
@@ -79,6 +81,8 @@ export function extraerJson(texto: string): Record<string, unknown> {
 
 @Injectable()
 export class TraduccionService {
+  private readonly logger = new Logger(TraduccionService.name);
+
   /** Caché del vocabulario tokenizado (se llena en la primera traducción). */
   private vocabularioIndexado?: EntradaIndexada[];
 
@@ -87,6 +91,7 @@ export class TraduccionService {
     @Inject(CONFIG_TRADUCTOR) private readonly config: ConfigTraductor,
     private readonly retrieval: RetrievalService,
     private readonly repo: CorpusRepository,
+    private readonly registro: TraduccionesRepository,
   ) {}
 
   disponible(): boolean {
@@ -120,7 +125,7 @@ export class TraduccionService {
         : await this.llamarCompatible(sistema, usuario);
     const json = this.parsearRespuesta(texto);
 
-    return {
+    const respuesta: RespuestaTraduccionDto = {
       traduccion: typeof json.traduccion === 'string' ? json.traduccion : '',
       palabrasDudosas: Array.isArray(json.palabras_dudosas)
         ? json.palabras_dudosas.filter((p): p is string => typeof p === 'string')
@@ -130,6 +135,44 @@ export class TraduccionService {
       ejemplos,
       vocabularioUsado: vocabulario,
     };
+
+    this.registrarTraduccion(dto, respuesta);
+    return respuesta;
+  }
+
+  /**
+   * Guarda la traducción y sus señales de apoyo. Es best-effort a propósito:
+   * un fallo del registro NUNCA debe impedir que el usuario reciba su
+   * traducción, que es lo que vino a buscar.
+   */
+  private registrarTraduccion(
+    dto: TraducirDto,
+    respuesta: RespuestaTraduccionDto,
+  ): void {
+    try {
+      const ejemplos = respuesta.ejemplos;
+      this.registro.registrar({
+        texto: dto.texto,
+        traduccion: respuesta.traduccion,
+        direccion: dto.direccion,
+        // El retrieval devuelve los ejemplos ya ordenados por puntaje.
+        puntajeTop: ejemplos[0]?.puntaje ?? 0,
+        puntajeMedio: ejemplos.length
+          ? ejemplos.reduce((suma, e) => suma + e.puntaje, 0) / ejemplos.length
+          : 0,
+        fuenteTop: ejemplos[0]?.fuente ?? null,
+        ejemplosRecuperados: ejemplos.length,
+        palabrasDudosas: respuesta.palabrasDudosas,
+        vocabularioUsado: respuesta.vocabularioUsado,
+        modelo: this.config.modelo,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo registrar la traducción: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   /**

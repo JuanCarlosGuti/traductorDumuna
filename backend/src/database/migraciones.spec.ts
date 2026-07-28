@@ -18,6 +18,7 @@ describe('ejecutarMigraciones', () => {
       'oraciones',
       'progreso_srs',
       'tokens_damana',
+      'traducciones',
       'vocabulario',
     ]);
 
@@ -34,7 +35,7 @@ describe('ejecutarMigraciones', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     expect(() => ejecutarMigraciones(db)).not.toThrow();
-    expect(db.pragma('user_version', { simple: true })).toBe(3);
+    expect(db.pragma('user_version', { simple: true })).toBe(4);
     db.close();
   });
 

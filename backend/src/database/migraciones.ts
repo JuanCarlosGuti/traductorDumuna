@@ -101,6 +101,28 @@ const MIGRACIONES: string[] = [
   );
   CREATE INDEX idx_tokens_palabra ON tokens_damana (palabra_normalizada);
   `,
+  // v4: registro de traducciones para aprendizaje activo — qué se pidió y
+  // con cuánto apoyo del corpus se resolvió. Como progreso_srs, el
+  // importador NO la toca: sobrevive a las reimportaciones del corpus.
+  `
+  CREATE TABLE traducciones (
+    creado_en TEXT NOT NULL,
+    texto TEXT NOT NULL,
+    traduccion TEXT NOT NULL,
+    direccion TEXT NOT NULL
+      CHECK (direccion IN ('damana_a_espanol', 'espanol_a_damana')),
+    -- Señales de apoyo del retrieval: el top engaña (puede venir de una
+    -- entrada de diccionario), la media de los K es la que discrimina.
+    puntaje_top REAL NOT NULL,
+    puntaje_medio REAL NOT NULL,
+    fuente_top TEXT,
+    ejemplos_recuperados INTEGER NOT NULL,
+    palabras_dudosas TEXT NOT NULL,
+    vocabulario_usado TEXT NOT NULL,
+    modelo TEXT
+  );
+  CREATE INDEX idx_traducciones_creado ON traducciones (creado_en);
+  `,
 ];
 
 export function ejecutarMigraciones(db: Database): void {
