@@ -128,4 +128,74 @@ describe('NecesitoService', () => {
     insertarOracion('x', 'una dos tres cuatro cinco seis siete ocho nueve');
     expect(servicio.calcular(HOY, 3)).toHaveLength(3);
   });
+
+  it('acompaña cada palabra con una oración de ejemplo en ambos idiomas', () => {
+    insertarOracion('nʉnka gontka shkua', 'el agua hizo montaña');
+    const fila = servicio.calcular(HOY).find((f) => f.espanol === 'montaña');
+    expect(fila?.ejemploEspanol).toBe('el agua hizo montaña');
+    expect(fila?.ejemploDamana).toBe('nʉnka gontka shkua');
+  });
+});
+
+describe('NecesitoService.calcularDamana', () => {
+  let db: Database.Database;
+  let servicio: NecesitoService;
+
+  const token = (palabra: string, original: string, veces = 1) => {
+    for (let i = 0; i < veces; i++) {
+      db.prepare(
+        `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
+         VALUES (?, ?, 'oraciones', 1, ?)`,
+      ).run(palabra, original, i);
+    }
+  };
+
+  beforeEach(() => {
+    db = new Database(':memory:');
+    ejecutarMigraciones(db);
+    db.prepare(
+      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
+       VALUES ('o1', 'gontka nʉnka Jehovága zhaguasheka', 'hizo el agua', 'aprobado', 'lfb')`,
+    ).run();
+    db.prepare(
+      `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+       VALUES ('agua', 'nʉnka', NULL, NULL, 'dic')`,
+    ).run();
+    db.prepare(
+      `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+       VALUES ('zhaguasheka', 'él acechó', 'acechar', 'doc', NULL)`,
+    ).run();
+    token('gontka', 'gontka', 3);
+    token('nʉnka', 'nʉnka', 5); // ya está en el glosario
+    token('jehovaga', 'Jehovága', 4); // siempre en mayúscula
+    token('zhaguasheka', 'zhaguasheka', 2); // ya tiene glosa en conjugaciones
+    const repo = new CorpusRepository(db);
+    servicio = new NecesitoService(repo, new TraduccionesRepository(db));
+  });
+
+  afterEach(() => db.close());
+
+  it('propone las palabras damana sin traducción, por frecuencia', () => {
+    const filas = servicio.calcularDamana();
+    expect(filas.map((f) => f.damana)).toEqual(['gontka']);
+    expect(filas[0]).toMatchObject({
+      damana: 'gontka',
+      espanol: '', // la columna que llena el hablante
+      vecesVisto: 3,
+      ejemploDamana: 'gontka nʉnka Jehovága zhaguasheka',
+      ejemploEspanol: 'hizo el agua',
+    });
+  });
+
+  it('excluye lo que ya está en el glosario (caso con ʉ), las conjugaciones y los nombres propios', () => {
+    const palabras = servicio.calcularDamana().map((f) => f.damana);
+    expect(palabras).not.toContain('nʉnka'); // en el glosario
+    expect(palabras).not.toContain('zhaguasheka'); // ya tiene glosa
+    expect(palabras).not.toContain('jehovaga'); // nombre propio
+  });
+
+  it('respeta el tope de filas', () => {
+    token('otra', 'otra', 1);
+    expect(servicio.calcularDamana(1)).toHaveLength(1);
+  });
 });

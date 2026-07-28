@@ -21,6 +21,19 @@ export interface FilaNecesito {
   prioridad: 1 | 2;
   vecesVisto: number;
   fecha: string;
+  /** Oración del corpus donde aparece la palabra, para dar contexto. */
+  ejemploEspanol: string;
+  ejemploDamana: string;
+}
+
+/** Palabra damana frecuente que el glosario todavía no traduce. */
+export interface FilaNecesitoDamana {
+  damana: string;
+  /** Siempre vacío al generar: es la columna que llena el hablante. */
+  espanol: string;
+  vecesVisto: number;
+  ejemploDamana: string;
+  ejemploEspanol: string;
 }
 
 /**
@@ -55,6 +68,7 @@ export class NecesitoService {
   calcular(hoy: string, limite = TOPE_FILAS): FilaNecesito[] {
     const cubiertas = this.palabrasDelGlosario();
     const enDamana = this.palabrasEnDamana();
+    const ejemplos = this.ejemplosPorPalabraEspanola();
     const candidatas = new Map<string, FilaNecesito>();
 
     const agregar = (
@@ -75,6 +89,7 @@ export class NecesitoService {
       }
       const previa = candidatas.get(clave);
       if (!previa) {
+        const ejemplo = ejemplos.get(clave);
         candidatas.set(clave, {
           espanol: palabra.toLowerCase(),
           damana: '',
@@ -82,6 +97,8 @@ export class NecesitoService {
           prioridad,
           vecesVisto: veces,
           fecha,
+          ejemploEspanol: ejemplo?.espanol ?? '',
+          ejemploDamana: ejemplo?.damana ?? '',
         });
         return;
       }
@@ -131,6 +148,76 @@ export class NecesitoService {
           a.espanol.localeCompare(b.espanol, 'es'),
       )
       .slice(0, limite);
+  }
+
+  /**
+   * Palabras damana frecuentes que el glosario todavía no traduce, con una
+   * oración real donde aparecen. Es el camino inverso al de `calcular()`:
+   * aquí el hablante aporta el significado en español.
+   */
+  calcularDamana(limite = TOPE_FILAS): FilaNecesitoDamana[] {
+    const enGlosario = new Set(
+      this.repo.listarVocabulario().flatMap((e) =>
+        tokenizarDamana(e.damana).map((t) => t.normalizada),
+      ),
+    );
+    // Las formas conjugadas ya tienen glosa en la tabla de conjugaciones.
+    const enConjugaciones = new Set(
+      this.repo.listarConjugaciones().flatMap((c) =>
+        tokenizarDamana(c.damana).map((t) => t.normalizada),
+      ),
+    );
+    const ejemplos = this.ejemplosPorPalabraDamana();
+
+    return this.repo
+      .frecuenciasConOriginales()
+      .filter(
+        (f) =>
+          !enGlosario.has(f.palabra) &&
+          !enConjugaciones.has(f.palabra) &&
+          // Probables nombres propios: nunca aparecen en minúscula.
+          f.originales.some((o) => !empiezaEnMayuscula(o)),
+      )
+      .slice(0, limite)
+      .map((f) => {
+        const ejemplo = ejemplos.get(f.palabra);
+        return {
+          damana: f.palabra,
+          espanol: '',
+          vecesVisto: f.frecuencia,
+          ejemploDamana: ejemplo?.damana ?? '',
+          ejemploEspanol: ejemplo?.espanol ?? '',
+        };
+      });
+  }
+
+  /** Primera oración fiable donde aparece cada palabra española. */
+  private ejemplosPorPalabraEspanola(): Map<string, { espanol: string; damana: string }> {
+    return this.primerEjemplo((fila) => fila.textoEspanol);
+  }
+
+  /** Primera oración fiable donde aparece cada palabra damana. */
+  private ejemplosPorPalabraDamana(): Map<string, { espanol: string; damana: string }> {
+    return this.primerEjemplo((fila) => fila.textoDamana);
+  }
+
+  private primerEjemplo(
+    lado: (fila: { textoDamana: string; textoEspanol: string }) => string,
+  ): Map<string, { espanol: string; damana: string }> {
+    const ejemplos = new Map<string, { espanol: string; damana: string }>();
+    for (const fuente of [FuenteCorpus.oraciones, FuenteCorpus.frases]) {
+      for (const fila of this.repo.textosDe(fuente)) {
+        if (fila.estado === 'revisar') continue;
+        for (const token of tokenizarDamana(lado(fila))) {
+          if (ejemplos.has(token.normalizada)) continue;
+          ejemplos.set(token.normalizada, {
+            espanol: fila.textoEspanol,
+            damana: fila.textoDamana,
+          });
+        }
+      }
+    }
+    return ejemplos;
   }
 
   private palabrasDelGlosario(): Set<string> {
