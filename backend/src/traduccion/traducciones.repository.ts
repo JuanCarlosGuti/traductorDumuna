@@ -18,6 +18,8 @@ export interface RegistroTraduccion {
   /** De qué fuente vino el mejor match; null si no hubo ejemplos. */
   fuenteTop: FuenteCorpus | null;
   ejemplosRecuperados: number;
+  /** Cuántos ejemplos venían de oraciones o frases (la lengua en uso). */
+  ejemplosEnContexto: number;
   palabrasDudosas: string[];
   vocabularioUsado: EntradaVocabularioUsadaDto[];
   modelo: string;
@@ -32,6 +34,8 @@ export interface TraduccionRegistrada {
   puntajeMedio: number;
   fuenteTop: FuenteCorpus | null;
   ejemplosRecuperados: number;
+  /** null en las filas registradas antes de la v5 (no se medía). */
+  ejemplosEnContexto: number | null;
   palabrasDudosas: string[];
 }
 
@@ -45,7 +49,8 @@ export class TraduccionesRepository {
       this.db
         .prepare(
           `SELECT creado_en, texto, traduccion, direccion, puntaje_medio,
-                  fuente_top, ejemplos_recuperados, palabras_dudosas
+                  fuente_top, ejemplos_recuperados, ejemplos_en_contexto,
+                  palabras_dudosas
            FROM traducciones ORDER BY rowid`,
         )
         .all() as any[]
@@ -57,6 +62,7 @@ export class TraduccionesRepository {
       puntajeMedio: f.puntaje_medio,
       fuenteTop: f.fuente_top,
       ejemplosRecuperados: f.ejemplos_recuperados,
+      ejemplosEnContexto: f.ejemplos_en_contexto,
       palabrasDudosas: JSON.parse(f.palabras_dudosas) as string[],
     }));
   }
@@ -71,8 +77,9 @@ export class TraduccionesRepository {
       .prepare(
         `INSERT INTO traducciones
            (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
-            fuente_top, ejemplos_recuperados, palabras_dudosas, vocabulario_usado, modelo)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            fuente_top, ejemplos_recuperados, ejemplos_en_contexto,
+            palabras_dudosas, vocabulario_usado, modelo)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         ahora.toISOString(),
@@ -83,6 +90,7 @@ export class TraduccionesRepository {
         registro.puntajeMedio,
         registro.fuenteTop,
         registro.ejemplosRecuperados,
+        registro.ejemplosEnContexto,
         JSON.stringify(registro.palabrasDudosas),
         JSON.stringify(registro.vocabularioUsado),
         registro.modelo,

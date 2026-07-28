@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { esStopwordEspanol } from '../comun/texto/stopwords-es';
 import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { Idioma } from '../consulta/consulta.enums';
+import { FuenteCorpus, Idioma } from '../consulta/consulta.enums';
 import { CorpusRepository } from '../consulta/corpus.repository';
 import {
   FragmentoRecuperado,
@@ -154,6 +154,10 @@ export class TraduccionService {
         : 0,
       fuenteTop: ejemplos[0]?.fuente ?? null,
       ejemplosRecuperados: ejemplos.length,
+      ejemplosEnContexto: ejemplos.filter(
+        (e) =>
+          e.fuente === FuenteCorpus.oraciones || e.fuente === FuenteCorpus.frases,
+      ).length,
     };
   }
 
@@ -176,6 +180,7 @@ export class TraduccionService {
         puntajeMedio: senales.puntajeMedio,
         fuenteTop: senales.fuenteTop,
         ejemplosRecuperados: senales.ejemplosRecuperados,
+        ejemplosEnContexto: senales.ejemplosEnContexto ?? 0,
         palabrasDudosas: respuesta.palabrasDudosas,
         vocabularioUsado: respuesta.vocabularioUsado,
         modelo: this.config.modelo,

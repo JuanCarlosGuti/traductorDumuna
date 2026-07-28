@@ -35,7 +35,33 @@ describe('ejecutarMigraciones', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     expect(() => ejecutarMigraciones(db)).not.toThrow();
-    expect(db.pragma('user_version', { simple: true })).toBe(4);
+    expect(db.pragma('user_version', { simple: true })).toBe(5);
+    db.close();
+  });
+
+  it('la v5 añade ejemplos_en_contexto y deja en null las filas ya registradas', () => {
+    const db = new Database(':memory:');
+    // Simular una base parada en v4: se aplican las migraciones y se
+    // retrocede la versión para que la v5 corra sobre datos existentes.
+    ejecutarMigraciones(db);
+    db.prepare('ALTER TABLE traducciones DROP COLUMN ejemplos_en_contexto').run();
+    db.pragma('user_version = 4');
+    db.prepare(
+      `INSERT INTO traducciones
+         (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
+          fuente_top, ejemplos_recuperados, palabras_dudosas, vocabulario_usado, modelo)
+       VALUES ('2026-07-01T00:00:00.000Z', 'nʉjkasheshisha ñingui', 'me lee otra vez',
+               'damana_a_espanol', 0.9, 0.4, 'conjugaciones', 3, '[]', '[]', 'groq')`,
+    ).run();
+
+    ejecutarMigraciones(db);
+
+    expect(db.pragma('user_version', { simple: true })).toBe(5);
+    const fila = db
+      .prepare('SELECT texto, ejemplos_en_contexto FROM traducciones')
+      .get() as { texto: string; ejemplos_en_contexto: number | null };
+    expect(fila.texto).toBe('nʉjkasheshisha ñingui'); // ʉ y ñ intactas
+    expect(fila.ejemplos_en_contexto).toBeNull();
     db.close();
   });
 

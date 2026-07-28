@@ -25,12 +25,29 @@ export interface SenalesApoyo {
   puntajeMedio: number;
   fuenteTop: FuenteCorpus | null;
   ejemplosRecuperados: number;
+  /**
+   * Ejemplos que vienen de oraciones o frases, o sea, de la lengua en uso.
+   * `null` en las traducciones registradas antes de medirlo (v5): entonces
+   * se recae en la heurística vieja del top-1.
+   */
+  ejemplosEnContexto?: number | null;
 }
 
 export interface Apoyo {
   nivel: NivelApoyo;
   /** Razones por las que se marcó «revisar»; vacío en los demás niveles. */
   motivos: string[];
+}
+
+/**
+ * ¿Ningún ejemplo muestra la lengua en uso? Con la señal medida basta
+ * contarla; en los registros viejos, que no la tienen, se conserva la
+ * heurística original para no reinterpretar el histórico a ciegas.
+ */
+function sinContexto(senales: SenalesApoyo): boolean {
+  return senales.ejemplosEnContexto == null
+    ? senales.fuenteTop === FuenteCorpus.conjugaciones
+    : senales.ejemplosEnContexto === 0 && senales.ejemplosRecuperados > 0;
 }
 
 export function evaluarApoyo(senales: SenalesApoyo): Apoyo {
@@ -42,10 +59,16 @@ export function evaluarApoyo(senales: SenalesApoyo): Apoyo {
   if (senales.puntajeMedio < UMBRAL_REVISAR) {
     motivos.push('similitud_baja');
   }
-  // El mejor match es una entrada de la tabla de conjugaciones: confirma la
-  // forma verbal, pero no aporta un uso real en contexto. (El vocabulario no
+  // Todo el apoyo son entradas de la tabla de conjugaciones: confirman la
+  // forma verbal, pero ninguna muestra un uso real. (El vocabulario no
   // participa en el retrieval; va aparte en el prompt.)
-  if (senales.fuenteTop === FuenteCorpus.conjugaciones) {
+  //
+  // Se cuenta el contexto en vez de mirar solo el top-1: desde que el
+  // retrieval expande por raíz verbal, una consulta como «naijkasheshisha»
+  // encabeza con su propia conjugación (coincidencia exacta) pero trae
+  // debajo seis oraciones y frases con el verbo. Ahí el apoyo NO es solo de
+  // diccionario, y el aviso viejo mentía.
+  if (sinContexto(senales)) {
     motivos.push('apoyo_solo_de_diccionario');
   }
 

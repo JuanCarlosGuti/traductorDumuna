@@ -123,6 +123,14 @@ const MIGRACIONES: string[] = [
   );
   CREATE INDEX idx_traducciones_creado ON traducciones (creado_en);
   `,
+  // v5: cuántos de los ejemplos venían de oraciones o frases, es decir, del
+  // verbo o la palabra EN USO. Antes se deducía del top-1, pero desde que el
+  // retrieval expande por raíz verbal un top-1 de conjugaciones ya no implica
+  // que no haya contexto debajo. Nullable a propósito: las filas anteriores a
+  // esta columna no lo saben, y NULL las distingue de un 0 real.
+  `
+  ALTER TABLE traducciones ADD COLUMN ejemplos_en_contexto INTEGER;
+  `,
 ];
 
 export function ejecutarMigraciones(db: Database): void {

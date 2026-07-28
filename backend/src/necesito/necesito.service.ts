@@ -117,6 +117,7 @@ export class NecesitoService {
         puntajeMedio: registro.puntajeMedio,
         fuenteTop: registro.fuenteTop,
         ejemplosRecuperados: registro.ejemplosRecuperados,
+        ejemplosEnContexto: registro.ejemplosEnContexto,
       });
       if (apoyo.nivel !== 'revisar') continue;
       // El lado español: la entrada si tradujiste desde español, la salida si no.

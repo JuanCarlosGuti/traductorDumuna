@@ -31,13 +31,48 @@ describe('evaluarApoyo', () => {
     expect(apoyo.motivos).toEqual(['sin_ejemplos', 'similitud_baja']);
   });
 
-  it('el top viene de conjugaciones → revisar aunque la media sea alta', () => {
+  it('todo el apoyo son conjugaciones → revisar aunque la media sea alta', () => {
     // El caso que motivó la regla: "nujkunananka" puntuó 0,899 contra su
     // propia entrada de diccionario, sin ningún uso real que lo respalde.
-    expect(evaluarApoyo(senales(0.5, FuenteCorpus.conjugaciones))).toEqual({
-      nivel: 'revisar',
-      motivos: ['apoyo_solo_de_diccionario'],
+    expect(
+      evaluarApoyo({
+        ...senales(0.5, FuenteCorpus.conjugaciones),
+        ejemplosEnContexto: 0,
+      }),
+    ).toEqual({ nivel: 'revisar', motivos: ['apoyo_solo_de_diccionario'] });
+  });
+
+  it('top de conjugaciones pero con oraciones debajo → NO es solo diccionario', () => {
+    // "naijkasheshisha" encabeza con su propia conjugación (coincidencia
+    // exacta) y trae 6 ejemplos del verbo en uso gracias al matching por
+    // raíz: el apoyo es real y el aviso viejo mentía.
+    const apoyo = evaluarApoyo({
+      puntajeMedio: 0.4,
+      fuenteTop: FuenteCorpus.conjugaciones,
+      ejemplosRecuperados: 7,
+      ejemplosEnContexto: 6,
     });
+    expect(apoyo.motivos).not.toContain('apoyo_solo_de_diccionario');
+    expect(apoyo.nivel).toBe('bueno');
+  });
+
+  it('registros anteriores a la v5 (sin la señal) conservan la regla del top-1', () => {
+    // ejemplosEnContexto llega null: no se puede saber qué había debajo.
+    const apoyo = evaluarApoyo({
+      ...senales(0.5, FuenteCorpus.conjugaciones),
+      ejemplosEnContexto: null,
+    });
+    expect(apoyo.motivos).toEqual(['apoyo_solo_de_diccionario']);
+  });
+
+  it('sin ejemplos no se acusa además de «solo diccionario»', () => {
+    const apoyo = evaluarApoyo({
+      puntajeMedio: 0,
+      fuenteTop: null,
+      ejemplosRecuperados: 0,
+      ejemplosEnContexto: 0,
+    });
+    expect(apoyo.motivos).toEqual(['sin_ejemplos', 'similitud_baja']);
   });
 
   it('el top desde frases sí cuenta como apoyo real', () => {
