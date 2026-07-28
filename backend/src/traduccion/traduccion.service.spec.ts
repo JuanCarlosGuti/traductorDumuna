@@ -182,6 +182,28 @@ describe('TraduccionService', () => {
       ]);
     });
 
+    it('devuelve el nivel de apoyo junto a la traducción', async () => {
+      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      const r = await servicio.traducir({
+        texto: 'nʉnka gontka',
+        direccion: DireccionTraduccion.damana_a_espanol,
+      });
+      expect(['bueno', 'parcial', 'revisar']).toContain(r.apoyo.nivel);
+      // el fixture tiene ejemplos que coinciden bien: no debe pedir revisión
+      expect(r.apoyo.nivel).not.toBe('revisar');
+      expect(r.apoyo.motivos).toEqual([]);
+    });
+
+    it('marca «revisar» cuando no hay ningún ejemplo que respalde', async () => {
+      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      const r = await servicio.traducir({
+        texto: 'zzzz qqqq',
+        direccion: DireccionTraduccion.damana_a_espanol,
+      });
+      expect(r.apoyo.nivel).toBe('revisar');
+      expect(r.apoyo.motivos).toContain('sin_ejemplos');
+    });
+
     it('registra la traducción con sus señales de apoyo (caso con ʉ)', async () => {
       const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
       await servicio.traducir({

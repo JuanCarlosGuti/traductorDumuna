@@ -72,6 +72,20 @@ setx TRADUCTOR_TIMEOUT_MS "300000"</pre>
   }
 
   @if (resultado(); as r) {
+    @if (r.apoyo.nivel === 'revisar') {
+      <p class="panel aviso-apoyo">
+        ⚠ <strong>Poco apoyo del corpus.</strong>
+        @if (r.apoyo.motivos.includes('sin_ejemplos')) {
+          No se encontró ningún fragmento parecido en el corpus.
+        } @else if (r.apoyo.motivos.includes('apoyo_solo_de_diccionario')) {
+          El mejor parecido es una entrada de conjugaciones, no un uso real en contexto.
+        } @else {
+          Los fragmentos encontrados se parecen poco al texto.
+        }
+        Verifica la traducción contra los ejemplos de abajo.
+      </p>
+    }
+
     <section class="panel resultado">
       <h2 class="suave chiquito">Traducción</h2>
       <p class="traduccion">

@@ -111,10 +111,18 @@ export interface FragmentoEjemplo {
   puntaje: number;
 }
 
+export type NivelApoyo = 'bueno' | 'parcial' | 'revisar';
+
+export interface Apoyo {
+  nivel: NivelApoyo;
+  motivos: string[];
+}
+
 export interface RespuestaTraduccion {
   traduccion: string;
   palabrasDudosas: string[];
   explicacionBreve: string;
+  apoyo: Apoyo;
   ejemplos: FragmentoEjemplo[];
   vocabularioUsado: { espanol: string; damana: string }[];
 }

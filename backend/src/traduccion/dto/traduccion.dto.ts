@@ -44,6 +44,22 @@ export class EntradaVocabularioUsadaDto {
   damana!: string;
 }
 
+export class ApoyoDto {
+  @ApiProperty({
+    enum: ['bueno', 'parcial', 'revisar'],
+    description:
+      'Cuánto respalda el corpus a esta traducción. Se deriva de la media de los K puntajes del retrieval y de la fuente del mejor match; no se almacena, se recalcula.',
+  })
+  nivel!: 'bueno' | 'parcial' | 'revisar';
+
+  @ApiProperty({
+    type: [String],
+    description:
+      'Motivos cuando el nivel es «revisar»: sin_ejemplos, similitud_baja, apoyo_solo_de_diccionario',
+  })
+  motivos!: string[];
+}
+
 export class RespuestaTraduccionDto {
   @ApiProperty()
   traduccion!: string;
@@ -53,6 +69,9 @@ export class RespuestaTraduccionDto {
 
   @ApiProperty()
   explicacionBreve!: string;
+
+  @ApiProperty({ type: ApoyoDto })
+  apoyo!: ApoyoDto;
 
   @ApiProperty({ type: [FragmentoEjemploDto], description: 'Fragmentos del corpus usados como ejemplos en el prompt' })
   ejemplos!: FragmentoEjemploDto[];

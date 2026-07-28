@@ -18,6 +18,7 @@ import {
   RetrievalService,
 } from '../consulta/retrieval.service';
 import { CLIENTE_ANTHROPIC } from './anthropic.provider';
+import { evaluarApoyo, SenalesApoyo } from './apoyo';
 import {
   CONFIG_TRADUCTOR,
   ConfigTraductor,
@@ -125,6 +126,7 @@ export class TraduccionService {
         : await this.llamarCompatible(sistema, usuario);
     const json = this.parsearRespuesta(texto);
 
+    const senales = this.senalesDeApoyo(ejemplos);
     const respuesta: RespuestaTraduccionDto = {
       traduccion: typeof json.traduccion === 'string' ? json.traduccion : '',
       palabrasDudosas: Array.isArray(json.palabras_dudosas)
@@ -132,12 +134,27 @@ export class TraduccionService {
         : [],
       explicacionBreve:
         typeof json.explicacion_breve === 'string' ? json.explicacion_breve : '',
+      apoyo: evaluarApoyo(senales),
       ejemplos,
       vocabularioUsado: vocabulario,
     };
 
-    this.registrarTraduccion(dto, respuesta);
+    this.registrarTraduccion(dto, respuesta, senales);
     return respuesta;
+  }
+
+  /**
+   * Cuánto respalda el corpus a esta traducción. Los ejemplos llegan ya
+   * ordenados por puntaje desde el retrieval.
+   */
+  private senalesDeApoyo(ejemplos: FragmentoRecuperado[]): SenalesApoyo {
+    return {
+      puntajeMedio: ejemplos.length
+        ? ejemplos.reduce((suma, e) => suma + e.puntaje, 0) / ejemplos.length
+        : 0,
+      fuenteTop: ejemplos[0]?.fuente ?? null,
+      ejemplosRecuperados: ejemplos.length,
+    };
   }
 
   /**
@@ -148,20 +165,17 @@ export class TraduccionService {
   private registrarTraduccion(
     dto: TraducirDto,
     respuesta: RespuestaTraduccionDto,
+    senales: SenalesApoyo,
   ): void {
     try {
-      const ejemplos = respuesta.ejemplos;
       this.registro.registrar({
         texto: dto.texto,
         traduccion: respuesta.traduccion,
         direccion: dto.direccion,
-        // El retrieval devuelve los ejemplos ya ordenados por puntaje.
-        puntajeTop: ejemplos[0]?.puntaje ?? 0,
-        puntajeMedio: ejemplos.length
-          ? ejemplos.reduce((suma, e) => suma + e.puntaje, 0) / ejemplos.length
-          : 0,
-        fuenteTop: ejemplos[0]?.fuente ?? null,
-        ejemplosRecuperados: ejemplos.length,
+        puntajeTop: respuesta.ejemplos[0]?.puntaje ?? 0,
+        puntajeMedio: senales.puntajeMedio,
+        fuenteTop: senales.fuenteTop,
+        ejemplosRecuperados: senales.ejemplosRecuperados,
         palabrasDudosas: respuesta.palabrasDudosas,
         vocabularioUsado: respuesta.vocabularioUsado,
         modelo: this.config.modelo,
