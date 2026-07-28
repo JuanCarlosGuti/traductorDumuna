@@ -23,9 +23,43 @@ export interface RegistroTraduccion {
   modelo: string;
 }
 
+/** Fila tal como se lee de la tabla, para análisis posteriores. */
+export interface TraduccionRegistrada {
+  creadoEn: string;
+  texto: string;
+  traduccion: string;
+  direccion: DireccionTraduccion;
+  puntajeMedio: number;
+  fuenteTop: FuenteCorpus | null;
+  ejemplosRecuperados: number;
+  palabrasDudosas: string[];
+}
+
 @Injectable()
 export class TraduccionesRepository {
   constructor(@Inject(CONEXION_DB) private readonly db: Database) {}
+
+  /** Todas las traducciones registradas, de la más antigua a la más reciente. */
+  listar(): TraduccionRegistrada[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT creado_en, texto, traduccion, direccion, puntaje_medio,
+                  fuente_top, ejemplos_recuperados, palabras_dudosas
+           FROM traducciones ORDER BY rowid`,
+        )
+        .all() as any[]
+    ).map((f) => ({
+      creadoEn: f.creado_en,
+      texto: f.texto,
+      traduccion: f.traduccion,
+      direccion: f.direccion,
+      puntajeMedio: f.puntaje_medio,
+      fuenteTop: f.fuente_top,
+      ejemplosRecuperados: f.ejemplos_recuperados,
+      palabrasDudosas: JSON.parse(f.palabras_dudosas) as string[],
+    }));
+  }
 
   /**
    * Guarda una traducción y sus señales de apoyo. Los campos de lista se

@@ -11,6 +11,8 @@
     "start": "npm run start:dev -w backend",
     "front": "npm run start -w frontend",
     "importar": "npm run importar -w backend",
+    "necesito": "npm run necesito -w backend",
+    "necesito:aplicar": "npm run necesito:aplicar -w backend",
     "build": "npm run build -w frontend && npm run build -w backend",
     "start:prod": "npm run start:prod -w backend",
     "test": "npm test -w backend",
