@@ -141,6 +141,52 @@ describe('TraduccionService', () => {
       expect(r.vocabularioUsado).toEqual([{ espanol: 'agua', damana: 'nʉnka' }]);
     });
 
+    it('descarta entradas del glosario que son frases largas con una sola coincidencia', async () => {
+      // Frase de 6 palabras que solo comparte 'nʉnka' → cobertura 1/6 = 0.17
+      db.prepare(
+        `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+         VALUES ('Hoy otra vez estamos juntos qué bonito', 'Iwa ingui nʉnzhu nukurra zukuega nʉnka', NULL, NULL, 'dic')`,
+      ).run();
+      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      const r = await servicio.traducir({
+        texto: 'nʉnka gontka',
+        direccion: DireccionTraduccion.damana_a_espanol,
+      });
+      expect(r.vocabularioUsado).toEqual([{ espanol: 'agua', damana: 'nʉnka' }]);
+    });
+
+    it('ordena el vocabulario por cobertura léxica: lo específico antes que lo general', async () => {
+      // 'kʉnʉnka nʉnka' comparte 2 de 2 palabras (cobertura 1) con el texto;
+      // 'nʉnka' comparte 1 de 1 (cobertura 1) pero es más corta → va primero.
+      db.prepare(
+        `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+         VALUES ('tiene agua', 'kʉnʉnka nʉnka', NULL, NULL, 'dic')`,
+      ).run();
+      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      const r = await servicio.traducir({
+        texto: 'kʉnʉnka nʉnka gontka',
+        direccion: DireccionTraduccion.damana_a_espanol,
+      });
+      expect(r.vocabularioUsado).toEqual([
+        { espanol: 'agua', damana: 'nʉnka' },
+        { espanol: 'tiene agua', damana: 'kʉnʉnka nʉnka' },
+      ]);
+    });
+
+    it('tokeniza el vocabulario una sola vez aunque se traduzca varias veces', async () => {
+      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      const repo = (servicio as unknown as { repo: CorpusRepository }).repo;
+      const espia = jest.spyOn(repo, 'listarVocabulario');
+      const dto = {
+        texto: 'nʉnka',
+        direccion: DireccionTraduccion.damana_a_espanol,
+      };
+      await servicio.traducir(dto);
+      await servicio.traducir(dto);
+      await servicio.traducir(dto);
+      expect(espia).toHaveBeenCalledTimes(1);
+    });
+
     it('tolera la respuesta envuelta en ```json y devuelve palabras dudosas', async () => {
       const servicio = crearServicio(
         clienteFalso(

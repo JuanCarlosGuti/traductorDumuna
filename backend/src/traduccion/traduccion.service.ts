@@ -32,6 +32,27 @@ import {
 const MAX_TOKENS_RESPUESTA = 2048;
 const MAX_ENTRADAS_VOCABULARIO = 20;
 
+/**
+ * Cobertura léxica mínima para incluir una entrada de vocabulario. Descarta
+ * las entradas del glosario que son frases largas y solo comparten una
+ * palabra frecuente con el texto (p. ej. «Iwa ingui nʉnzhu nukurra, zukuega
+ * nʉnka.» colándose en cualquier consulta que mencione «nʉnka»).
+ */
+const COBERTURA_MINIMA = 0.25;
+
+interface EntradaIndexada {
+  espanol: string;
+  damana: string;
+  /** Tokens normalizados por idioma; en español, ya sin stopwords. */
+  tokens: Record<Idioma, string[]>;
+}
+
+interface EntradaPuntuada {
+  entrada: EntradaIndexada;
+  cobertura: number;
+  longitud: number;
+}
+
 export const MENSAJE_SIN_PROVEEDOR =
   'El traductor no tiene ningún motor configurado. Opciones: ' +
   '(A) gratis: define TRADUCTOR_BASE_URL, TRADUCTOR_MODELO y opcionalmente ' +
@@ -58,6 +79,9 @@ export function extraerJson(texto: string): Record<string, unknown> {
 
 @Injectable()
 export class TraduccionService {
+  /** Caché del vocabulario tokenizado (se llena en la primera traducción). */
+  private vocabularioIndexado?: EntradaIndexada[];
+
   constructor(
     @Inject(CLIENTE_ANTHROPIC) private readonly cliente: Anthropic | null,
     @Inject(CONFIG_TRADUCTOR) private readonly config: ConfigTraductor,
@@ -108,24 +132,60 @@ export class TraduccionService {
     };
   }
 
-  /** Entradas de vocabulario cuyas palabras (del idioma origen) aparecen en el texto. */
+  /**
+   * Tokeniza el vocabulario una sola vez y lo cachea: sin esto se
+   * re-tokenizarían las ~918 entradas en cada traducción.
+   */
+  private obtenerVocabularioIndexado(): EntradaIndexada[] {
+    if (!this.vocabularioIndexado) {
+      const normalizados = (texto: string) =>
+        tokenizarDamana(texto).map((t) => t.normalizada);
+      this.vocabularioIndexado = this.repo.listarVocabulario().map((e) => ({
+        espanol: e.espanol,
+        damana: e.damana,
+        tokens: {
+          [Idioma.damana]: normalizados(e.damana),
+          // Las stopwords se excluyen aquí: no deben provocar coincidencias
+          // ni inflar el denominador de la cobertura.
+          [Idioma.espanol]: normalizados(e.espanol).filter(
+            (t) => !esStopwordEspanol(t),
+          ),
+        },
+      }));
+    }
+    return this.vocabularioIndexado;
+  }
+
+  /**
+   * Entradas de vocabulario relevantes para el texto, ordenadas por
+   * cobertura léxica = proporción de palabras de la entrada que aparecen en
+   * el texto. Así «Ñi = ¿Qué?» (cobertura 1) va antes que una frase de seis
+   * palabras que solo comparte «nʉnka» (cobertura 0,17), en vez de que el
+   * corte dependa del orden de inserción en el CSV.
+   */
   private vocabularioRelevante(
     texto: string,
     idiomaOrigen: Idioma,
   ): EntradaVocabularioUsadaDto[] {
     const tokensTexto = new Set(tokenizarDamana(texto).map((t) => t.normalizada));
-    return this.repo
-      .listarVocabulario()
-      .filter((entrada) => {
-        const lado = idiomaOrigen === Idioma.damana ? entrada.damana : entrada.espanol;
-        return tokenizarDamana(lado).some(
-          (t) =>
-            tokensTexto.has(t.normalizada) &&
-            (idiomaOrigen === Idioma.damana || !esStopwordEspanol(t.normalizada)),
-        );
+    return this.obtenerVocabularioIndexado()
+      .map((entrada): EntradaPuntuada | null => {
+        const tokens = entrada.tokens[idiomaOrigen];
+        if (tokens.length === 0) return null;
+        const coincidencias = tokens.filter((t) => tokensTexto.has(t)).length;
+        if (coincidencias === 0) return null;
+        return {
+          entrada,
+          cobertura: coincidencias / tokens.length,
+          longitud: tokens.length,
+        };
       })
+      .filter(
+        (p): p is EntradaPuntuada => p !== null && p.cobertura >= COBERTURA_MINIMA,
+      )
+      .sort((a, b) => b.cobertura - a.cobertura || a.longitud - b.longitud)
       .slice(0, MAX_ENTRADAS_VOCABULARIO)
-      .map((e) => ({ espanol: e.espanol, damana: e.damana }));
+      .map(({ entrada }) => ({ espanol: entrada.espanol, damana: entrada.damana }));
   }
 
   private armarPromptSistema(): string {
