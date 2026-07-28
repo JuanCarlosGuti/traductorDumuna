@@ -274,10 +274,14 @@ export class TraduccionService {
         : 'del español al damana';
 
     const lineasEjemplos = ejemplos
-      .map(
-        (e, i) =>
-          `${i + 1}. [${e.referencia}]\n   damana: ${e.damana}\n   español: ${e.espanol}`,
-      )
+      .map((e, i) => {
+        // Se avisa cuando el ejemplo llegó por parentesco verbal: sirve como
+        // muestra del verbo en uso, pero va en otra persona gramatical.
+        const nota = e.porLema
+          ? ` — usa otra conjugación del verbo «${e.porLema}»`
+          : '';
+        return `${i + 1}. [${e.referencia}${nota}]\n   damana: ${e.damana}\n   español: ${e.espanol}`;
+      })
       .join('\n');
     const lineasVocabulario = vocabulario
       .map((v) => `- ${v.damana} = ${v.espanol}`)

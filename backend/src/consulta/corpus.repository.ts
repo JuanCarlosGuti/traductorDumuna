@@ -60,6 +60,16 @@ export class CorpusRepository {
       .all(palabraNormalizada) as ConjugacionDto[];
   }
 
+  /**
+   * Formas conjugadas agrupadas por lema, para conectar entre sí las
+   * distintas personas de un mismo verbo (nʉjkasheshisha / naijkasheshisha…).
+   */
+  formasPorLema(): { lema: string; damana: string }[] {
+    return this.db
+      .prepare('SELECT lema, damana FROM conjugaciones ORDER BY lema, rowid')
+      .all() as { lema: string; damana: string }[];
+  }
+
   listarConjugaciones(): ConjugacionDto[] {
     return this.db
       .prepare(

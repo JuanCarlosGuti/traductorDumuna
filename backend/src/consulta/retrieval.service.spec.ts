@@ -4,6 +4,7 @@ import { CorpusRepository } from './corpus.repository';
 import { ejecutarMigraciones } from '../database/migraciones';
 import {
   esParSinTraduccion,
+  PESO_LEMA,
   PESO_REVISAR,
   RetrievalService,
 } from './retrieval.service';
@@ -105,6 +106,83 @@ describe('RetrievalService (corpus v3)', () => {
 
   it('respeta el límite k', () => {
     expect(servicio.similares('nʉnka shkua gontka', Idioma.damana, 1)).toHaveLength(1);
+  });
+
+  describe('expansión por lema verbal', () => {
+    /** Corpus con el verbo «leer» en dos personas distintas. */
+    const prepararVerbo = () => {
+      db.prepare(
+        `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
+         VALUES ('v1', 'Ima texto nʉjkasheshisha ushi', 'Léeme este texto', 'aprobado', 'lfb')`,
+      ).run();
+      db.prepare(
+        `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
+         VALUES ('v2', 'Ima texto mʉjkasheshisha awʉnga', 'Te voy a leer este texto', 'aprobado', 'lfb')`,
+      ).run();
+      const ins = db.prepare(
+        `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+         VALUES (?, ?, 'leer', 'doc', NULL)`,
+      );
+      ins.run('nʉjkasheshisha', 'me lee');
+      ins.run('mʉjkasheshisha', 'te lee');
+      ins.run('naijkasheshisha', 'nos lee'); // esta NO aparece en el corpus
+      return new RetrievalService(new CorpusRepository(db));
+    };
+
+    it('encuentra oraciones con otra conjugación del mismo verbo', () => {
+      const servicio = prepararVerbo();
+      // 'naijkasheshisha' no está en ninguna oración: antes daba 0 resultados
+      const resultados = servicio.similares('naijkasheshisha', Idioma.damana, 8);
+      const oraciones = resultados.filter((r) => r.fuente === 'oraciones');
+      expect(oraciones.length).toBeGreaterThan(0);
+      expect(oraciones.every((r) => r.porLema === 'leer')).toBe(true);
+    });
+
+    it('una coincidencia directa gana a un pariente verbal', () => {
+      const servicio = prepararVerbo();
+      const resultados = servicio.similares('nʉjkasheshisha', Idioma.damana, 8);
+      const directa = resultados.find((r) => r.damana.includes('nʉjkasheshisha'))!;
+      const porLema = resultados.find((r) => r.damana.includes('mʉjkasheshisha'))!;
+      expect(directa.puntaje).toBeGreaterThan(porLema.puntaje);
+      expect(directa.porLema).toBeUndefined();
+      expect(porLema.porLema).toBe('leer');
+    });
+
+    it('el pariente nunca supera a la coincidencia directa de la conjugación', () => {
+      const servicio = prepararVerbo();
+      const resultados = servicio.similares('naijkasheshisha', Idioma.damana, 8);
+      // La propia entrada de conjugaciones coincide de forma directa (1.0);
+      // las oraciones llegan por lema y van rebajadas por PESO_LEMA.
+      const directa = resultados.find((r) => r.fuente === 'conjugaciones')!;
+      const porLema = resultados.filter((r) => r.fuente === 'oraciones');
+      expect(directa.porLema).toBeUndefined();
+      expect(resultados.indexOf(directa)).toBe(0);
+      for (const r of porLema) {
+        expect(r.puntaje).toBeLessThanOrEqual(PESO_LEMA);
+        expect(r.puntaje).toBeLessThan(directa.puntaje);
+      }
+    });
+
+    it('no trae conjugaciones hermanas: ocuparían huecos sin enseñar contexto', () => {
+      const servicio = prepararVerbo();
+      const resultados = servicio.similares('naijkasheshisha', Idioma.damana, 8);
+      const conjugaciones = resultados.filter((r) => r.fuente === 'conjugaciones');
+      expect(conjugaciones).toHaveLength(1); // solo la coincidencia directa
+      expect(conjugaciones[0].damana).toBe('naijkasheshisha');
+      expect(conjugaciones[0].porLema).toBeUndefined();
+    });
+
+    it('sin verbos en la consulta el resultado no cambia', () => {
+      const servicio = prepararVerbo();
+      const resultados = servicio.similares('nʉnka shkua gontka', Idioma.damana, 8);
+      expect(resultados.every((r) => r.porLema === undefined)).toBe(true);
+    });
+
+    it('no expande en dirección español (los lemas son de formas damana)', () => {
+      const servicio = prepararVerbo();
+      const resultados = servicio.similares('leer este texto', Idioma.espanol, 8);
+      expect(resultados.every((r) => r.porLema === undefined)).toBe(true);
+    });
   });
 
   it('excluye del índice los pares sin traducción (referencias bíblicas)', () => {

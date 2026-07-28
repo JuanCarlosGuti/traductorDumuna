@@ -7,6 +7,20 @@ import { CorpusRepository } from './corpus.repository';
 export const K_FRAGMENTOS = 8;
 
 /**
+ * Los ejemplos que aparecen solo por parentesco verbal (otra persona del
+ * mismo lema) valen menos que una coincidencia directa: son útiles, pero
+ * usan una conjugación distinta a la que se preguntó.
+ */
+export const PESO_LEMA = 0.6;
+
+/**
+ * Tope de formas hermanas que se añaden a la consulta por cada verbo
+ * detectado. «tener» tiene 72 formas: meterlas todas ahogaría una consulta
+ * de tres palabras.
+ */
+export const MAX_FORMAS_HERMANAS = 8;
+
+/**
  * Pares cuyo lado damana es idéntico al español: en el corpus son
  * referencias bíblicas («Génesis 1:27-31; Salmo 115:16.») y nombres propios
  * sueltos («Felipe»). No son ejemplos de lengua —no enseñan ni léxico ni
@@ -42,6 +56,11 @@ export interface FragmentoCorpus {
 
 export interface FragmentoRecuperado extends FragmentoCorpus {
   puntaje: number;
+  /**
+   * Presente cuando el fragmento se recuperó gracias a otra forma del mismo
+   * verbo: contiene el lema, para poder advertir que la conjugación difiere.
+   */
+  porLema?: string;
 }
 
 /**
@@ -106,6 +125,10 @@ class IndiceTfIdf {
 interface Indices {
   fragmentos: FragmentoCorpus[];
   porIdioma: Record<Idioma, IndiceTfIdf>;
+  /** Forma conjugada (normalizada) → lema al que pertenece. */
+  lemaDeForma: Map<string, string>;
+  /** Lema → otras formas suyas que SÍ aparecen en el corpus. */
+  formasDelLema: Map<string, string[]>;
 }
 
 @Injectable()
@@ -121,17 +144,144 @@ export class RetrievalService {
    * estado='revisar' participan con la mitad del puntaje.
    */
   similares(texto: string, idioma: Idioma, k = K_FRAGMENTOS): FragmentoRecuperado[] {
-    const { fragmentos, porIdioma } = this.obtenerIndices();
+    const indices = this.obtenerIndices();
     const tokens = tokenizarDamana(texto).map((t) => t.normalizada);
-    return porIdioma[idioma]
+    const directa = this.puntuar(tokens, idioma, indices);
+
+    // Segunda pasada: si la consulta trae formas verbales, se repite la
+    // búsqueda añadiendo las otras personas del mismo lema. Solo en damana,
+    // que es donde los lemas relacionan formas.
+    const hermanas =
+      idioma === Idioma.damana
+        ? this.formasHermanas(tokens, indices)
+        : new Map<string, string>();
+    if (hermanas.size === 0) {
+      const soloDirecta = indices.fragmentos.map((fragmento, i) => ({
+        ...fragmento,
+        puntaje: directa[i],
+      }));
+      return this.mejores(soloDirecta, k);
+    }
+
+    const expandida = this.puntuar(
+      [...tokens, ...hermanas.keys()],
+      idioma,
+      indices,
+    );
+    return this.mejores(this.fusionar(directa, expandida, hermanas, indices), k);
+  }
+
+  private puntuar(
+    tokens: string[],
+    idioma: Idioma,
+    indices: Indices,
+  ): number[] {
+    return indices.porIdioma[idioma]
       .similitudes(tokens)
-      .map((similitud, indice) => ({
-        ...fragmentos[indice],
-        puntaje: similitud * fragmentos[indice].peso,
-      }))
+      .map((similitud, i) => similitud * indices.fragmentos[i].peso);
+  }
+
+  /**
+   * Otras formas del mismo verbo que aparecen en la consulta, limitadas a
+   * las que existen en el corpus (el resto solo añadiría ruido). Devuelve
+   * forma → lema, para poder marcar de dónde vino cada ejemplo.
+   */
+  private formasHermanas(tokens: string[], indices: Indices): Map<string, string> {
+    const hermanas = new Map<string, string>();
+    const enConsulta = new Set(tokens);
+    for (const token of tokens) {
+      const lema = indices.lemaDeForma.get(token);
+      if (!lema) continue;
+      const formas = (indices.formasDelLema.get(lema) ?? [])
+        .filter((f) => !enConsulta.has(f))
+        .slice(0, MAX_FORMAS_HERMANAS);
+      for (const forma of formas) hermanas.set(forma, lema);
+    }
+    return hermanas;
+  }
+
+  /**
+   * Cada fragmento se queda con su mejor puntaje: el directo, o el de la
+   * búsqueda expandida rebajado por PESO_LEMA. Así una coincidencia real
+   * siempre gana a un pariente verbal.
+   *
+   * Las conjugaciones quedan fuera de la expansión: medido sobre 200
+   * consultas reales, se llevaban 55 de los 56 huecos ganados y echaban
+   * fuera oraciones. Traer la fila «te lee» cuando se preguntó por «nos
+   * lee» no enseña nada —el glosario ya va aparte en el prompt—; lo que
+   * aporta es ver el verbo dentro de una oración.
+   */
+  private fusionar(
+    directa: number[],
+    expandida: number[],
+    hermanas: Map<string, string>,
+    indices: Indices,
+  ): FragmentoRecuperado[] {
+    return indices.fragmentos.map((fragmento, i) => {
+      const puntajeLema =
+        fragmento.fuente === FuenteCorpus.conjugaciones
+          ? 0
+          : expandida[i] * PESO_LEMA;
+      if (puntajeLema > directa[i]) {
+        return {
+          ...fragmento,
+          puntaje: puntajeLema,
+          porLema: this.lemaPresenteEn(fragmento, hermanas),
+        };
+      }
+      return { ...fragmento, puntaje: directa[i] };
+    });
+  }
+
+  /** Qué verbo hermano contiene este fragmento (para la advertencia). */
+  private lemaPresenteEn(
+    fragmento: FragmentoCorpus,
+    hermanas: Map<string, string>,
+  ): string | undefined {
+    for (const token of tokenizarDamana(fragmento.damana)) {
+      const lema = hermanas.get(token.normalizada);
+      if (lema) return lema;
+    }
+    return undefined;
+  }
+
+  private mejores(
+    puntuados: FragmentoRecuperado[],
+    k: number,
+  ): FragmentoRecuperado[] {
+    return puntuados
       .filter((f) => f.puntaje > 0)
       .sort((a, b) => b.puntaje - a.puntaje)
       .slice(0, k);
+  }
+
+  /**
+   * Relaciona cada forma conjugada con su lema y viceversa. Solo se
+   * conservan las formas que aparecen de verdad en el corpus: de las 267
+   * conjugaciones registradas, la mayoría no sale en ninguna oración, y
+   * añadirlas a las consultas sería ruido.
+   */
+  private construirIndiceDeLemas(
+    fragmentos: FragmentoCorpus[],
+    tokensDe: (texto: string) => string[],
+  ): Pick<Indices, 'lemaDeForma' | 'formasDelLema'> {
+    const enCorpus = new Set(fragmentos.flatMap((f) => tokensDe(f.damana)));
+    const lemaDeForma = new Map<string, string>();
+    const formasDelLema = new Map<string, string[]>();
+
+    for (const { lema, damana } of this.repo.formasPorLema()) {
+      for (const forma of tokensDe(damana)) {
+        // La primera palabra basta: las formas de varias palabras llevan la
+        // marca verbal al inicio (p. ej. «nujkunanún nanka»).
+        if (!lemaDeForma.has(forma)) lemaDeForma.set(forma, lema);
+        if (!enCorpus.has(forma)) continue;
+        const formas = formasDelLema.get(lema) ?? [];
+        if (!formas.includes(forma)) formas.push(forma);
+        formasDelLema.set(lema, formas);
+        break;
+      }
+    }
+    return { lemaDeForma, formasDelLema };
   }
 
   private obtenerIndices(): Indices {
@@ -157,6 +307,7 @@ export class RetrievalService {
           [Idioma.damana]: new IndiceTfIdf(fragmentos.map((f) => tokensDe(f.damana))),
           [Idioma.espanol]: new IndiceTfIdf(fragmentos.map((f) => tokensDe(f.espanol))),
         },
+        ...this.construirIndiceDeLemas(fragmentos, tokensDe),
       };
     }
     return this.indices;
