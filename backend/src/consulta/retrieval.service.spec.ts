@@ -2,7 +2,31 @@ import Database from 'better-sqlite3';
 import { Idioma } from './consulta.enums';
 import { CorpusRepository } from './corpus.repository';
 import { ejecutarMigraciones } from '../database/migraciones';
-import { PESO_REVISAR, RetrievalService } from './retrieval.service';
+import {
+  esParSinTraduccion,
+  PESO_REVISAR,
+  RetrievalService,
+} from './retrieval.service';
+
+describe('esParSinTraduccion', () => {
+  it('detecta referencias bíblicas (damana idéntico al español)', () => {
+    const ref = 'Génesis 1:27-31; Salmo 115:16.';
+    expect(esParSinTraduccion(ref, ref)).toBe(true);
+  });
+
+  it('detecta nombres propios sueltos y tolera espacios y tildes', () => {
+    expect(esParSinTraduccion(' Felipe ', 'Felipe')).toBe(true);
+    expect(esParSinTraduccion('Simon', 'Simón')).toBe(true); // normalizar quita tildes
+  });
+
+  it('NO marca pares traducidos de verdad (caso con ʉ y ñ)', () => {
+    expect(esParSinTraduccion('nʉnka ñingui', 'es otra vez')).toBe(false);
+  });
+
+  it('NO marca un par vacío como sin traducción', () => {
+    expect(esParSinTraduccion('', '')).toBe(false);
+  });
+});
 
 describe('RetrievalService (corpus v3)', () => {
   let db: Database.Database;
@@ -81,5 +105,24 @@ describe('RetrievalService (corpus v3)', () => {
 
   it('respeta el límite k', () => {
     expect(servicio.similares('nʉnka shkua gontka', Idioma.damana, 1)).toHaveLength(1);
+  });
+
+  it('excluye del índice los pares sin traducción (referencias bíblicas)', () => {
+    const referencia = 'Genesis 1:27-31; Salmo 115:16.';
+    db.prepare(
+      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
+       VALUES ('ref1', ?, ?, 'aprobado', 'lfb')`,
+    ).run(referencia, referencia);
+    // Oración legítima que comparte vocabulario con la consulta, para
+    // comprobar que el filtro no se lleva por delante lo bueno.
+    db.prepare(
+      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
+       VALUES ('ok1', 'Salmo nʉnka gontka', 'el Salmo dice', 'aprobado', 'lfb')`,
+    ).run();
+    const servicioNuevo = new RetrievalService(new CorpusRepository(db));
+
+    const resultados = servicioNuevo.similares('Genesis Salmo', Idioma.damana, 8);
+    expect(resultados.some((r) => r.damana === referencia)).toBe(false);
+    expect(resultados.some((r) => r.damana === 'Salmo nʉnka gontka')).toBe(true);
   });
 });

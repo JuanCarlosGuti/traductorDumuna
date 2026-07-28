@@ -1,9 +1,24 @@
 import { Injectable } from '@nestjs/common';
+import { normalizar } from '../comun/texto/normalizador';
 import { tokenizarDamana } from '../comun/texto/tokenizador';
 import { FuenteCorpus, Idioma } from './consulta.enums';
 import { CorpusRepository } from './corpus.repository';
 
 export const K_FRAGMENTOS = 8;
+
+/**
+ * Pares cuyo lado damana es idéntico al español: en el corpus son
+ * referencias bíblicas («Génesis 1:27-31; Salmo 115:16.») y nombres propios
+ * sueltos («Felipe»). No son ejemplos de lengua —no enseñan ni léxico ni
+ * estructura— así que compiten por un hueco entre los K sin aportar nada.
+ *
+ * Solo se excluyen del índice de retrieval: siguen en el CSV, en la base y
+ * en la búsqueda/concordancia.
+ */
+export function esParSinTraduccion(damana: string, espanol: string): boolean {
+  const ladoDamana = normalizar(damana.trim());
+  return ladoDamana.length > 0 && ladoDamana === normalizar(espanol.trim());
+}
 
 /** Las oraciones con alineación dudosa (estado='revisar') participan en el
  *  retrieval pero con la mitad del puntaje de similitud. */
@@ -124,6 +139,7 @@ export class RetrievalService {
       const fragmentos: FragmentoCorpus[] = [];
       for (const fuente of FUENTES_RETRIEVAL) {
         for (const fila of this.repo.textosDe(fuente)) {
+          if (esParSinTraduccion(fila.textoDamana, fila.textoEspanol)) continue;
           fragmentos.push({
             fuente,
             id: fila.id,
