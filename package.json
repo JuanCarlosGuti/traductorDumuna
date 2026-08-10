@@ -17,6 +17,10 @@
     "start:prod": "npm run start:prod -w backend",
     "test": "npm test -w backend",
     "test:e2e": "npm run test:e2e -w backend",
-    "test:front": "npm run test -w frontend"
+    "test:front": "npm run test -w frontend",
+    "test:navegador": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
   }
 }

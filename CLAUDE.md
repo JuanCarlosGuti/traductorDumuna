@@ -47,8 +47,19 @@ experiencia en TypeScript/Angular y backend.
   detecta con RENDER=true, no con NODE_ENV: poner NODE_ENV=production en
   Render haría que `npm ci` omitiera las devDependencies y no habría con
   qué construir.
-- Tests: Jest en backend (unitarios + e2e con SQLite en memoria),
-  Vitest en frontend.
+- Tests, cuatro capas (todas deben pasar antes de subir):
+  - `npm test` — Jest, backend. Unitarios puros (texto, sm2, apoyo, auth)
+    e integración con SQLite en memoria (servicios + repositorios).
+  - `npm run test:e2e` — Jest + supertest. Rutas HTTP con Nest levantado en
+    memoria. Ojo con el nombre: es prueba de API, no e2e de navegador.
+  - `npm run test:front` — Vitest. Componentes con TestBed y HttpClient
+    simulado. En zoneless, `fixture.whenStable()` NO espera las promesas del
+    componente: usar `asentar()` de comun/probar.ts o se lee el DOM a medias.
+  - `npm run test:navegador` — Playwright, Chromium real contra el backend
+    sirviendo el build de Angular con la auth activa. Es la ÚNICA capa que
+    comprueba que frontend y backend se entienden: sin ella, romper el
+    interceptor o el guard deja las otras tres en verde. Usa su propio
+    corpus en e2e/datos, no toca /datos.
 - Traductor asistido: Claude vía @anthropic-ai/sdk (ANTHROPIC_API_KEY,
   prioridad) o cualquier API compatible OpenAI (TRADUCTOR_BASE_URL +
   TRADUCTOR_MODELO [+ TRADUCTOR_API_KEY]; p. ej. Ollama local).

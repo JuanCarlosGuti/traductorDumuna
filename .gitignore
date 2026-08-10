@@ -10,3 +10,10 @@ backend/public/
 datos/corpus.db
 datos/corpus.db-wal
 datos/corpus.db-shm
+
+# Playwright
+test-results/
+playwright-report/
+e2e/datos/corpus.db
+e2e/datos/corpus.db-wal
+e2e/datos/corpus.db-shm
