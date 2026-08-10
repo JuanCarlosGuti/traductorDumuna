@@ -10,6 +10,10 @@
 # Motor de traducción: Groq (API compatible con OpenAI). TRADUCTOR_API_KEY se pide al crear
 # el servicio (sync: false = secreto, nunca en el repo).
 #
+# Autenticación: usuario único. AUTH_USUARIO y AUTH_PASSWORD son secretos que se
+# introducen en el panel; SIN ELLOS EL SERVICIO NO ARRANCA en producción, a propósito
+# (una API abierta por descuido no se nota; un arranque fallido sí).
+#
 # Plan gratis: el servicio se "duerme" tras ~15 min sin visitas; la siguiente petición
 # tarda ~30-60s en despertarlo.
 
@@ -24,9 +28,21 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 24.15.0
+      # OJO: no poner NODE_ENV=production aquí. `npm ci` lo interpreta como
+      # --omit=dev y se dejaría fuera @nestjs/cli, ng y ts-node, que son los
+      # que construyen e importan. El código detecta el despliegue por la
+      # variable RENDER, que la plataforma define sola.
       - key: TRADUCTOR_BASE_URL
         value: https://api.groq.com/openai/v1
       - key: TRADUCTOR_MODELO
         value: llama-3.3-70b-versatile
       - key: TRADUCTOR_API_KEY
         sync: false
+      - key: AUTH_USUARIO
+        sync: false
+      - key: AUTH_PASSWORD
+        sync: false
+      # Generado por Render una sola vez y estable después: si cambiara en cada
+      # despliegue, cada deploy cerraría la sesión en todos los dispositivos.
+      - key: AUTH_JWT_SECRET
+        generateValue: true

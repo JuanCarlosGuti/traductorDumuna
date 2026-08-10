@@ -19,6 +19,7 @@
     "@anthropic-ai/sdk": "^0.110.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/serve-static": "^5.0.5",
     "@nestjs/swagger": "^11.0.0",

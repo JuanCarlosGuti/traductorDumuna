@@ -7,12 +7,20 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   configurarApp(app);
 
+  // Render pone un proxy delante: sin esto req.ip sería siempre el del
+  // proxy y el límite de intentos de login se aplicaría a todo el mundo a
+  // la vez, con lo que un atacante podría dejar fuera al dueño. Se confía
+  // solo en el último salto.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   const config = new DocumentBuilder()
     .setTitle('Corpus Damana API')
     .setDescription(
-      'API de consulta del corpus damana (dʉmʉna) — concordancias, fichas de palabra, frecuencias y listados.',
+      'API de consulta del corpus damana (dʉmʉna) — concordancias, fichas de palabra, frecuencias y listados. ' +
+        'Salvo /auth/estado y /auth/login, todo exige cabecera Authorization: Bearer <token>.',
     )
     .setVersion('0.1.0')
+    .addBearerAuth()
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, config));
 

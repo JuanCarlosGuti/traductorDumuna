@@ -7,6 +7,12 @@
     <a routerLink="/flashcards" routerLinkActive="activo">Flashcards</a>
     <a routerLink="/traductor" routerLinkActive="activo">Traductor</a>
   </nav>
+  @if (usuario(); as quien) {
+    <span class="sesion">
+      <span class="suave">{{ quien }}</span>
+      <button type="button" class="boton-suave" (click)="salir()">Salir</button>
+    </span>
+  }
 </header>
 
 <main class="contenido">

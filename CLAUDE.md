@@ -35,7 +35,18 @@ experiencia en TypeScript/Angular y backend.
   csv-parse para importación, @nestjs/swagger para documentar.
 - Frontend: Angular 18+ standalone components con señales.
 - Producción: un solo proceso; NestJS sirve el build de Angular con
-  @nestjs/serve-static. Sin autenticación: app local de un usuario.
+  @nestjs/serve-static.
+- Autenticación: usuario único (AUTH_USUARIO + AUTH_PASSWORD) con token
+  firmado (@nestjs/jwt, AUTH_JWT_SECRET, 30 días). Guard global sobre todo
+  /api salvo lo marcado con @Publico(): /api/auth/estado y /api/auth/login.
+  Los estáticos del frontend NO pasan por el guard —la SPA debe cargar para
+  pintar el login y Render hace el health check contra «/»—. Sin credenciales
+  configuradas la auth queda desactivada (desarrollo local, con aviso al
+  arrancar), PERO en producción falta = el arranque falla a propósito: una
+  API abierta por descuido no se nota, un deploy roto sí. «Producción» se
+  detecta con RENDER=true, no con NODE_ENV: poner NODE_ENV=production en
+  Render haría que `npm ci` omitiera las devDependencies y no habría con
+  qué construir.
 - Tests: Jest en backend (unitarios + e2e con SQLite en memoria),
   Vitest en frontend.
 - Traductor asistido: Claude vía @anthropic-ai/sdk (ANTHROPIC_API_KEY,

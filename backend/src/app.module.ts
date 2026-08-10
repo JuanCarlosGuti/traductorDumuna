@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import * as fs from 'fs';
 import * as path from 'path';
+import { AuthModule } from './auth/auth.module';
 import { ConsultaModule } from './consulta/consulta.module';
 import { DatabaseModule } from './database/database.module';
 import { ImportadorModule } from './importador/importador.module';
@@ -17,6 +18,10 @@ const RUTA_PUBLICO = path.resolve(__dirname, '..', 'public');
 
 @Module({
   imports: [
+    // Primero: registra el guard global que protege todo lo que viene
+    // después. Si faltan credenciales en producción, aquí revienta el
+    // arranque a propósito (ver leerConfigAuth).
+    AuthModule.forRoot(),
     DatabaseModule.forRoot({ rutaDb: rutaDbPorDefecto() }),
     ImportadorModule,
     ConsultaModule,

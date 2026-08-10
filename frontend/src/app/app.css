@@ -38,3 +38,17 @@
   margin: 0 auto;
   padding: 1.5rem;
 }
+
+/* Empujado a la derecha: la navegación manda, la sesión es secundaria. */
+.sesion {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.sesion .boton-suave {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+}

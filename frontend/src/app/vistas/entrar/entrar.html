@@ -1,0 +1,39 @@
+<section class="entrada">
+  <h1>dʉmʉna</h1>
+  <p class="suave">Corpus damana — acceso privado</p>
+
+  <form class="panel formulario" (ngSubmit)="enviar()">
+    <label>
+      Usuario
+      <input
+        type="text"
+        name="usuario"
+        autocomplete="username"
+        autocapitalize="none"
+        [ngModel]="usuario()"
+        (ngModelChange)="usuario.set($event)"
+        required
+      />
+    </label>
+
+    <label>
+      Contraseña
+      <input
+        type="password"
+        name="password"
+        autocomplete="current-password"
+        [ngModel]="password()"
+        (ngModelChange)="password.set($event)"
+        required
+      />
+    </label>
+
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    <button class="boton" type="submit" [disabled]="entrando()">
+      {{ entrando() ? 'Entrando…' : 'Entrar' }}
+    </button>
+  </form>
+</section>
