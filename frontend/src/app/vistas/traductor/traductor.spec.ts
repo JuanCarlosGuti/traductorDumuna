@@ -7,7 +7,7 @@ import { Traductor } from './traductor';
 const DISPONIBLE: EstadoTraductor = {
   disponible: true,
   proveedor: 'compatible',
-  modelo: 'llama-3.3-70b',
+  modelo: 'gpt-oss-120b',
 };
 
 const RESPUESTA: RespuestaTraduccion = {

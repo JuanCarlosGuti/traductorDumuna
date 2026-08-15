@@ -35,7 +35,7 @@ services:
       - key: TRADUCTOR_BASE_URL
         value: https://api.groq.com/openai/v1
       - key: TRADUCTOR_MODELO
-        value: llama-3.3-70b-versatile
+        value: openai/gpt-oss-120b
       - key: TRADUCTOR_API_KEY
         sync: false
       - key: AUTH_USUARIO

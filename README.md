@@ -8,7 +8,7 @@ por IA apoyado en el corpus.
 > **🌍 En producción: https://corpus-damana.onrender.com** (Render, plan
 > gratuito — tras ~15 min sin visitas el servicio se duerme y la primera
 > petición tarda ~30-60 s en despertarlo). Motor de traducción actual:
-> **Groq** (`llama-3.3-70b-versatile`). Ver [Despliegue](#despliegue-render)
+> **Groq** (`openai/gpt-oss-120b`). Ver [Despliegue](#despliegue-render)
 > y, sobre todo, [Actualizar el corpus](#actualizar-el-corpus-agregar-palabrasoraciones).
 
 ## Requisitos
@@ -48,7 +48,7 @@ con qwen2.5:7b). Clave gratis sin tarjeta en https://console.groq.com
 
 ```powershell
 setx TRADUCTOR_BASE_URL "https://api.groq.com/openai/v1"
-setx TRADUCTOR_MODELO "llama-3.3-70b-versatile"
+setx TRADUCTOR_MODELO "openai/gpt-oss-120b"
 setx TRADUCTOR_API_KEY "gsk_..."
 # OJO: setx no afecta la terminal abierta; abre una NUEVA terminal.
 ```
