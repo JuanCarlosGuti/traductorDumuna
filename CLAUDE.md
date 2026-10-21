@@ -196,6 +196,23 @@ experiencia en TypeScript/Angular y backend.
 - Pendiente de decidir por el dueño: disco persistente de Render (es de
   pago) para que pendientes y validadas sobrevivan a los deploys.
 
+## Material externo (oct 2026)
+- `material-externo/`: fuentes externas sobre el damana (Living Dictionary,
+  SIL 1973/74/1990/2012, Trillos 2004-05, Wiwa Gago). Inventario en
+  `FUENTES.md`, lectura en `INFORME-LECTURA.md`, resultado en
+  `INFORME-INTEGRACION.md`, salidas en `salida/` (vocabulario_nuevo,
+  divergencias y coincidencias de vocabulario, frases_nuevas,
+  reglas_propuestas, preguntas_hablantes.xlsx). `pdf/` y `texto/` quedan
+  fuera de git (el repo es público y Hoppe 1973/74 tiene reserva de
+  derechos) y de la imagen Docker. NADA entra a /datos sin pasar por el
+  cruce (`herramientas/cruzar_vocabulario.js`) y sin aprobación del dueño;
+  lo dudoso va a las hablantes. Ojo: los PDF extraídos traen ᵾ (U+1D7E)
+  por ʉ; las herramientas lo normalizan, el importador todavía no.
+- Para añadir otra fuente: PDF en `pdf/`, texto en `texto/`, una fila en
+  FUENTES.md, sus palabras en `salida/fuentes/<fuente>.csv` y volver a
+  correr el cruce; las NUEVAS aprobadas se añaden a
+  corpus_vocabulario_v3.csv con su `fuente`.
+
 ## Datos — carpeta /datos (CSV en UTF-8 con BOM)
 - corpus_oraciones.csv: id, damana, espanol, estado, fuente (~2.800
   pares; estado = "aprobado" ~1.957 o "revisar" ~843). Dominio bíblico.
