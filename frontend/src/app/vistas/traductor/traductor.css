@@ -1,10 +1,13 @@
-.formulario textarea {
+.formulario textarea,
+.validacion textarea {
   width: 100%;
   background: var(--panel);
   border: 1px solid var(--borde);
   border-radius: 8px;
   padding: 0.6rem 0.8rem;
   resize: vertical;
+  font: inherit;
+  color: inherit;
 }
 
 .controles {
@@ -12,10 +15,35 @@
   gap: 0.5rem;
   margin-top: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .resultado {
   margin-top: 1.25rem;
+}
+
+.cabecera-resultado {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.cabecera-resultado h2 {
+  margin: 0;
+}
+
+.confianza {
+  font-size: 0.8rem;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 0 0.6rem;
+  color: var(--suave);
+}
+
+.confianza.baja {
+  border-color: #b45309;
+  color: #b45309;
 }
 
 .traduccion {
@@ -24,14 +52,50 @@
   white-space: pre-line;
 }
 
-mark.dudosa {
+mark.sin-equivalente {
   background: transparent;
   color: inherit;
   border-bottom: 2px dashed #b45309;
   border-radius: 0;
-  padding: 0;
+  padding: 0 1px;
   font-weight: 600;
   cursor: help;
+}
+
+.glosa {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.par {
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.9rem;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: baseline;
+}
+
+.par .origen {
+  color: var(--suave);
+}
+
+.par .flecha {
+  color: var(--suave);
+  font-size: 0.8rem;
+}
+
+.par .destino {
+  font-weight: 600;
+}
+
+.sin-equivalente-lista mark {
+  margin: 0 0.2rem;
 }
 
 .explicacion {
@@ -51,14 +115,36 @@ mark.dudosa {
   font-size: 0.85rem;
 }
 
+.validacion {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--borde);
+}
+
+.guardada {
+  margin: 0;
+  color: #15803d;
+  font-weight: 600;
+}
+
+.apoyo,
 .ejemplos {
   margin-top: 1rem;
 }
 
+.apoyo summary,
 .ejemplos summary {
   cursor: pointer;
   color: var(--acento);
   padding: 0.5rem 0;
+}
+
+.diccionario td.posible {
+  font-style: italic;
+}
+
+.reglas {
+  padding-left: 1.2rem;
 }
 
 .ejemplo {
@@ -85,15 +171,15 @@ mark.dudosa {
   overflow-x: auto;
 }
 
-.motor {
-  margin: 0 0 0.75rem;
-}
-
 .aviso code {
   background: var(--fondo);
   border: 1px solid var(--borde);
   border-radius: 4px;
   padding: 0 0.3rem;
+}
+
+.motor {
+  margin: 0 0 0.75rem;
 }
 
 .error {

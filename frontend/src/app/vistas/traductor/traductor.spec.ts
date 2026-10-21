@@ -11,20 +11,29 @@ const DISPONIBLE: EstadoTraductor = {
 };
 
 const RESPUESTA: RespuestaTraduccion = {
-  traduccion: 'el agua es una',
-  palabrasDudosas: ['agua'],
-  explicacionBreve: 'Traducción literal.',
+  traduccion: 'Ranzhe abu urragamba [vecina] dugwa',
+  glosa: [
+    { origen: 'mi', destino: 'Ranzhe' },
+    { origen: 'mamá', destino: 'abu' },
+    { origen: 'cocina', destino: 'dugwa' },
+  ],
+  palabrasSinEquivalente: ['vecina'],
+  reglasAplicadas: ['-nzhe (posesivo)'],
+  confianza: 0.72,
+  explicacionBreve: 'Diccionario más regla del posesivo.',
   apoyo: { nivel: 'bueno', motivos: [] },
   ejemplos: [
-    {
-      fuente: 'oraciones',
-      referencia: 'oración 1',
-      damana: 'nʉnka shkua',
-      espanol: 'el agua es una',
-      puntaje: 0.9,
-    },
+    { fuente: 'oraciones', dominio: 'cotidiano', referencia: 'oración 9', damana: 'Abu urragamba nuka', espanol: 'mamá está en la casa', puntaje: 0.9 },
+    { fuente: 'conjugaciones', dominio: 'gramatica', referencia: 'conjugación 2 (cocinar)', damana: 'dugwa', espanol: 'cocina', puntaje: 0.5 },
+    { fuente: 'oraciones', dominio: 'biblico', referencia: 'oración 1', damana: 'Jehová nʉnka gontka', espanol: 'Jehová hizo el agua', puntaje: 0.3 },
   ],
-  vocabularioUsado: [{ espanol: 'agua', damana: 'nʉnka' }],
+  diccionario: [
+    { palabra: 'mamá', espanol: 'mamá', damana: 'Abu', categoria: 'Personas y familia', coincidencia: 'exacta' },
+    { palabra: 'cocina', espanol: 'Cocinar', damana: 'Dugua', categoria: 'Verbos', coincidencia: 'posible' },
+  ],
+  nombresPropios: [],
+  reglas: [{ forma: '-nzhe', significado: 'posesivo / "de"', ejemplo: 'Kunkujshina → Kunkujshinanzhe = de Dios', disparador: 'posesivo' }],
+  disparadores: ['posesivo'],
 };
 
 describe('Traductor', () => {
@@ -52,21 +61,31 @@ describe('Traductor', () => {
     await asentar(fixture);
   };
 
+  const traducirConRespuesta = async (respuesta: RespuestaTraduccion = RESPUESTA) => {
+    await escribir('mi mamá cocina en la casa');
+    await traducir();
+    http.expectOne('/api/traducir').flush(respuesta);
+    await asentar(fixture);
+  };
+
+  const boton = (textoBoton: RegExp) =>
+    buscarTodos(fixture, 'button').find((b) => textoBoton.test(b.textContent ?? ''))!;
+
   afterEach(() => http.verify());
 
-  it('manda el texto y la dirección elegida', async () => {
+  it('manda el texto y la dirección elegida (español → damana por defecto)', async () => {
     await arrancar();
-    await escribir('nʉnka shkua');
+    await escribir('mi mamá cocina en la casa');
     await traducir();
 
     const peticion = http.expectOne('/api/traducir');
     expect(peticion.request.body).toEqual({
-      texto: 'nʉnka shkua', // la ʉ llega intacta al backend
-      direccion: 'damana_a_espanol',
+      texto: 'mi mamá cocina en la casa',
+      direccion: 'espanol_a_damana',
     });
     peticion.flush(RESPUESTA);
     await asentar(fixture);
-    expect(texto(fixture)).toContain('el agua es una');
+    expect(texto(fixture)).toContain('Ranzhe abu urragamba');
   });
 
   it('no manda nada si el texto está vacío', async () => {
@@ -75,44 +94,108 @@ describe('Traductor', () => {
     http.expectNone('/api/traducir');
   });
 
-  it('marca visualmente las palabras que el modelo dio por dudosas', async () => {
+  it('muestra la glosa palabra por palabra bajo la traducción', async () => {
     await arrancar();
-    await escribir('nʉnka shkua');
-    await traducir();
-    http.expectOne('/api/traducir').flush(RESPUESTA);
+    await traducirConRespuesta();
+    const pares = buscarTodos(fixture, '.glosa .par').map((p) => [
+      p.querySelector('.origen')?.textContent?.trim(),
+      p.querySelector('.destino')?.textContent?.trim(),
+    ]);
+    expect(pares).toEqual([
+      ['mi', 'Ranzhe'],
+      ['mamá', 'abu'],
+      ['cocina', 'dugwa'],
+    ]);
+    // el lado damana va marcado con lang="mbp" para el lector de pantalla
+    expect(buscarTodos(fixture, '.glosa .destino[lang="mbp"]').length).toBe(3);
+  });
+
+  it('resalta las palabras sin equivalente, sin corchetes, y avisa que quedaron en Pendientes', async () => {
+    await arrancar();
+    await traducirConRespuesta();
+    const marcadas = buscarTodos(fixture, '.traduccion .sin-equivalente').map((e) => e.textContent?.trim());
+    expect(marcadas).toEqual(['vecina']);
+    expect(buscarTodos(fixture, '.traduccion')[0].textContent).not.toContain('[');
+    expect(texto(fixture)).toContain('quedaron en Pendientes');
+  });
+
+  it('muestra las reglas aplicadas, la confianza y el diccionario usado', async () => {
+    await arrancar();
+    await traducirConRespuesta();
+    expect(texto(fixture)).toContain('-nzhe (posesivo)');
+    expect(texto(fixture)).toContain('confianza 72 %');
+    expect(buscarTodos(fixture, '.diccionario tbody tr').length).toBe(2);
+    expect(texto(fixture)).toContain('Abu');
+    expect(texto(fixture)).toContain('posible');
+  });
+
+  it('agrupa los ejemplos por dominio en bloques colapsables', async () => {
+    await arrancar();
+    await traducirConRespuesta();
+    const titulos = buscarTodos(fixture, 'details.ejemplos summary').map((s) => s.textContent?.trim());
+    expect(titulos).toEqual([
+      'Ejemplos cotidianos (1)',
+      'Ejemplos de gramática (conjugaciones) (1)',
+      'Ejemplos del corpus bíblico (1)',
+    ]);
+  });
+
+  it('«esta traducción es correcta» guarda el par como confirmado', async () => {
+    await arrancar();
+    await traducirConRespuesta();
+    boton(/es correcta/).click();
     await asentar(fixture);
 
-    const dudosas = buscarTodos(fixture, '.dudosa').map((e) => e.textContent?.trim());
-    expect(dudosas).toContain('agua');
+    const peticion = http.expectOne('/api/traducir/validar');
+    expect(peticion.request.body).toEqual({
+      texto: 'mi mamá cocina en la casa',
+      direccion: 'espanol_a_damana',
+      traduccion: 'Ranzhe abu urragamba [vecina] dugwa',
+      origen: 'confirmada',
+      traduccionModelo: 'Ranzhe abu urragamba [vecina] dugwa',
+    });
+    peticion.flush({ guardada: true, total: 3 });
+    await asentar(fixture);
+    expect(texto(fixture)).toContain('Guardada como correcta (3 validadas)');
+  });
+
+  it('«corregir» permite escribir la traducción correcta y la guarda como corregida (con ʉ)', async () => {
+    await arrancar();
+    await traducirConRespuesta();
+    boton(/^\s*Corregir\s*$/).click();
+    await asentar(fixture);
+
+    const campo = (fixture.nativeElement as HTMLElement).querySelector<HTMLTextAreaElement>('#correccion')!;
+    expect(campo.value).toBe('Ranzhe abu urragamba vecina dugwa'); // sin corchetes, para editar
+    campo.value = 'Ranzhe abu urragamba anzhirru kʉdugwa';
+    campo.dispatchEvent(new Event('input'));
+    await asentar(fixture);
+    boton(/Guardar corrección/).click();
+    await asentar(fixture);
+
+    const peticion = http.expectOne('/api/traducir/validar');
+    expect(peticion.request.body.origen).toBe('corregida');
+    expect(peticion.request.body.traduccion).toBe('Ranzhe abu urragamba anzhirru kʉdugwa');
+    peticion.flush({ guardada: true, total: 1 });
+    await asentar(fixture);
+    expect(texto(fixture)).toContain('Corrección guardada');
   });
 
   it('con apoyo «revisar» muestra el aviso; con «bueno» no', async () => {
     await arrancar();
-    await escribir('x');
-    await traducir();
-    http.expectOne('/api/traducir').flush({
-      ...RESPUESTA,
-      apoyo: { nivel: 'revisar', motivos: ['sin_ejemplos'] },
-    });
-    await asentar(fixture);
+    await traducirConRespuesta({ ...RESPUESTA, apoyo: { nivel: 'revisar', motivos: ['sin_ejemplos'] }, ejemplos: [] });
     expect(texto(fixture)).toContain('Poco apoyo del corpus');
+    expect(texto(fixture)).toContain('No se encontraron ejemplos parecidos');
   });
 
   it('intercambiar la dirección invierte el sentido de la traducción', async () => {
     await arrancar();
-    const boton = buscarTodos(fixture, 'button').find((b) =>
-      /intercambiar|⇄|↔/i.test(b.textContent ?? '' + b.getAttribute('aria-label')),
-    );
-    if (boton) {
-      boton.click();
-      await asentar(fixture);
-    }
-    await escribir('agua');
+    boton(/⇄/).click();
+    await asentar(fixture);
+    await escribir('nʉnka shkua');
     await traducir();
     const peticion = http.expectOne('/api/traducir');
-    expect(['damana_a_espanol', 'espanol_a_damana']).toContain(
-      peticion.request.body.direccion,
-    );
+    expect(peticion.request.body.direccion).toBe('damana_a_espanol');
     peticion.flush(RESPUESTA);
     await asentar(fixture);
   });

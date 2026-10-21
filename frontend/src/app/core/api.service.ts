@@ -12,11 +12,25 @@ import {
   Frecuencia,
   Idioma,
   Lema,
+  Pendiente,
   ProgresoActualizado,
   RespuestaBusqueda,
   RespuestaTraduccion,
   TablaConjugacion,
+  ValidacionGuardada,
+  ValidarTraduccion,
 } from './modelos';
+
+export interface ArchivoDescargado {
+  blob: Blob;
+  nombreArchivo: string;
+}
+
+/** Nombre del adjunto de una cabecera Content-Disposition (o el de reserva). */
+export function nombreDeAdjunto(contentDisposition: string | null, reserva: string): string {
+  const m = /filename="?([^";]+)"?/i.exec(contentDisposition ?? '');
+  return m ? m[1] : reserva;
+}
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -85,5 +99,32 @@ export class ApiService {
     return firstValueFrom(
       this.http.post<RespuestaTraduccion>('/api/traducir', { texto, direccion }),
     );
+  }
+
+  validarTraduccion(cuerpo: ValidarTraduccion): Promise<ValidacionGuardada> {
+    return firstValueFrom(
+      this.http.post<ValidacionGuardada>('/api/traducir/validar', cuerpo),
+    );
+  }
+
+  pendientes(): Promise<Pendiente[]> {
+    return firstValueFrom(this.http.get<Pendiente[]>('/api/pendientes'));
+  }
+
+  /** Genera y descarga el lote Excel para las hablantes; el servidor marca las filas como exportadas. */
+  async exportarPendientes(): Promise<ArchivoDescargado> {
+    const respuesta = await firstValueFrom(
+      this.http.post('/api/pendientes/exportar', null, {
+        responseType: 'blob',
+        observe: 'response',
+      }),
+    );
+    return {
+      blob: respuesta.body ?? new Blob(),
+      nombreArchivo: nombreDeAdjunto(
+        respuesta.headers.get('content-disposition'),
+        'formato_elicitacion_pendientes.xlsx',
+      ),
+    };
   }
 }

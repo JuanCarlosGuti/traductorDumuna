@@ -40,6 +40,11 @@ export default defineConfig({
       AUTH_USUARIO: CREDENCIALES.usuario,
       AUTH_PASSWORD: CREDENCIALES.password,
       AUTH_JWT_SECRET: 'secreto-solo-para-los-tests-e2e',
+      // Sin motor de traducción: los tests no deben gastar llamadas reales
+      // aunque la máquina tenga TRADUCTOR_* o ANTHROPIC_API_KEY definidas.
+      TRADUCTOR_BASE_URL: '',
+      TRADUCTOR_MODELO: '',
+      ANTHROPIC_API_KEY: '',
     },
   },
 });

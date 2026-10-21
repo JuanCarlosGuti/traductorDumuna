@@ -19,12 +19,12 @@ describe('App', () => {
 
   afterEach(() => localStorage.clear());
 
-  it('crea la app con la navegación de las cinco vistas', async () => {
+  it('crea la app con la navegación de las seis vistas', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const html = fixture.nativeElement as HTMLElement;
     const enlaces = Array.from(html.querySelectorAll('nav a')).map((a) => a.textContent?.trim());
-    expect(enlaces).toEqual(['Buscar', 'Diccionario', 'Gramática', 'Flashcards', 'Traductor']);
+    expect(enlaces).toEqual(['Buscar', 'Diccionario', 'Gramática', 'Flashcards', 'Traductor', 'Pendientes']);
   });
 
   it('sin sesión no muestra el botón de salir', async () => {

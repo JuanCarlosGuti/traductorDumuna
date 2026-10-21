@@ -1,0 +1,60 @@
+<h1>Pendientes</h1>
+<p class="suave">
+  Palabras que el <a routerLink="/traductor">traductor</a> no pudo traducir con el
+  corpus (y filas de elicitación que volvieron sin llenar), ordenadas por las
+  veces que se pidieron. «Exportar lote» genera el Excel del formato de
+  elicitación para que las hablantes nativas lo llenen.
+</p>
+
+<div class="controles">
+  <button
+    type="button"
+    class="boton"
+    (click)="exportar()"
+    [disabled]="exportando() || abiertas().length === 0"
+  >
+    {{ exportando() ? 'Generando…' : 'Exportar lote (' + abiertas().length + ')' }}
+  </button>
+  <label class="chiquito suave">
+    <input type="checkbox" [checked]="verResueltas()" (change)="verResueltas.set(!verResueltas())" />
+    ver también las resueltas
+  </label>
+</div>
+
+@if (mensaje()) {
+  <p class="panel mensaje">{{ mensaje() }}</p>
+}
+@if (error()) {
+  <p class="panel error">{{ error() }}</p>
+}
+
+@if (cargando()) {
+  <p class="suave">Cargando…</p>
+} @else {
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>palabra</th>
+        <th>idioma</th>
+        <th>veces</th>
+        <th>contexto</th>
+        <th>estado</th>
+        <th>origen</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of visibles(); track p.id) {
+        <tr [class.resuelta]="p.estado === 'resuelta'">
+          <td [attr.lang]="p.idioma === 'damana' ? 'mbp' : null"><strong>{{ p.palabra }}</strong></td>
+          <td class="suave">{{ p.idioma === 'damana' ? 'damana' : 'español' }}</td>
+          <td>{{ p.vecesPedida }}</td>
+          <td class="suave chiquito">{{ p.contexto ?? '' }}</td>
+          <td><span class="estado" [class]="'estado ' + p.estado">{{ p.estado }}</span></td>
+          <td class="suave chiquito">{{ p.origen }}</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="6" class="suave">No hay pendientes: todo lo que se ha pedido está en el corpus.</td></tr>
+      }
+    </tbody>
+  </table>
+}

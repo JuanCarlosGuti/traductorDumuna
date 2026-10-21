@@ -1,0 +1,40 @@
+.controles {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.chiquito {
+  font-size: 0.85rem;
+}
+
+.mensaje {
+  border-left: 3px solid #15803d;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+tr.resuelta td {
+  opacity: 0.6;
+}
+
+.estado {
+  font-size: 0.8rem;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 0 0.5rem;
+}
+
+.estado.exportada {
+  border-color: #b45309;
+  color: #b45309;
+}
+
+.estado.resuelta {
+  border-color: #15803d;
+  color: #15803d;
+}

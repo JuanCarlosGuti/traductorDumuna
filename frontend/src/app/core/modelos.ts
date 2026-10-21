@@ -1,7 +1,8 @@
-// Espejo de los DTOs del backend (backend/src/consulta y backend/src/srs).
+// Espejo de los DTOs del backend (backend/src/consulta, srs, traduccion y pendientes).
 
 export type Idioma = 'damana' | 'espanol';
 export type FuenteCorpus = 'oraciones' | 'frases' | 'vocabulario' | 'conjugaciones';
+export type DominioCorpus = 'biblico' | 'cotidiano' | 'gramatica';
 
 export interface Concordancia {
   fuente: FuenteCorpus;
@@ -105,6 +106,7 @@ export type DireccionTraduccion = 'damana_a_espanol' | 'espanol_a_damana';
 
 export interface FragmentoEjemplo {
   fuente: FuenteCorpus;
+  dominio: DominioCorpus;
   referencia: string;
   damana: string;
   espanol: string;
@@ -118,19 +120,80 @@ export interface Apoyo {
   motivos: string[];
 }
 
+export interface ParGlosa {
+  origen: string;
+  destino: string;
+}
+
+export type TipoCoincidencia = 'exacta' | 'sin_tildes' | 'sinonimo' | 'singular' | 'frase' | 'posible';
+
+export interface Acepcion {
+  palabra: string;
+  espanol: string;
+  damana: string;
+  categoria: string | null;
+  coincidencia: TipoCoincidencia;
+}
+
+export interface NombrePropioUsado {
+  enTexto: string;
+  espanol: string;
+  damana: string;
+}
+
+export interface ReglaUsada {
+  forma: string;
+  significado: string | null;
+  ejemplo: string | null;
+  disparador: string | null;
+}
+
 export interface RespuestaTraduccion {
   traduccion: string;
-  palabrasDudosas: string[];
+  glosa: ParGlosa[];
+  palabrasSinEquivalente: string[];
+  reglasAplicadas: string[];
+  confianza: number;
   explicacionBreve: string;
   apoyo: Apoyo;
   ejemplos: FragmentoEjemplo[];
-  vocabularioUsado: { espanol: string; damana: string }[];
+  diccionario: Acepcion[];
+  nombresPropios: NombrePropioUsado[];
+  reglas: ReglaUsada[];
+  disparadores: string[];
 }
 
 export interface EstadoTraductor {
   disponible: boolean;
   proveedor: 'anthropic' | 'compatible' | null;
   modelo: string | null;
+}
+
+export type OrigenValidacion = 'confirmada' | 'corregida';
+
+export interface ValidarTraduccion {
+  texto: string;
+  direccion: DireccionTraduccion;
+  traduccion: string;
+  origen: OrigenValidacion;
+  traduccionModelo?: string;
+}
+
+export interface ValidacionGuardada {
+  guardada: boolean;
+  total: number;
+}
+
+export interface Pendiente {
+  id: number;
+  palabra: string;
+  idioma: Idioma;
+  contexto: string | null;
+  vecesPedida: number;
+  estado: 'pendiente' | 'exportada' | 'resuelta';
+  origen: 'traductor' | 'elicitacion';
+  creadoEn: string;
+  actualizadoEn: string;
 }
 
 export interface EntradaVocabulario {
@@ -148,4 +211,5 @@ export interface Frase {
   damana: string;
   espanol: string | null;
   notas: string | null;
+  dominio: DominioCorpus;
 }

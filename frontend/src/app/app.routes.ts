@@ -6,6 +6,7 @@ import { Entrar } from './vistas/entrar/entrar';
 import { Ficha } from './vistas/ficha/ficha';
 import { Flashcards } from './vistas/flashcards/flashcards';
 import { Gramatica } from './vistas/gramatica/gramatica';
+import { Pendientes } from './vistas/pendientes/pendientes';
 import { Traductor } from './vistas/traductor/traductor';
 
 // Todo pide sesión salvo /entrar. El guard deja pasar igualmente cuando el
@@ -23,6 +24,7 @@ export const routes: Routes = [
       { path: 'gramatica', component: Gramatica, title: 'Gramática — Corpus Damana' },
       { path: 'flashcards', component: Flashcards, title: 'Flashcards — Corpus Damana' },
       { path: 'traductor', component: Traductor, title: 'Traductor — Corpus Damana' },
+      { path: 'pendientes', component: Pendientes, title: 'Pendientes — Corpus Damana' },
     ],
   },
   { path: '**', redirectTo: 'buscar' },
