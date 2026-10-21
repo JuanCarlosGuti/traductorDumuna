@@ -198,9 +198,10 @@ Para una demo puntual desde el propio PC sin Render:
 
 ## Despliegue en servidor propio (Kamal 2)
 
-Preparado para el VPS propio (netcup, `159.195.235.225`), detrás de
-kamal-proxy junto a las otras apps, en **https://damana.crearcodecesar.com**.
-Render sigue vivo hasta que esta versión lleve una semana estable.
+En producción desde el 21 oct 2026 en el VPS propio (netcup,
+`159.195.235.225`), detrás de kamal-proxy junto a las otras apps:
+**https://damana.crearcodecesar.com**. Render sigue vivo hasta que esta
+versión lleve una semana estable; los dos sirven el mismo `main`.
 
 - **Cómo se despliega:** cada push a `main` corre
   [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): pruebas
@@ -208,7 +209,7 @@ Render sigue vivo hasta que esta versión lleve una semana estable.
   dentro (`npm run importar` en el [`Dockerfile`](Dockerfile)) y
   `kamal deploy`. La imagen se publica en GHCR como
   `ghcr.io/juancarlosguti/corpus-damana`.
-- **Antes del primer deploy:** en Cloudflare, registro A `damana` →
+- **Lo que necesita (hecho el 21 oct 2026):** en Cloudflare, registro A `damana` →
   `159.195.235.225` con proxy apagado (nube gris); con la nube naranja
   Let's Encrypt no puede emitir el certificado. Y en GitHub → Settings →
   Secrets and variables → Actions: `SSH_PRIVATE_KEY`, `SERVER_IP`,

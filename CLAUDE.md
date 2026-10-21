@@ -11,7 +11,7 @@ experiencia en TypeScript/Angular y backend.
   `main` redespliega automáticamente; el build regenera `corpus.db`
   desde los CSV y Excel de `/datos` (por eso agregar corpus = editar los
   archivos de `/datos` + `npm run importar` para probar en local + push).
-- **En preparación (oct 2026): servidor propio con Kamal 2** →
+- **También EN PRODUCCIÓN desde el 21 oct 2026: servidor propio con Kamal 2** →
   `damana.crearcodecesar.com` (VPS netcup 159.195.235.225, usuario
   `deploy`, mismo patrón que cesar-travel y board-checkup: referencias en
   `C:\dev\proyectos\cesar-travel` y `C:\dev\proyectos\infra-servidor\RUNBOOK.md`;
@@ -21,7 +21,10 @@ experiencia en TypeScript/Angular y backend.
   (`npm run importar` en el build, por eso reglas_damana.xlsx y los
   formato_elicitacion*.xlsx NO van en .dockerignore). `GET /api/salud`
   (público) es el healthcheck de kamal-proxy: 503 si la base no tiene
-  corpus. Render no se cancela hasta una semana estable.
+  corpus. Primer deploy el 21 oct 2026 (secretos de Actions creados con
+  `gh secret set`; registro A `damana` en Cloudflare con nube gris).
+  Render no se cancela hasta una semana estable; ambos sirven el mismo
+  `main`, y sus bases de runtime son independientes.
 - **Acceso con contraseña, un solo usuario.** El dueño pidió quitarla el
   3 oct 2026 y restaurarla el 5 («que tenga solo acceso yo»); nunca llegó
   a subirse sin ella. AUTH_USUARIO y AUTH_PASSWORD son secretos del panel
