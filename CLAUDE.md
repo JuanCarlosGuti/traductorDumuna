@@ -26,13 +26,24 @@ experiencia en TypeScript/Angular y backend.
   3 oct 2026 y restaurarla el 5 («que tenga solo acceso yo»); nunca llegó
   a subirse sin ella. AUTH_USUARIO y AUTH_PASSWORD son secretos del panel
   de Render. No quitar la autenticación sin que lo pida.
-- **Motor de traducción vigente: Groq** `openai/gpt-oss-120b`
-  (~2 s/traducción). Ollama quedó abandonado como motor por lentitud
-  (~29 s con qwen2.5:7b), aunque el soporte por variables sigue
-  existiendo. La clave vive: en local como variable de usuario de
-  Windows `TRADUCTOR_API_KEY`; en Render como secreto del servicio.
-  Alternativa: `ANTHROPIC_API_KEY` (prioridad; modelo `claude-opus-5-5`
-  por defecto, cambiable con `ANTHROPIC_MODELO`).
+- **Motor de traducción vigente: Claude** `claude-opus-5-5` vía
+  `ANTHROPIC_API_KEY` (tiene prioridad en el código; 5-15 s por
+  traducción). Se paga con los créditos API mensuales del plan Max de
+  claude.ai (org «Juan's Individual Org» en console.anthropic.com, clave
+  llamada «corpus-damana»; los créditos se renuevan el 5 de cada mes y no
+  se acumulan). Render ya la tiene como secreto del servicio (desde el
+  commit 7a05483). No cambiar el modelo por defecto sin que lo pida;
+  `ANTHROPIC_MODELO` lo sobreescribe por entorno.
+- **Respaldo: Groq** `openai/gpt-oss-120b` (~2 s/traducción, gratis):
+  sigue configurado en Render y en Kamal (TRADUCTOR_BASE_URL +
+  TRADUCTOR_MODELO + TRADUCTOR_API_KEY) y el código lo usa solo si falta
+  la clave de Anthropic. Ollama quedó abandonado por lentitud (~29 s con
+  qwen2.5:7b), aunque el soporte por variables sigue existiendo. En local
+  ambas claves son variables de usuario de Windows.
+- **Pendiente (lo hace Juan a mano):** crear el secreto `ANTHROPIC_API_KEY`
+  en GitHub → Settings → Secrets and variables → Actions para el
+  despliegue con Kamal. Mientras no exista, el workflow lo exporta vacío
+  y el servidor propio traduce con Groq.
 - Trampas ya sufridas en Render (no repetir): exige
   `NODE_VERSION >= 24.15.0` (la CLI de Angular rechaza menores) y,
   por ser monorepo con npm workspaces (lock único en la raíz), TODO

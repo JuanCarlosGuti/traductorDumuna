@@ -8,8 +8,9 @@ IA apoyado en el corpus y ciclo de pendientes con las hablantes nativas.
 > **🌍 En producción: https://corpus-damana.onrender.com** (Render, plan
 > gratuito — tras ~15 min sin visitas el servicio se duerme y la primera
 > petición tarda ~30-60 s en despertarlo). Pide usuario y contraseña (un
-> solo usuario). Motor de traducción actual: **Groq**
-> (`openai/gpt-oss-120b`). Ver [Despliegue](#despliegue-render) y
+> solo usuario). Motor de traducción actual: **Claude**
+> (`claude-opus-5-5`, API de Anthropic; Groq queda de respaldo). Ver
+> [Despliegue](#despliegue-render) y
 > [Actualizar el corpus](#actualizar-el-corpus).
 
 ## Requisitos
@@ -40,28 +41,42 @@ Para producción: `npm run build` y luego `npm run start:prod`.
 Las demás vistas funcionan sin configuración. El **Traductor** necesita
 un motor de IA, elegido por variables de entorno.
 
-### Motor actual: Groq (gratis, ~2 s por traducción)
+### Motor actual: Claude (`claude-opus-5-5`, API de Anthropic)
 
-Es la configuración vigente **tanto en local como en Render**. Clave
-gratis sin tarjeta en https://console.groq.com (API Keys → Create):
+Es la configuración vigente **tanto en local como en Render**. La clave
+se crea en https://console.anthropic.com (API Keys; la de este proyecto
+se llama «corpus-damana») y se paga con los créditos API mensuales que
+incluye el plan Max de claude.ai (se renuevan cada mes y no se acumulan):
+
+```powershell
+setx ANTHROPIC_API_KEY "sk-ant-..."
+# OJO: setx no afecta la terminal abierta; abre una NUEVA terminal.
+```
+
+Si está definida **tiene prioridad** sobre las variables TRADUCTOR_*.
+Tarda entre 5 y 15 s por traducción. Modelo por defecto `claude-opus-5-5`;
+se cambia con `ANTHROPIC_MODELO`.
+
+### Respaldo: Groq (gratis, ~2 s por traducción)
+
+Sigue configurado en Render y en el servidor propio: el backend lo usa
+solo si falta `ANTHROPIC_API_KEY`. Clave gratis sin tarjeta en
+https://console.groq.com (API Keys → Create):
 
 ```powershell
 setx TRADUCTOR_BASE_URL "https://api.groq.com/openai/v1"
 setx TRADUCTOR_MODELO "openai/gpt-oss-120b"
 setx TRADUCTOR_API_KEY "gsk_..."
-# OJO: setx no afecta la terminal abierta; abre una NUEVA terminal.
 ```
+
+El plan gratuito devuelve 429 a la cuarta traducción por minuto; el
+backend espera lo que pida `Retry-After` y reintenta dos veces.
 
 ### Alternativas (mismo mecanismo, otras variables)
 
 - **Cualquier API compatible con OpenAI**: Google Gemini, el router de
   Hugging Face, Ollama local (`TRADUCTOR_BASE_URL=http://localhost:11434/v1`,
   `TRADUCTOR_MODELO=qwen2.5:7b`, `TRADUCTOR_TIMEOUT_MS=300000`; lento).
-- **Claude por API** (SDK oficial de Anthropic, de pago — la suscripción
-  de claude.ai NO incluye API): crédito en https://console.anthropic.com
-  y `ANTHROPIC_API_KEY=sk-ant-...`. Si está definida **tiene prioridad**
-  sobre las variables TRADUCTOR_*. Modelo por defecto `claude-opus-5-5`;
-  se cambia con `ANTHROPIC_MODELO`.
 
 Sin motor configurado, la vista Traductor lo explica y el resto de la
 app sigue funcionando.
@@ -176,8 +191,10 @@ Render sigue vivo hasta que esta versión lleve una semana estable.
   `159.195.235.225` con proxy apagado (nube gris); con la nube naranja
   Let's Encrypt no puede emitir el certificado. Y en GitHub → Settings →
   Secrets and variables → Actions: `SSH_PRIVATE_KEY`, `SERVER_IP`,
-  `TRADUCTOR_API_KEY`, `AUTH_USUARIO`, `AUTH_PASSWORD`, `AUTH_JWT_SECRET`.
-  `KAMAL_REGISTRY_PASSWORD` no se crea: es el `GITHUB_TOKEN`.
+  `ANTHROPIC_API_KEY` (pendiente de crear; mientras falte, el servidor
+  propio traduce con Groq), `TRADUCTOR_API_KEY`, `AUTH_USUARIO`,
+  `AUTH_PASSWORD`, `AUTH_JWT_SECRET`. `KAMAL_REGISTRY_PASSWORD` no se
+  crea: es el `GITHUB_TOKEN`.
 - **Verificar:** `curl -sI https://damana.crearcodecesar.com/` → 200 con
   `Strict-Transport-Security`, y
   `curl -s https://damana.crearcodecesar.com/api/salud` → `{"estado":"ok"}`
@@ -187,7 +204,7 @@ Render sigue vivo hasta que esta versión lleve una semana estable.
   pierde en cada deploy, igual que en Render. El siguiente paso es un
   volumen de Kamal con una base de estado aparte.
 - **Probar la imagen en local:** `docker build -t corpus-damana .` y luego
-  `docker run --rm -p 3000:3000 -e NODE_ENV=production -e AUTH_USUARIO=… -e AUTH_PASSWORD=… -e AUTH_JWT_SECRET=… -e TRADUCTOR_API_KEY=… corpus-damana`.
+  `docker run --rm -p 3000:3000 -e NODE_ENV=production -e AUTH_USUARIO=… -e AUTH_PASSWORD=… -e AUTH_JWT_SECRET=… -e ANTHROPIC_API_KEY=… -e TRADUCTOR_API_KEY=… corpus-damana`.
 
 ## Actualizar el corpus
 
