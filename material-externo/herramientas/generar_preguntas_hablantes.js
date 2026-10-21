@@ -303,6 +303,35 @@ async function cuadernoRevisor() {
   // 6. reglas restantes
   resumen.push(['reglas', hojaReglas(libro, reglasRestantes, 'reglas')]);
 
+  // 6b. u por ʉ dentro del corpus (si corrió variantes_u_en_corpus.js)
+  const rutaVariantes = path.join(SALIDA, 'variantes_u_en_corpus.csv');
+  if (fs.existsSync(rutaVariantes)) {
+    const vu = libro.addWorksheet('u por ʉ en el corpus');
+    vu.columns = [
+      { header: 'n', key: 'n', width: 5 },
+      { header: 'como está escrita en las oraciones', key: 'variante', width: 24 },
+      { header: 'forma con ʉ del vocabulario', key: 'forma', width: 24 },
+      { header: 'qué quiere decir', key: 'es', width: 26 },
+      { header: 'veces', key: 'veces', width: 7 },
+      { header: 'ejemplo', key: 'ejemplo', width: 60 },
+      { header: '¿Es la misma palabra? (sí: se corrige a ʉ / no: son dos palabras)', key: 'resp', width: 22 },
+      { header: 'Notas', key: 'notas', width: 26 },
+    ];
+    cabecera(vu);
+    const variantes = leerCsv(rutaVariantes);
+    variantes.forEach((v, i) => {
+      const f = vu.addRow({
+        n: i + 1, variante: v.palabra_en_corpus, forma: v.forma_con_u_partida, es: v.espanol_vocabulario,
+        veces: Number(v.veces), ejemplo: v.ejemplo, resp: '', notas: '',
+      });
+      pintar(f.getCell('resp'));
+      pintar(f.getCell('notas'));
+      opciones(f.getCell('resp'), ['sí, la misma', 'no, son dos palabras', 'no sé']);
+    });
+    ajustar(vu, ['variante', 'forma', 'es', 'ejemplo', 'notas']);
+    resumen.push(['u por ʉ en el corpus', variantes.length]);
+  }
+
   // 7. ya resueltas (informativo)
   const ya = libro.addWorksheet('ya resueltas');
   ya.columns = [

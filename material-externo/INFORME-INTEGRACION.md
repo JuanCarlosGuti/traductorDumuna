@@ -119,12 +119,24 @@ respuestas, igual que falta para el documento de dudas.
    lleva ʉ**, sea la fuente vieja o nueva: quitarla es un error porque cambia
    el sonido. El cruce la aplica solo y escribe `correcciones_u_partida.csv`
    cuando el que perdió la ʉ es el corpus. Hubo una, y se aplicó al corpus:
-   **Sal: Nungu → Nʉngu** (lo traen con ʉ el Living Dictionary y el Swadesh).
-   Ojo: el folleto bíblico escribe «nungu» en dos oraciones (lfb_MLY_p033_s001
-   y s005, «estatua de sal»); esas no se tocaron. Como u ≠ ʉ en la búsqueda,
-   buscar «nʉngu» ya no encuentra esas dos oraciones: decidir si se corrigen
-   también.
+   **Sal: Nungu → Nʉngu** (lo traen con ʉ el Living Dictionary y el Swadesh),
+   y por indicación del dueño también en las dos oraciones del folleto que
+   escribían «nungu» (lfb_MLY_p033_s001 y s005, «estatua de sal»).
+   Matiz del dueño: la ʉ suena «medio gutural» (aproximación) y la u como en
+   español; los textos antiguos a veces escriben u por ʉ, así que al leerlos
+   se admite que una u pueda ser ʉ, pero se conserva la forma con ʉ.
    La misma regla vale para la hoja 1 del documento de dudas (u/ʉ).
+3. **Dónde más pasa dentro del corpus.**
+   `herramientas/variantes_u_en_corpus.js` busca en oraciones, frases y
+   conjugaciones palabras escritas con u cuya forma con ʉ está en el
+   vocabulario y cuya forma con u no es otra palabra: 21 palabras, 55
+   apariciones (duma→dʉma 8, naiun→naiʉn 6, nanunkurra→nanʉnkurra 5,
+   nekunkurra→nekʉnkurra 5, guagun→guagʉn 4, bugui→bʉgui 4,
+   nujkunanun→nʉjkʉnanun 4…). NO se corrigieron en bloque: «duma» aparece
+   también en la cartilla de 2012, que sí escribe ʉ en otras palabras, así
+   que puede ser una palabra distinta. Van al revisor en la hoja «u por ʉ en
+   el corpus» de `revision_material_externo.xlsx`; lo que marque «sí, la
+   misma» se corrige después en los CSV.
 
 ## Lo que se descartó y por qué
 - *Fe y cultura entre Wiwa y Arhuaco*: solo español.

@@ -261,11 +261,20 @@ experiencia en TypeScript/Angular y backend.
   traductor con la mitad del puntaje (PESO_REVISAR = 0.5).
 - Decisión del dueño (21 oct 2026): cuando la misma palabra aparece en una
   fuente con ʉ y en otra con u en la misma posición, **prevalece la forma
-  con ʉ**; quitarla es un error porque cambia el sonido. No se le pregunta
-  a nadie. El cruce de material externo la aplica solo
-  (`correcciones_u_partida.csv`); al resolver la hoja 1 del documento de
-  dudas (u/ʉ) vale la misma regla. Esto NO cambia que u ≠ ʉ en búsqueda e
-  indexación: es solo para decidir cuál de dos variantes se conserva.
+  con ʉ**, sea la fuente vieja o nueva; quitarla es un error porque cambia
+  el sonido (la ʉ suena «medio gutural», aproximadamente; la u como en
+  español). La ʉ fue una mejora de la escritura y los textos antiguos,
+  incluido el folleto bíblico, a veces escriben u donde va ʉ: al LEER texto
+  viejo hay que admitir que una u pueda ser ʉ, pero lo que se conserva y se
+  escribe es la forma con ʉ. No se le pregunta a nadie, salvo cuando la
+  variante con u podría ser OTRA palabra (p. ej. «duma» frente a «dʉma»):
+  eso lo decide el revisor con
+  `material-externo/herramientas/variantes_u_en_corpus.js`. El cruce de
+  material externo la aplica solo (`correcciones_u_partida.csv`); al
+  resolver la hoja 1 del documento de dudas (u/ʉ) vale la misma regla. Ya
+  aplicada: Sal «Nungu» → «Nʉngu» en el vocabulario y en las dos oraciones
+  lfb de p033. Esto NO cambia que u ≠ ʉ en búsqueda e indexación: es solo
+  para decidir cuál de dos variantes se conserva.
 
 ## Convenciones
 - Cada servicio con tests; incluir siempre un caso con ʉ y uno con ñ.
