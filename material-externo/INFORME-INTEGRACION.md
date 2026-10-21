@@ -69,15 +69,30 @@ divergencias con casilla de respuesta). Se regeneran con
 
 ## Lo que fue a las hablantes y al revisor
 
-`salida/preguntas_hablantes.xlsx`:
-- Hoja «elicitacion» (116 filas, para cualquier hablante): 19 palabras clave,
+`salida/preguntas_hablantes.xlsx` es UN solo cuaderno con todo lo que quedó
+por confirmar, en lenguaje llano y con las casillas por llenar en amarillo
+(listas desplegables sí/no donde aplica):
+- «palabras nuevas» (205 filas, cualquier hablante): ¿se dice así?, si no
+  cómo, y una frase de ejemplo. Ordenadas por seguridad (97 altas primero).
+- «escritura» (34 pares + 5 preguntas generales, revisor): forma A del corpus
+  frente a forma B de la fuente, y las preguntas de fondo (gu/gw, dz/dzh,
+  j/h, ch/tsh, rr).
+- «significados» (84 filas, revisor): misma palabra con dos significados.
+- «palabras distintas» (150 filas, revisor): dos palabras para lo mismo.
+- «reglas» (26 filas, cualquier hablante): cada regla propuesta como pregunta
+  («para decir que NO se hace algo, ¿se le pega -un al verbo?») con el
+  ejemplo de la fuente, y espacio para otro ejemplo propio. Las cinco
+  prioritarias (negación, pregunta, «ki nanu», prohibición, «cantemos») van
+  en negrita.
+- «texto para traducir» (116 filas, cualquier hablante): 19 palabras clave,
   38 preguntas y 38 oraciones de la cartilla de 2012, y 21 títulos y líneas
   cortas de «El camino del muchacho». Damana ya escrito; español en amarillo.
-- Hoja «divergencias» (268 filas, para el revisor): corpus frente a fuente,
-  con casilla de respuesta en amarillo.
+  Es el formato de elicitación del proyecto.
 - El archivo NO se llama `formato_elicitacion_*.xlsx` a propósito: el
   importador actual exige `palabra_es` para crear vocabulario y, con filas
   que solo traen damana, generaría pendientes vacías. Ver cambios de código.
+  Cuando vuelva lleno hará falta un paso que lea estas hojas y aplique las
+  respuestas (igual que falta para el documento de dudas).
 
 ## Lo que se descartó y por qué
 - *Fe y cultura entre Wiwa y Arhuaco*: solo español.
