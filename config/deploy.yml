@@ -68,11 +68,15 @@ env:
     # sea obligatoria (auth.config.ts) y conviene verlo junto a lo demás.
     NODE_ENV: production
     PORT: "3000"
-    # Motor de traducción: Groq, API compatible con OpenAI. Para pasar a
-    # Claude bastaría añadir ANTHROPIC_API_KEY a `secret` (tiene prioridad).
+    # Motor de traducción principal: Claude (ANTHROPIC_API_KEY en `secret`,
+    # tiene prioridad). Groq queda como respaldo: solo se usa si falta la
+    # clave de Anthropic.
     TRADUCTOR_BASE_URL: https://api.groq.com/openai/v1
     TRADUCTOR_MODELO: openai/gpt-oss-120b
   secret:
+    # Claude (claude-opus-5-5 por defecto; créditos API del plan Max).
+    - ANTHROPIC_API_KEY
+    # Respaldo: clave de Groq.
     - TRADUCTOR_API_KEY
     # Usuario único de la app. Sin estas dos el servicio NO arranca en
     # producción, a propósito.
