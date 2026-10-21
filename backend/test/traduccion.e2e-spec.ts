@@ -9,7 +9,7 @@ import { CONFIG_TRADUCTOR } from '../src/traduccion/config-traductor.provider';
 import { TraduccionModule } from '../src/traduccion/traduccion.module';
 
 // E2E sin ningún motor configurado: el traductor debe degradar con gracia
-// (503 + instrucciones), nunca romper la app.
+// (503 + instrucciones), nunca romper la app. Validar sí funciona sin motor.
 describe('Traductor (e2e, sin motor configurado)', () => {
   let app: INestApplication;
 
@@ -31,8 +31,7 @@ describe('Traductor (e2e, sin motor configurado)', () => {
     await app.init();
   });
 
-  afterAll(async () =>
-    app.close());
+  afterAll(async () => app.close());
 
   it('GET /api/traducir/estado reporta disponible: false sin motor', async () => {
     const res = await request(app.getHttpServer()).get('/api/traducir/estado').expect(200);
@@ -57,6 +56,33 @@ describe('Traductor (e2e, sin motor configurado)', () => {
     await request(app.getHttpServer())
       .post('/api/traducir')
       .send({ texto: '', direccion: 'damana_a_espanol' })
+      .expect(400);
+  });
+
+  it('POST /api/traducir/validar guarda el par confirmado o corregido (con ʉ y ñ intactas)', async () => {
+    const r1 = await request(app.getHttpServer())
+      .post('/api/traducir/validar')
+      .send({
+        texto: 'mi mamá cocina',
+        direccion: 'espanol_a_damana',
+        traduccion: 'Ranzhe abu dugwa ñingui',
+        origen: 'confirmada',
+        traduccionModelo: 'Ranzhe abu dugwa ñingui',
+      })
+      .expect(201);
+    expect(r1.body).toEqual({ guardada: true, total: 1 });
+
+    const r2 = await request(app.getHttpServer())
+      .post('/api/traducir/validar')
+      .send({ texto: 'kʉnʉnka nʉnka', direccion: 'damana_a_espanol', traduccion: 'tiene agua', origen: 'corregida' })
+      .expect(201);
+    expect(r2.body).toEqual({ guardada: true, total: 2 });
+  });
+
+  it('validar rechaza un origen desconocido', async () => {
+    await request(app.getHttpServer())
+      .post('/api/traducir/validar')
+      .send({ texto: 'x', direccion: 'espanol_a_damana', traduccion: 'y', origen: 'dudosa' })
       .expect(400);
   });
 });

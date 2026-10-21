@@ -2,10 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Database } from 'better-sqlite3';
 import { FuenteCorpus } from '../consulta/consulta.enums';
 import { CONEXION_DB } from '../database/database.constants';
-import {
-  DireccionTraduccion,
-  EntradaVocabularioUsadaDto,
-} from './dto/traduccion.dto';
+import { DireccionTraduccion, ParGlosaDto } from './dto/traduccion.dto';
 
 export interface RegistroTraduccion {
   texto: string;
@@ -20,9 +17,13 @@ export interface RegistroTraduccion {
   ejemplosRecuperados: number;
   /** Cuántos ejemplos venían de oraciones o frases (la lengua en uso). */
   ejemplosEnContexto: number;
+  /** Palabras sin equivalente (columna histórica palabras_dudosas). */
   palabrasDudosas: string[];
-  vocabularioUsado: EntradaVocabularioUsadaDto[];
+  vocabularioUsado: { espanol: string; damana: string }[];
   modelo: string;
+  confianza?: number;
+  reglasAplicadas?: string[];
+  glosa?: ParGlosaDto[];
 }
 
 /** Fila tal como se lee de la tabla, para análisis posteriores. */
@@ -78,8 +79,8 @@ export class TraduccionesRepository {
         `INSERT INTO traducciones
            (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
             fuente_top, ejemplos_recuperados, ejemplos_en_contexto,
-            palabras_dudosas, vocabulario_usado, modelo)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            palabras_dudosas, vocabulario_usado, modelo, confianza, reglas_aplicadas, glosa)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         ahora.toISOString(),
@@ -94,6 +95,9 @@ export class TraduccionesRepository {
         JSON.stringify(registro.palabrasDudosas),
         JSON.stringify(registro.vocabularioUsado),
         registro.modelo,
+        registro.confianza ?? null,
+        registro.reglasAplicadas ? JSON.stringify(registro.reglasAplicadas) : null,
+        registro.glosa ? JSON.stringify(registro.glosa) : null,
       );
   }
 }

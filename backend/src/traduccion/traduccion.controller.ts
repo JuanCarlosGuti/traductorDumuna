@@ -10,6 +10,8 @@ import {
   EstadoTraductorDto,
   RespuestaTraduccionDto,
   TraducirDto,
+  ValidacionGuardadaDto,
+  ValidarTraduccionDto,
 } from './dto/traduccion.dto';
 import { TraduccionService } from './traduccion.service';
 
@@ -38,12 +40,23 @@ export class TraduccionController {
   @ApiOperation({
     summary: 'Traducción asistida damana ↔ español',
     description:
-      'Traducción con claude-sonnet-4-6 apoyada en el corpus: los 8 fragmentos más similares (TF-IDF) y las entradas de vocabulario presentes en el texto van como contexto en el prompt. Devuelve también esos apoyos para poder estudiarlos.',
+      'El prompt lleva, en este orden: reglas gramaticales aplicables, diccionario palabra por palabra (exacta → sin tildes → singular → prefijo), nombres propios, y ejemplos por similitud con cupos por dominio (hasta 6 cotidianos, 4 de gramática, 4 bíblicos —2 si hay cotidianos suficientes—, máximo 14). Devuelve glosa, palabras sin equivalente (se registran en pendientes), reglas aplicadas y confianza, más todo el apoyo usado.',
   })
   @ApiOkResponse({ type: RespuestaTraduccionDto })
-  @ApiServiceUnavailableResponse({ description: 'Falta ANTHROPIC_API_KEY (codigo: SIN_API_KEY)' })
-  @ApiBadGatewayResponse({ description: 'Error de la API de Anthropic o respuesta no parseable' })
+  @ApiServiceUnavailableResponse({ description: 'Ningún motor configurado (codigo: SIN_PROVEEDOR)' })
+  @ApiBadGatewayResponse({ description: 'Error del proveedor o respuesta no parseable' })
   traducir(@Body() dto: TraducirDto): Promise<RespuestaTraduccionDto> {
     return this.traduccion.traducir(dto);
+  }
+
+  @Post('validar')
+  @ApiOperation({
+    summary: 'Guardar una traducción confirmada o corregida',
+    description:
+      'Botones «esta traducción es correcta» y «corregir» de la vista: el par queda en la tabla validadas, futura fuente cotidiana de máxima confianza.',
+  })
+  @ApiOkResponse({ type: ValidacionGuardadaDto })
+  validar(@Body() dto: ValidarTraduccionDto): ValidacionGuardadaDto {
+    return this.traduccion.validar(dto);
   }
 }

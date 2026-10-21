@@ -2,7 +2,11 @@ import { Provider } from '@nestjs/common';
 
 export const CONFIG_TRADUCTOR = 'CONFIG_TRADUCTOR';
 
-export const MODELO_CLAUDE = 'claude-sonnet-4-6';
+/**
+ * Modelo de Claude por defecto (oct 2026). Se puede cambiar sin tocar
+ * código con ANTHROPIC_MODELO (p. ej. claude-sonnet-5-5 para abaratar).
+ */
+export const MODELO_CLAUDE = 'claude-opus-5-5';
 
 /** Timeout de la llamada al modelo; ampliable con TRADUCTOR_TIMEOUT_MS
  *  (útil para modelos locales tipo Ollama, más lentos que una API). */
@@ -25,17 +29,20 @@ export interface ConfigTraductor {
 /**
  * Selección del motor de traducción por variables de entorno:
  *
- * 1. ANTHROPIC_API_KEY            → Claude (claude-sonnet-4-6), prioridad.
+ * 1. ANTHROPIC_API_KEY [+ ANTHROPIC_MODELO] → Claude vía el SDK oficial, prioridad.
  * 2. TRADUCTOR_BASE_URL + TRADUCTOR_MODELO [+ TRADUCTOR_API_KEY]
- *    → cualquier API compatible con OpenAI: Google Gemini, Groq, Ollama
- *      local, Hugging Face router, etc.
+ *    → cualquier API compatible con OpenAI: Groq (producción), Google
+ *      Gemini, Ollama local, Hugging Face router, etc.
  * 3. Nada configurado             → el traductor responde 503 con ayuda.
  */
 export const configTraductorProvider: Provider = {
   provide: CONFIG_TRADUCTOR,
   useFactory: (): ConfigTraductor => {
     if (process.env.ANTHROPIC_API_KEY) {
-      return { proveedor: 'anthropic', modelo: MODELO_CLAUDE };
+      return {
+        proveedor: 'anthropic',
+        modelo: process.env.ANTHROPIC_MODELO?.trim() || MODELO_CLAUDE,
+      };
     }
     const baseUrl = process.env.TRADUCTOR_BASE_URL;
     const modelo = process.env.TRADUCTOR_MODELO;

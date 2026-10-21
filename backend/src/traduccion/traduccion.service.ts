@@ -9,14 +9,15 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { normalizar } from '../comun/texto/normalizador';
 import { esStopwordEspanol } from '../comun/texto/stopwords-es';
-import { tokenizarDamana } from '../comun/texto/tokenizador';
 import { FuenteCorpus, Idioma } from '../consulta/consulta.enums';
-import { CorpusRepository } from '../consulta/corpus.repository';
 import {
+  ContextoRecuperado,
   FragmentoRecuperado,
   RetrievalService,
 } from '../consulta/retrieval.service';
+import { PendientesRepository } from '../pendientes/pendientes.repository';
 import { CLIENTE_ANTHROPIC } from './anthropic.provider';
 import { evaluarApoyo, SenalesApoyo } from './apoyo';
 import {
@@ -26,35 +27,53 @@ import {
 } from './config-traductor.provider';
 import {
   DireccionTraduccion,
-  EntradaVocabularioUsadaDto,
   RespuestaTraduccionDto,
   TraducirDto,
+  ValidacionGuardadaDto,
+  ValidarTraduccionDto,
 } from './dto/traduccion.dto';
+import {
+  armarPromptSistema,
+  armarPromptUsuario,
+  esquemaRespuesta,
+  normalizarRespuestaModelo,
+  RespuestaModelo,
+} from './prompt';
 import { TraduccionesRepository } from './traducciones.repository';
-
-const MAX_TOKENS_RESPUESTA = 2048;
-const MAX_ENTRADAS_VOCABULARIO = 20;
+import { ValidadasRepository } from './validadas.repository';
 
 /**
- * Cobertura léxica mínima para incluir una entrada de vocabulario. Descarta
- * las entradas del glosario que son frases largas y solo comparten una
- * palabra frecuente con el texto (p. ej. «Iwa ingui nʉnzhu nukurra, zukuega
- * nʉnka.» colándose en cualquier consulta que mencione «nʉnka»).
+ * Con pensamiento adaptativo activo, los tokens de razonamiento cuentan
+ * dentro de max_tokens: se deja margen de sobra para que el JSON no se
+ * corte. En los proveedores compatibles no hay razonamiento oculto.
  */
-const COBERTURA_MINIMA = 0.25;
+const MAX_TOKENS_ANTHROPIC = 16_000;
+const MAX_TOKENS_COMPATIBLE = 4096;
+/** La frase original se guarda acortada como contexto de la pendiente. */
+const MAX_CONTEXTO_PENDIENTE = 200;
 
-interface EntradaIndexada {
-  espanol: string;
-  damana: string;
-  /** Tokens normalizados por idioma; en español, ya sin stopwords. */
-  tokens: Record<Idioma, string[]>;
+/**
+ * Límite de uso del proveedor compatible (429). El plan gratuito de Groq
+ * admite unas cuatro traducciones por minuto con prompts de este tamaño:
+ * se espera lo que pida Retry-After (acotado) y se reintenta, en vez de
+ * fallar a la primera.
+ */
+export const REINTENTOS_429 = 2;
+export const ESPERA_429_POR_DEFECTO_MS = 15_000;
+export const ESPERA_429_MAXIMA_MS = 30_000;
+
+export function esperaTrasLimite(retryAfter: string | null | undefined): number {
+  const segundos = Number(retryAfter);
+  if (Number.isFinite(segundos) && segundos > 0) {
+    return Math.min(Math.ceil(segundos * 1000), ESPERA_429_MAXIMA_MS);
+  }
+  return ESPERA_429_POR_DEFECTO_MS;
 }
 
-interface EntradaPuntuada {
-  entrada: EntradaIndexada;
-  cobertura: number;
-  longitud: number;
-}
+/** Separado para que los tests no esperen de verdad. */
+export const reloj = {
+  dormir: (ms: number): Promise<void> => new Promise((resolver) => setTimeout(resolver, ms)),
+};
 
 export const MENSAJE_SIN_PROVEEDOR =
   'El traductor no tiene ningún motor configurado. Opciones: ' +
@@ -63,6 +82,14 @@ export const MENSAJE_SIN_PROVEEDOR =
   'Google Gemini, Groq, Hugging Face); ' +
   '(B) Claude: define ANTHROPIC_API_KEY (console.anthropic.com). ' +
   'Después reinicia el backend. Detalles en el README.';
+
+export interface OpcionesTraduccion {
+  /**
+   * false para evaluar sin dejar huella: ni fila en traducciones ni
+   * pendientes nuevas. Por defecto se registra todo.
+   */
+  registrar?: boolean;
+}
 
 /**
  * Extrae un objeto JSON de la respuesta del modelo con tolerancia a
@@ -84,15 +111,13 @@ export function extraerJson(texto: string): Record<string, unknown> {
 export class TraduccionService {
   private readonly logger = new Logger(TraduccionService.name);
 
-  /** Caché del vocabulario tokenizado (se llena en la primera traducción). */
-  private vocabularioIndexado?: EntradaIndexada[];
-
   constructor(
     @Inject(CLIENTE_ANTHROPIC) private readonly cliente: Anthropic | null,
     @Inject(CONFIG_TRADUCTOR) private readonly config: ConfigTraductor,
     private readonly retrieval: RetrievalService,
-    private readonly repo: CorpusRepository,
     private readonly registro: TraduccionesRepository,
+    private readonly pendientes: PendientesRepository,
+    private readonly validadas: ValidadasRepository,
   ) {}
 
   disponible(): boolean {
@@ -103,7 +128,10 @@ export class TraduccionService {
     return this.config;
   }
 
-  async traducir(dto: TraducirDto): Promise<RespuestaTraduccionDto> {
+  async traducir(
+    dto: TraducirDto,
+    opciones: OpcionesTraduccion = {},
+  ): Promise<RespuestaTraduccionDto> {
     if (!this.config.proveedor) {
       throw new ServiceUnavailableException({
         codigo: 'SIN_PROVEEDOR',
@@ -112,51 +140,99 @@ export class TraduccionService {
     }
 
     const idiomaOrigen =
-      dto.direccion === DireccionTraduccion.damana_a_espanol
-        ? Idioma.damana
-        : Idioma.espanol;
-    const ejemplos = this.retrieval.similares(dto.texto, idiomaOrigen);
-    const vocabulario = this.vocabularioRelevante(dto.texto, idiomaOrigen);
+      dto.direccion === DireccionTraduccion.damana_a_espanol ? Idioma.damana : Idioma.espanol;
+    const contexto = this.retrieval.recuperarContexto(dto.texto, idiomaOrigen);
 
-    const sistema = this.armarPromptSistema();
-    const usuario = this.armarPromptUsuario(dto, ejemplos, vocabulario);
+    const sistema = armarPromptSistema(dto.direccion);
+    const usuario = armarPromptUsuario(dto.texto, dto.direccion, contexto);
     const texto =
       this.config.proveedor === 'anthropic'
-        ? await this.llamarAnthropic(sistema, usuario)
+        ? await this.llamarAnthropic(sistema, usuario, esquemaRespuesta(dto.direccion))
         : await this.llamarCompatible(sistema, usuario);
-    const json = this.parsearRespuesta(texto);
+    const modelo = normalizarRespuestaModelo(this.parsearRespuesta(texto));
 
-    const senales = this.senalesDeApoyo(ejemplos);
-    const respuesta: RespuestaTraduccionDto = {
-      traduccion: typeof json.traduccion === 'string' ? json.traduccion : '',
-      palabrasDudosas: Array.isArray(json.palabras_dudosas)
-        ? json.palabras_dudosas.filter((p): p is string => typeof p === 'string')
-        : [],
-      explicacionBreve:
-        typeof json.explicacion_breve === 'string' ? json.explicacion_breve : '',
-      apoyo: evaluarApoyo(senales),
-      ejemplos,
-      vocabularioUsado: vocabulario,
-    };
+    const senales = this.senalesDeApoyo(contexto.ejemplos);
+    const respuesta = this.armarRespuesta(modelo, contexto, senales);
 
-    this.registrarTraduccion(dto, respuesta, senales);
+    if (opciones.registrar !== false) {
+      this.registrarTraduccion(dto, respuesta, senales);
+      this.registrarPendientes(dto, respuesta.palabrasSinEquivalente);
+    }
     return respuesta;
   }
 
+  /** «Esta traducción es correcta» / «corregir»: guarda el par validado. */
+  validar(dto: ValidarTraduccionDto): ValidacionGuardadaDto {
+    const haciaDamana = dto.direccion === DireccionTraduccion.espanol_a_damana;
+    this.validadas.guardar({
+      espanol: (haciaDamana ? dto.texto : dto.traduccion).trim(),
+      damana: (haciaDamana ? dto.traduccion : dto.texto).trim(),
+      direccion: dto.direccion,
+      origen: dto.origen,
+      traduccionModelo: dto.traduccionModelo?.trim() || null,
+    });
+    return { guardada: true, total: this.validadas.contar() };
+  }
+
+  private armarRespuesta(
+    modelo: RespuestaModelo,
+    contexto: ContextoRecuperado,
+    senales: SenalesApoyo,
+  ): RespuestaTraduccionDto {
+    return {
+      traduccion: modelo.traduccion,
+      glosa: modelo.glosa,
+      palabrasSinEquivalente: modelo.palabrasSinEquivalente,
+      reglasAplicadas: modelo.reglasAplicadas,
+      confianza: modelo.confianza,
+      explicacionBreve: modelo.explicacionBreve,
+      apoyo: evaluarApoyo(senales),
+      ejemplos: contexto.ejemplos.map((e) => ({
+        fuente: e.fuente,
+        dominio: e.dominio,
+        referencia: e.referencia,
+        damana: e.damana,
+        espanol: e.espanol,
+        puntaje: e.puntaje,
+      })),
+      diccionario: contexto.diccionario.map((a) => ({
+        palabra: a.palabra,
+        espanol: a.espanol,
+        damana: a.damana,
+        categoria: a.categoria,
+        coincidencia: a.coincidencia,
+      })),
+      nombresPropios: contexto.nombresPropios,
+      reglas: contexto.reglas.map((r) => ({
+        forma: r.forma,
+        significado: r.significado,
+        ejemplo:
+          r.ejemploBase && r.ejemploRegla
+            ? `${r.ejemploBase} → ${r.ejemploRegla}${r.traduccionEjemplo ? ` = ${r.traduccionEjemplo}` : ''}`
+            : null,
+        disparador: r.disparador,
+      })),
+      disparadores: contexto.disparadores,
+    };
+  }
+
   /**
-   * Cuánto respalda el corpus a esta traducción. Los ejemplos llegan ya
-   * ordenados por puntaje desde el retrieval.
+   * Cuánto respalda el corpus a esta traducción. Los ejemplos vienen
+   * agrupados por dominio, así que el «top» es el máximo, no el primero.
    */
   private senalesDeApoyo(ejemplos: FragmentoRecuperado[]): SenalesApoyo {
+    const top = ejemplos.reduce<FragmentoRecuperado | null>(
+      (mejor, e) => (mejor === null || e.puntaje > mejor.puntaje ? e : mejor),
+      null,
+    );
     return {
       puntajeMedio: ejemplos.length
         ? ejemplos.reduce((suma, e) => suma + e.puntaje, 0) / ejemplos.length
         : 0,
-      fuenteTop: ejemplos[0]?.fuente ?? null,
+      fuenteTop: top?.fuente ?? null,
       ejemplosRecuperados: ejemplos.length,
       ejemplosEnContexto: ejemplos.filter(
-        (e) =>
-          e.fuente === FuenteCorpus.oraciones || e.fuente === FuenteCorpus.frases,
+        (e) => e.fuente === FuenteCorpus.oraciones || e.fuente === FuenteCorpus.frases,
       ).length,
     };
   }
@@ -176,150 +252,70 @@ export class TraduccionService {
         texto: dto.texto,
         traduccion: respuesta.traduccion,
         direccion: dto.direccion,
-        puntajeTop: respuesta.ejemplos[0]?.puntaje ?? 0,
+        puntajeTop: respuesta.ejemplos.reduce((max, e) => Math.max(max, e.puntaje), 0),
         puntajeMedio: senales.puntajeMedio,
         fuenteTop: senales.fuenteTop,
         ejemplosRecuperados: senales.ejemplosRecuperados,
         ejemplosEnContexto: senales.ejemplosEnContexto ?? 0,
-        palabrasDudosas: respuesta.palabrasDudosas,
-        vocabularioUsado: respuesta.vocabularioUsado,
+        palabrasDudosas: respuesta.palabrasSinEquivalente,
+        vocabularioUsado: respuesta.diccionario.map((a) => ({ espanol: a.espanol, damana: a.damana })),
         modelo: this.config.modelo,
+        confianza: respuesta.confianza,
+        reglasAplicadas: respuesta.reglasAplicadas,
+        glosa: respuesta.glosa,
       });
     } catch (error) {
-      this.logger.warn(
-        `No se pudo registrar la traducción: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      this.logger.warn(`No se pudo registrar la traducción: ${mensajeDe(error)}`);
+    }
+  }
+
+  /** Cierra el bucle con las hablantes: lo que faltó queda apuntado. */
+  private registrarPendientes(dto: TraducirDto, palabras: string[]): void {
+    const idioma = dto.direccion === DireccionTraduccion.espanol_a_damana ? 'espanol' : 'damana';
+    // Los artículos y demás palabras gramaticales del español no son
+    // vocabulario que falte: el damana no los tiene. Si el modelo los deja
+    // entre corchetes se muestran, pero no se les preguntan a las hablantes.
+    const porRegistrar =
+      idioma === 'espanol' ? palabras.filter((p) => !esStopwordEspanol(normalizar(p))) : palabras;
+    if (porRegistrar.length === 0) return;
+    const contexto = dto.texto.replace(/\s+/g, ' ').trim().slice(0, MAX_CONTEXTO_PENDIENTE);
+    for (const palabra of porRegistrar) {
+      try {
+        this.pendientes.registrarPedida(palabra, idioma, contexto);
+      } catch (error) {
+        this.logger.warn(`No se pudo registrar la pendiente «${palabra}»: ${mensajeDe(error)}`);
+      }
     }
   }
 
   /**
-   * Tokeniza el vocabulario una sola vez y lo cachea: sin esto se
-   * re-tokenizarían las ~918 entradas en cada traducción.
+   * Claude vía el SDK oficial, con salida estructurada (output_config.format
+   * con el JSON Schema de la respuesta) para que el JSON llegue bien formado.
    */
-  private obtenerVocabularioIndexado(): EntradaIndexada[] {
-    if (!this.vocabularioIndexado) {
-      const normalizados = (texto: string) =>
-        tokenizarDamana(texto).map((t) => t.normalizada);
-      this.vocabularioIndexado = this.repo.listarVocabulario().map((e) => ({
-        espanol: e.espanol,
-        damana: e.damana,
-        tokens: {
-          [Idioma.damana]: normalizados(e.damana),
-          // Las stopwords se excluyen aquí: no deben provocar coincidencias
-          // ni inflar el denominador de la cobertura.
-          [Idioma.espanol]: normalizados(e.espanol).filter(
-            (t) => !esStopwordEspanol(t),
-          ),
-        },
-      }));
-    }
-    return this.vocabularioIndexado;
-  }
-
-  /**
-   * Entradas de vocabulario relevantes para el texto, ordenadas por
-   * cobertura léxica = proporción de palabras de la entrada que aparecen en
-   * el texto. Así «Ñi = ¿Qué?» (cobertura 1) va antes que una frase de seis
-   * palabras que solo comparte «nʉnka» (cobertura 0,17), en vez de que el
-   * corte dependa del orden de inserción en el CSV.
-   */
-  private vocabularioRelevante(
-    texto: string,
-    idiomaOrigen: Idioma,
-  ): EntradaVocabularioUsadaDto[] {
-    const tokensTexto = new Set(tokenizarDamana(texto).map((t) => t.normalizada));
-    return this.obtenerVocabularioIndexado()
-      .map((entrada): EntradaPuntuada | null => {
-        const tokens = entrada.tokens[idiomaOrigen];
-        if (tokens.length === 0) return null;
-        const coincidencias = tokens.filter((t) => tokensTexto.has(t)).length;
-        if (coincidencias === 0) return null;
-        return {
-          entrada,
-          cobertura: coincidencias / tokens.length,
-          longitud: tokens.length,
-        };
-      })
-      .filter(
-        (p): p is EntradaPuntuada => p !== null && p.cobertura >= COBERTURA_MINIMA,
-      )
-      .sort((a, b) => b.cobertura - a.cobertura || a.longitud - b.longitud)
-      .slice(0, MAX_ENTRADAS_VOCABULARIO)
-      .map(({ entrada }) => ({ espanol: entrada.espanol, damana: entrada.damana }));
-  }
-
-  private armarPromptSistema(): string {
-    return (
-      'Eres un traductor experto entre el damana (dʉmʉna), lengua del pueblo ' +
-      'Wiwa de la Sierra Nevada de Santa Marta (Colombia), y el español. ' +
-      'El damana tiene la vocal ʉ (U+0289), que es una letra plena distinta de u, ' +
-      'y la ñ también es letra plena. Trabajas a partir de un corpus paralelo ' +
-      'limitado: apóyate SOLO en los ejemplos y el vocabulario que se te dan; ' +
-      'no inventes palabras damana que no puedas justificar con ellos. ' +
-      'Si una palabra no aparece en los ejemplos ni en el vocabulario y no estás ' +
-      'seguro de su traducción, tradúcela lo mejor posible e inclúyela en ' +
-      'palabras_dudosas.\n\n' +
-      'Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto adicional ' +
-      'ni bloques de código, con exactamente esta forma:\n' +
-      '{"traduccion": "<la traducción>", "palabras_dudosas": ["<palabra>", ...], ' +
-      '"explicacion_breve": "<1-3 frases sobre cómo llegaste a la traducción>"}'
-    );
-  }
-
-  private armarPromptUsuario(
-    dto: TraducirDto,
-    ejemplos: FragmentoRecuperado[],
-    vocabulario: EntradaVocabularioUsadaDto[],
-  ): string {
-    const direccion =
-      dto.direccion === DireccionTraduccion.damana_a_espanol
-        ? 'del damana al español'
-        : 'del español al damana';
-
-    const lineasEjemplos = ejemplos
-      .map((e, i) => {
-        // Se avisa cuando el ejemplo llegó por parentesco verbal: sirve como
-        // muestra del verbo en uso, pero va en otra persona gramatical.
-        const nota = e.porLema
-          ? ` — usa otra conjugación del verbo «${e.porLema}»`
-          : '';
-        return `${i + 1}. [${e.referencia}${nota}]\n   damana: ${e.damana}\n   español: ${e.espanol}`;
-      })
-      .join('\n');
-    const lineasVocabulario = vocabulario
-      .map((v) => `- ${v.damana} = ${v.espanol}`)
-      .join('\n');
-
-    return (
-      `Traduce ${direccion}.\n\n` +
-      '<ejemplos_del_corpus>\n' +
-      (lineasEjemplos || '(no se encontraron fragmentos similares)') +
-      '\n</ejemplos_del_corpus>\n\n' +
-      '<vocabulario_relevante>\n' +
-      (lineasVocabulario || '(ninguna entrada de vocabulario coincide)') +
-      '\n</vocabulario_relevante>\n\n' +
-      '<texto_a_traducir>\n' +
-      dto.texto +
-      '\n</texto_a_traducir>'
-    );
-  }
-
-  private async llamarAnthropic(sistema: string, usuario: string): Promise<string> {
+  private async llamarAnthropic(
+    sistema: string,
+    usuario: string,
+    esquema: Record<string, unknown>,
+  ): Promise<string> {
     try {
       const respuesta = await this.cliente!.messages.create({
         model: this.config.modelo,
-        max_tokens: MAX_TOKENS_RESPUESTA,
+        max_tokens: MAX_TOKENS_ANTHROPIC,
         system: sistema,
         messages: [{ role: 'user', content: usuario }],
+        output_config: { format: { type: 'json_schema', schema: esquema } },
       });
+      if (respuesta.stop_reason === 'refusal') {
+        throw new BadGatewayException(
+          'El modelo rechazó la petición por sus filtros de seguridad. Reformula el texto e intenta de nuevo.',
+        );
+      }
       const bloqueTexto = respuesta.content.find(
         (b): b is Anthropic.TextBlock => b.type === 'text',
       );
       if (!bloqueTexto) {
         throw new BadGatewayException(
-          'El modelo no devolvió texto (¿respuesta rechazada?). Intenta de nuevo.',
+          'El modelo no devolvió texto (¿respuesta cortada?). Intenta de nuevo.',
         );
       }
       return bloqueTexto.text;
@@ -331,8 +327,16 @@ export class TraduccionService {
   /**
    * Llama a cualquier API compatible con OpenAI (Ollama, Gemini, Groq,
    * Hugging Face router...) usando fetch nativo: POST {base}/chat/completions.
+   * Se pide response_format json_object; si el proveedor no lo soporta
+   * (400) se reintenta sin él y se confía en extraerJson. Un 429 se espera
+   * y se reintenta hasta REINTENTOS_429 veces antes de rendirse.
    */
-  private async llamarCompatible(sistema: string, usuario: string): Promise<string> {
+  private async llamarCompatible(
+    sistema: string,
+    usuario: string,
+    conFormatoJson = true,
+    intento = 0,
+  ): Promise<string> {
     const url = `${this.config.baseUrl!.replace(/\/+$/, '')}/chat/completions`;
     const control = new AbortController();
     const temporizador = setTimeout(() => control.abort(), timeoutModeloMs());
@@ -343,13 +347,12 @@ export class TraduccionService {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          ...(this.config.apiKey
-            ? { authorization: `Bearer ${this.config.apiKey}` }
-            : {}),
+          ...(this.config.apiKey ? { authorization: `Bearer ${this.config.apiKey}` } : {}),
         },
         body: JSON.stringify({
           model: this.config.modelo,
-          max_tokens: MAX_TOKENS_RESPUESTA,
+          max_tokens: MAX_TOKENS_COMPATIBLE,
+          ...(conFormatoJson ? { response_format: { type: 'json_object' } } : {}),
           messages: [
             { role: 'system', content: sistema },
             { role: 'user', content: usuario },
@@ -372,6 +375,18 @@ export class TraduccionService {
       clearTimeout(temporizador);
     }
 
+    if (respuesta.status === 400 && conFormatoJson) {
+      return this.llamarCompatible(sistema, usuario, false, intento);
+    }
+    if (respuesta.status === 429 && intento < REINTENTOS_429) {
+      const espera = esperaTrasLimite(respuesta.headers?.get?.('retry-after'));
+      this.logger.warn(
+        `El proveedor devolvió 429; se reintenta en ${Math.round(espera / 1000)} s ` +
+          `(intento ${intento + 1} de ${REINTENTOS_429}).`,
+      );
+      await reloj.dormir(espera);
+      return this.llamarCompatible(sistema, usuario, conFormatoJson, intento + 1);
+    }
     if (respuesta.status === 401 || respuesta.status === 403) {
       throw new BadGatewayException(
         'El proveedor rechazó la clave TRADUCTOR_API_KEY. Revísala y reinicia el backend.',
@@ -390,9 +405,7 @@ export class TraduccionService {
       );
     }
     if (!respuesta.ok) {
-      throw new BadGatewayException(
-        `El proveedor devolvió un error (${respuesta.status}).`,
-      );
+      throw new BadGatewayException(`El proveedor devolvió un error (${respuesta.status}).`);
     }
 
     const json = (await respuesta.json().catch(() => null)) as {
@@ -436,9 +449,7 @@ export class TraduccionService {
         `La API de Anthropic devolvió un error (${String(error.status)}): ${error.message}`,
       );
     }
-    return new BadGatewayException(
-      `Error inesperado al traducir: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    return new BadGatewayException(`Error inesperado al traducir: ${mensajeDe(error)}`);
   }
 
   private parsearRespuesta(texto: string): Record<string, unknown> {
@@ -450,4 +461,8 @@ export class TraduccionService {
       );
     }
   }
+}
+
+function mensajeDe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
