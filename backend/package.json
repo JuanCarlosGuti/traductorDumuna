@@ -13,7 +13,9 @@
     "necesito:aplicar": "ts-node src/necesito/aplicar.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "evaluar": "ts-node src/evaluacion/evaluar.ts",
+    "dudas": "ts-node src/revision/generar-dudas.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

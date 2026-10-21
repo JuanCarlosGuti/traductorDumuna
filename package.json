@@ -18,7 +18,9 @@
     "test": "npm test -w backend",
     "test:e2e": "npm run test:e2e -w backend",
     "test:front": "npm run test -w frontend",
-    "test:navegador": "playwright test"
+    "test:navegador": "playwright test",
+    "evaluar": "npm run evaluar -w backend",
+    "dudas": "npm run dudas -w backend"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1"
