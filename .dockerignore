@@ -24,3 +24,7 @@ datos/dudas_para_hablantes_*.xlsx
 .env
 .env.*
 **/.env
+
+# Fuentes externas en bruto (PDF, texto extraído, informes): no las lee ni el
+# importador ni el runtime; pesan ~8 MB.
+material-externo

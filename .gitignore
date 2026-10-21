@@ -24,3 +24,10 @@ e2e/datos/pruebas_traduccion.csv
 # Entorno local con secretos: nunca se versiona
 .env
 .env.*
+
+# Material externo en bruto: PDF y texto extraído de obras con reserva de
+# derechos (SIL 1973/74) y de terceros. El repo es público: solo se versionan
+# los informes, los CSV derivados y las herramientas. Los originales viven en
+# local (y en Descargas de Juan).
+material-externo/pdf/
+material-externo/texto/
