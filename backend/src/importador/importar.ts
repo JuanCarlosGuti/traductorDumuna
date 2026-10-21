@@ -35,8 +35,12 @@ async function main(): Promise<void> {
     `Elicitación:      ${e.archivos} archivo(s), ${e.filas} filas → ` +
       `${e.vocabulario} palabras, ${e.oraciones} oraciones, ${e.pruebas} pruebas reservadas, ` +
       `${e.pendientes} pendientes, ${e.resueltas} resueltas` +
+      (e.cubiertasPorVocabulario ? `, ${e.cubiertasPorVocabulario} ya en el vocabulario (no se piden)` : '') +
       (e.idsRepetidos ? `, ${e.idsRepetidos} ids repetidos (ganó el último lote)` : ''),
   );
+  if (e.cerradasPorVocabulario) {
+    console.log(`Pendientes cerradas porque el vocabulario ya las cubre: ${e.cerradasPorVocabulario}`);
+  }
   console.log(`Pruebas (CSV):    ${stats.pruebasEnArchivo}`);
   console.log(`Tokens:           ${stats.totalTokens}`);
   console.log('\nTop 20 palabras damana más frecuentes:');

@@ -44,7 +44,7 @@ const ENCABEZADOS_ELICITACION = [
 // no depende de qué ids concretos caen en el 10 % reservado para pruebas.
 const IDS = Array.from({ length: 300 }, (_, i) => String(i + 1));
 const ID_PRUEBA = IDS.find(esFilaDePrueba)!;
-const [ID_AGUA, ID_VECINA, ID_PINGUINO, ID_HOLA] = IDS.filter((id) => !esFilaDePrueba(id));
+const [ID_AGUA, ID_VECINA, ID_PINGUINO, ID_HOLA, ID_ANOS] = IDS.filter((id) => !esFilaDePrueba(id));
 
 const LOTE_1 = [
   [ID_AGUA, 'naturaleza', 'agua', `n${U_DIERESIS}nka`, 'El agua está fría.', `nu+nka se n${U_DIERESIS}ka`, '', ''],
@@ -52,6 +52,8 @@ const LOTE_1 = [
   [ID_PINGUINO, 'otro', 'pingüino', 'pingüino', 'El pingüino nada.', 'pingüino senu', '', ''],
   [ID_PRUEBA, 'casa', 'casa', 'Urraga', 'Mi casa es grande.', 'Ranzhe urraga aikuia', '', ''],
   [ID_HOLA, 'saludos', 'hola', 'Zungui', 'Hola, ¿cómo estás?', '', 'pregunta', ''],
+  // Sin llenar, pero el vocabulario ya tiene «año»: no debe pedirse.
+  [ID_ANOS, 'tiempo', 'años', '', 'Pasaron dos años.', '', '', ''],
 ];
 
 const LOTE_2 = [
@@ -147,12 +149,16 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     expect(stats.nombresPropios).toBe(2);
     expect(stats.elicitacion).toEqual({
       archivos: 1,
-      filas: 5,
+      filas: 6,
       vocabulario: 4,
       oraciones: 2,
       pruebas: 1,
-      pendientes: 2, // vecina (sin nada) y hola (sin ejemplo)
+      pendientes: 1, // vecina (sin nada)
       resueltas: 3, // agua, pingüino, casa
+      // hola ya tiene palabra_dm en el propio lote y «años» está en el CSV
+      // como «año»: no se les piden a las hablantes.
+      cubiertasPorVocabulario: 2,
+      cerradasPorVocabulario: 0,
       idsRepetidos: 0,
     });
     expect(stats.pruebasEnArchivo).toBe(1);
@@ -220,8 +226,9 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
   it('las filas sin llenar quedan como pendientes de elicitación, sin duplicarse al reimportar', async () => {
     await servicio.importarTodo(dirTmp);
     await servicio.importarTodo(dirTmp);
+    // hola trae palabra_dm en el propio lote y «años» ya está como «año» en
+    // el vocabulario: ninguna de las dos se les pide a las hablantes.
     expect(filas('SELECT palabra, estado, origen, contexto, veces_pedida FROM pendientes ORDER BY palabra')).toEqual([
-      { palabra: 'hola', estado: 'pendiente', origen: 'elicitacion', contexto: 'Hola, ¿cómo estás?', veces_pedida: 1 },
       { palabra: 'vecina', estado: 'pendiente', origen: 'elicitacion', contexto: 'Mi vecina cocina.', veces_pedida: 1 },
     ]);
   });
@@ -233,7 +240,8 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
       const stats = await servicio.importarTodo(dirTmp);
       expect(stats.elicitacion.archivos).toBe(2);
       expect(stats.elicitacion.idsRepetidos).toBe(1);
-      expect(stats.elicitacion.pendientes).toBe(1); // solo hola
+      expect(stats.elicitacion.pendientes).toBe(0); // vecina ya llegó; hola y años están cubiertas
+      expect(stats.elicitacion.cubiertasPorVocabulario).toBe(2);
       expect(db.prepare("SELECT estado FROM pendientes WHERE palabra = 'vecina'").get()).toEqual({ estado: 'resuelta' });
       expect(filas("SELECT damana FROM vocabulario WHERE espanol = 'vecina'")).toEqual([{ damana: 'anzhirru' }]);
       expect(filas(`SELECT damana FROM oraciones WHERE id_externo = ?`, `elic_${ID_VECINA}`)).toEqual([{ damana: 'ranzhe anzhirru duzhi' }]);
@@ -307,5 +315,24 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     expect(db.prepare("SELECT repeticiones FROM progreso_srs WHERE palabra = 'nʉnka'").get()).toEqual({ repeticiones: 2 });
     expect(db.prepare('SELECT COUNT(*) AS n FROM validadas').get()).toEqual({ n: 1 });
     expect(db.prepare("SELECT veces_pedida, origen FROM pendientes WHERE palabra = 'ñame'").get()).toEqual({ veces_pedida: 1, origen: 'traductor' });
+  });
+
+  it('cierra las pendientes abiertas que el vocabulario ya cubre (español y damana) y deja las demás', async () => {
+    const repo = new PendientesRepository(db);
+    repo.registrarPedida('aguas', 'espanol', 'las aguas del río'); // plural de «agua», que está en el CSV
+    repo.registrarPedida('ñame', 'espanol', 'quiero ñame'); // no está en ningún lado
+    repo.registrarPedida('nʉnka', 'damana', 'nʉnka gontka'); // la forma damana de «agua»
+    repo.registrarPedida('nunka', 'damana', 'nunka'); // u ≠ ʉ: no es la misma palabra
+
+    const stats = await servicio.importarTodo(dirTmp);
+
+    expect(stats.elicitacion.cerradasPorVocabulario).toBe(2);
+    const estado = (p: string) => (db.prepare('SELECT estado FROM pendientes WHERE palabra = ?').get(p) as { estado: string }).estado;
+    expect(estado('aguas')).toBe('resuelta');
+    expect(estado('nʉnka')).toBe('resuelta');
+    expect(estado('ñame')).toBe('pendiente');
+    expect(estado('nunka')).toBe('pendiente');
+    // y la fila «años» del lote nunca llegó a registrarse
+    expect(db.prepare("SELECT COUNT(*) AS n FROM pendientes WHERE palabra = 'años'").get()).toEqual({ n: 0 });
   });
 });

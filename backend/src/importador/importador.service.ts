@@ -15,6 +15,7 @@ import {
   PlanElicitacion,
   planificarElicitacion,
 } from './elicitacion';
+import { CoberturaVocabulario } from './cobertura-vocabulario';
 import { claveEncabezado, columna, HojaLeida, leerLibro } from './leer-excel';
 import { escribirPruebas } from './pruebas-csv';
 
@@ -31,6 +32,10 @@ export interface EstadisticasElicitacion {
   pruebas: number;
   pendientes: number;
   resueltas: number;
+  /** Filas sin llenar cuya palabra ya está en el vocabulario: no se piden. */
+  cubiertasPorVocabulario: number;
+  /** Pendientes que ya estaban abiertas y el vocabulario cubre: se cierran. */
+  cerradasPorVocabulario: number;
   idsRepetidos: number;
 }
 
@@ -133,6 +138,13 @@ export class ImportadorService {
     const elicitacion = await this.leerElicitacion(dirDatos);
     const plan = planificarElicitacion(elicitacion.filas);
     const ahora = new Date().toISOString();
+    // Lo que el vocabulario ya sabe no se les pide a las hablantes (cobran
+    // por palabra): una fila sin llenar cuya palabra ya existe no se
+    // registra como pendiente, y las pendientes abiertas que el vocabulario
+    // cubre se cierran.
+    const cobertura = new CoberturaVocabulario([...vocabulario, ...plan.vocabulario]);
+    const cubiertasPorVocabulario = plan.pendientes.filter((p) => cobertura.cubreEspanol(p.palabra)).length;
+    let cerradasPorVocabulario = 0;
 
     const insertarTodo = this.db.transaction(() => {
       this.db.exec(
@@ -245,16 +257,25 @@ export class ImportadorService {
         this.tokenizar(o.damana, 'oraciones', info.lastInsertRowid as number);
       }
       for (const p of plan.pendientes) {
+        if (cobertura.cubreEspanol(p.palabra)) continue;
         this.pendientes.registrarDeElicitacion(p.palabra, p.contexto, ahora);
       }
       for (const palabra of plan.resueltas) {
         this.pendientes.marcarResuelta(palabra, ahora);
       }
+      for (const p of this.pendientes.listarAbiertas()) {
+        if (cobertura.cubre(p.palabra, p.idioma) && this.pendientes.marcarResuelta(p.palabra, ahora)) {
+          cerradasPorVocabulario += 1;
+        }
+      }
     });
     insertarTodo();
 
     const pruebas = escribirPruebas(dirDatos, plan.pruebas);
-    return this.estadisticas(reglas.length, nombres.length, elicitacion, plan, pruebas.total);
+    return this.estadisticas(reglas.length, nombres.length, elicitacion, plan, pruebas.total, {
+      cubiertasPorVocabulario,
+      cerradasPorVocabulario,
+    });
   }
 
   private leerCsv<T>(dirDatos: string, nombre: string): T[] {
@@ -356,6 +377,7 @@ export class ImportadorService {
     elicitacion: { archivos: string[]; filas: FilaElicitacion[] },
     plan: PlanElicitacion,
     pruebasEnArchivo: number,
+    cobertura: { cubiertasPorVocabulario: number; cerradasPorVocabulario: number },
   ): EstadisticasImportacion {
     const contar = (tabla: string): number =>
       (this.db.prepare(`SELECT COUNT(*) AS n FROM ${tabla}`).get() as { n: number }).n;
@@ -383,8 +405,10 @@ export class ImportadorService {
         vocabulario: plan.vocabulario.length,
         oraciones: plan.oraciones.length,
         pruebas: plan.pruebas.length,
-        pendientes: plan.pendientes.length,
+        pendientes: plan.pendientes.length - cobertura.cubiertasPorVocabulario,
         resueltas: plan.resueltas.length,
+        cubiertasPorVocabulario: cobertura.cubiertasPorVocabulario,
+        cerradasPorVocabulario: cobertura.cerradasPorVocabulario,
         idsRepetidos: plan.idsRepetidos,
       },
       pruebasEnArchivo,
