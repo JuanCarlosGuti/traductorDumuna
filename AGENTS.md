@@ -101,6 +101,17 @@ experiencia en TypeScript/Angular y backend.
   o cualquier API compatible OpenAI (TRADUCTOR_BASE_URL +
   TRADUCTOR_MODELO [+ TRADUCTOR_API_KEY]; se pide `response_format
   json_object` y si el proveedor lo rechaza con 400 se reintenta sin él).
+- Ajustes del motor por entorno: `TRADUCTOR_TEMPERATURA` (solo proveedor
+  compatible; 0.2 por defecto, acotada a 0-2: misma frase, misma
+  traducción) y `ANTHROPIC_ESFUERZO` (solo Claude: low | medium | high |
+  xhigh | max; si falta, vale el de la API). A Claude NO se le envía
+  temperature: claude-opus-5-5 la rechaza con 400 (pensamiento
+  adaptativo). El prompt de sistema va como bloque con `cache_control:
+  ephemeral` (claude-opus-5-5 cachea prefijos desde 512 tokens y este
+  prompt ronda los 750; la caché dura 5 min, así que solo ahorra en
+  rachas). Cada traducción deja una línea de log y guarda en
+  `traducciones` (v7: tokens_entrada, tokens_salida, tokens_cache_leidos,
+  tokens_cache_creados, duracion_ms) el consumo que informó el proveedor.
 
 ## Traductor de propósito general (oct 2026) — cómo funciona
 - El corpus bíblico (lfb) sigue siendo la fuente principal de gramática
@@ -117,6 +128,18 @@ experiencia en TypeScript/Angular y backend.
   regla se infiere al importar del «tipo» + «qué hace»), (d) ejemplos
   TF-IDF repartidos por dominio: ≤6 cotidianos, ≤4 gramática, ≤4
   bíblicos (2 si hay ≥4 cotidianos), ≤14 en total, sin casi-duplicados.
+- Negación (diagnóstico oct 2026): reglas_damana.xlsx solo trae -ndzina
+  (plural, dos filas) y -nzhe (posesivo). NO hay regla de negación,
+  pregunta, pasado ni futuro. Cuando la frase trae un rasgo sin regla, el
+  prompt lo dice tal cual («rasgo detectado, pero el corpus no tiene regla
+  registrada, pendiente de confirmar con las hablantes») y, para la
+  negación, remite a las formas negativas del diccionario (No quiero →
+  Nandunun, No hay → Nanún…) y de las conjugaciones (-nún/-nuñí). Las
+  negaciones del español (`esNegacionEspanol`, comun/texto/stopwords-es.ts)
+  cuentan como contenido al indexar entradas de varias palabras: «No
+  quiero» solo entra si la frase trae «no» (antes salía también para la
+  afirmativa). La regla la deben dar las hablantes (el lote 2 de gramática
+  ya pide los pares negativos); no inventarla.
 - Prompt (`traduccion/prompt.ts`) con secciones fijas: REGLAS
   GRAMATICALES, DICCIONARIO DE ESTA FRASE, EJEMPLOS COTIDIANOS, EJEMPLOS
   DE GRAMÁTICA, EJEMPLOS DEL CORPUS BÍBLICO, FRASE A TRADUCIR. Respuesta
@@ -137,6 +160,10 @@ experiencia en TypeScript/Angular y backend.
   elicitación completas, elegida por hash estable del id (no por
   posición) para que una prueba no pase a ser ejemplo en el lote
   siguiente; también se pueden añadir filas a mano (nunca se borran).
+- `npm run pruebas:desde-validadas`: vuelca los pares de `validadas` a
+  `datos/pruebas_traduccion.csv` con ámbito «validadas» (idempotente:
+  funde por pareja normalizada y nunca borra filas), para que `npm run
+  evaluar` los mida aparte.
 
 ## Normalización con hablantes (oct 2026) — decisiones del dueño
 - Objetivo: normalizar los datos aunque implique borrar o corregir, y

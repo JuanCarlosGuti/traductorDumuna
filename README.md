@@ -55,7 +55,12 @@ setx ANTHROPIC_API_KEY "sk-ant-..."
 
 Si está definida **tiene prioridad** sobre las variables TRADUCTOR_*.
 Tarda entre 5 y 15 s por traducción. Modelo por defecto `claude-opus-5-5`;
-se cambia con `ANTHROPIC_MODELO`.
+se cambia con `ANTHROPIC_MODELO`. Opcional: `ANTHROPIC_ESFUERZO` (low,
+medium, high, xhigh o max) regula cuánto razona el modelo; si falta se usa
+el valor de la API. A Claude no se le fija temperatura (el modelo la
+rechaza). El prompt de sistema queda en la caché de Anthropic 5 minutos,
+así que traducir en racha sale más barato. Cada traducción deja en el log
+del backend y en la tabla `traducciones` los tokens usados y lo que tardó.
 
 ### Respaldo: Groq (gratis, ~2 s por traducción)
 
@@ -69,8 +74,10 @@ setx TRADUCTOR_MODELO "openai/gpt-oss-120b"
 setx TRADUCTOR_API_KEY "gsk_..."
 ```
 
-El plan gratuito devuelve 429 a la cuarta traducción por minuto; el
-backend espera lo que pida `Retry-After` y reintenta dos veces.
+`TRADUCTOR_TEMPERATURA` (0.2 por defecto) fija la temperatura: baja para
+que la misma frase dé la misma traducción. El plan gratuito devuelve 429
+a la cuarta traducción por minuto; el backend espera lo que pida
+`Retry-After` y reintenta dos veces.
 
 ### Alternativas (mismo mecanismo, otras variables)
 
@@ -105,6 +112,13 @@ anotan en Pendientes), las reglas aplicadas, una confianza y una
 explicación. La vista muestra todo eso y permite marcar **«esta
 traducción es correcta»** o **corregirla**: los pares validados se
 acumulan en la tabla `validadas`.
+
+Si la frase trae un rasgo gramatical para el que el corpus todavía no
+tiene regla (hoy solo hay reglas de plural y posesivo; faltan negación,
+pregunta, pasado y futuro), el prompt lo dice tal cual en vez de callar
+y, para la negación, remite a las formas negativas del diccionario («No
+quiero → Nandunun»). Las reglas que faltan las confirman las hablantes
+con el lote 2 de gramática; no se inventan.
 
 ### Pendientes: cerrar el bucle con las hablantes
 
@@ -147,6 +161,13 @@ Las pruebas las reserva el importador: 1 de cada 10 filas de elicitación
 con ejemplo completo, elegida por un hash estable del id, no entra al
 retrieval. También se pueden añadir filas a mano (`espanol,
 damana_esperado, ambito`); nunca se borran.
+
+```bash
+npm run pruebas:desde-validadas   # añade al CSV los pares validados en el
+                                  # Traductor (tabla validadas), ámbito «validadas»
+```
+
+Es idempotente: no repite pares ni borra pruebas existentes.
 
 ## Despliegue (Render)
 
