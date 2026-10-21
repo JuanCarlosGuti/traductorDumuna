@@ -40,7 +40,7 @@ import {
   normalizarRespuestaModelo,
   RespuestaModelo,
 } from './prompt';
-import { TraduccionesRepository } from './traducciones.repository';
+import { TraduccionesRepository, UsoModelo } from './traducciones.repository';
 import { ValidadasRepository } from './validadas.repository';
 
 /**
@@ -83,6 +83,41 @@ export const MENSAJE_SIN_PROVEEDOR =
   'Google Gemini, Groq, Hugging Face); ' +
   '(B) Claude: define ANTHROPIC_API_KEY (console.anthropic.com). ' +
   'Después reinicia el backend. Detalles en el README.';
+
+/** Lo que devuelve cada proveedor: el texto del modelo y, si lo informa, el consumo. */
+interface SalidaModelo {
+  texto: string;
+  uso: UsoModelo | null;
+}
+
+/** usage de la API de Anthropic → UsoModelo. */
+export function usoDeAnthropic(usage: Anthropic.Usage | null | undefined): UsoModelo | null {
+  if (!usage) return null;
+  return {
+    tokensEntrada: usage.input_tokens ?? null,
+    tokensSalida: usage.output_tokens ?? null,
+    tokensCacheLeidos: usage.cache_read_input_tokens ?? null,
+    tokensCacheCreados: usage.cache_creation_input_tokens ?? null,
+  };
+}
+
+interface UsageCompatible {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  prompt_tokens_details?: { cached_tokens?: number };
+}
+
+/** usage estilo OpenAI (Groq, Ollama, Gemini…) → UsoModelo. */
+export function usoDeCompatible(usage: UsageCompatible | null | undefined): UsoModelo | null {
+  if (!usage) return null;
+  const numero = (v: unknown): number | null => (typeof v === 'number' ? v : null);
+  return {
+    tokensEntrada: numero(usage.prompt_tokens),
+    tokensSalida: numero(usage.completion_tokens),
+    tokensCacheLeidos: numero(usage.prompt_tokens_details?.cached_tokens),
+    tokensCacheCreados: null,
+  };
+}
 
 export interface OpcionesTraduccion {
   /**
@@ -146,20 +181,34 @@ export class TraduccionService {
 
     const sistema = armarPromptSistema(dto.direccion);
     const usuario = armarPromptUsuario(dto.texto, dto.direccion, contexto);
-    const texto =
+    const inicio = Date.now();
+    const { texto, uso } =
       this.config.proveedor === 'anthropic'
         ? await this.llamarAnthropic(sistema, usuario, esquemaRespuesta(dto.direccion))
         : await this.llamarCompatible(sistema, usuario);
+    const duracionMs = Date.now() - inicio;
+    this.logger.log(this.resumenDeUso(dto.direccion, uso, duracionMs));
     const modelo = normalizarRespuestaModelo(this.parsearRespuesta(texto));
 
     const senales = this.senalesDeApoyo(contexto.ejemplos);
     const respuesta = this.armarRespuesta(modelo, contexto, senales);
 
     if (opciones.registrar !== false) {
-      this.registrarTraduccion(dto, respuesta, senales);
+      this.registrarTraduccion(dto, respuesta, senales, uso, duracionMs);
       this.registrarPendientes(dto, respuesta.palabrasSinEquivalente);
     }
     return respuesta;
+  }
+
+  /** Una línea por traducción: para seguir el gasto y ver si la caché entra. */
+  private resumenDeUso(direccion: DireccionTraduccion, uso: UsoModelo | null, duracionMs: number): string {
+    const cabecera = `Traducción ${direccion} con ${this.config.proveedor} ${this.config.modelo} en ${duracionMs} ms`;
+    if (!uso) return `${cabecera} · el proveedor no informó tokens`;
+    const n = (v: number | null) => (v === null ? '?' : String(v));
+    return (
+      `${cabecera} · tokens: entrada ${n(uso.tokensEntrada)} ` +
+      `(caché leída ${n(uso.tokensCacheLeidos)}, creada ${n(uso.tokensCacheCreados)}), salida ${n(uso.tokensSalida)}`
+    );
   }
 
   /** «Esta traducción es correcta» / «corregir»: guarda el par validado. */
@@ -247,6 +296,8 @@ export class TraduccionService {
     dto: TraducirDto,
     respuesta: RespuestaTraduccionDto,
     senales: SenalesApoyo,
+    uso: UsoModelo | null,
+    duracionMs: number,
   ): void {
     try {
       this.registro.registrar({
@@ -264,6 +315,8 @@ export class TraduccionService {
         confianza: respuesta.confianza,
         reglasAplicadas: respuesta.reglasAplicadas,
         glosa: respuesta.glosa,
+        uso,
+        duracionMs,
       });
     } catch (error) {
       this.logger.warn(`No se pudo registrar la traducción: ${mensajeDe(error)}`);
@@ -297,7 +350,7 @@ export class TraduccionService {
     sistema: string,
     usuario: string,
     esquema: Record<string, unknown>,
-  ): Promise<string> {
+  ): Promise<SalidaModelo> {
     try {
       const respuesta = await this.cliente!.messages.create({
         model: this.config.modelo,
@@ -333,7 +386,7 @@ export class TraduccionService {
           'El modelo no devolvió texto (¿respuesta cortada?). Intenta de nuevo.',
         );
       }
-      return bloqueTexto.text;
+      return { texto: bloqueTexto.text, uso: usoDeAnthropic(respuesta.usage) };
     } catch (error) {
       throw this.traducirErrorAnthropic(error);
     }
@@ -351,7 +404,7 @@ export class TraduccionService {
     usuario: string,
     conFormatoJson = true,
     intento = 0,
-  ): Promise<string> {
+  ): Promise<SalidaModelo> {
     const url = `${this.config.baseUrl!.replace(/\/+$/, '')}/chat/completions`;
     const control = new AbortController();
     const temporizador = setTimeout(() => control.abort(), timeoutModeloMs());
@@ -426,6 +479,7 @@ export class TraduccionService {
 
     const json = (await respuesta.json().catch(() => null)) as {
       choices?: { message?: { content?: unknown } }[];
+      usage?: UsageCompatible;
     } | null;
     const texto = json?.choices?.[0]?.message?.content;
     if (typeof texto !== 'string' || texto.length === 0) {
@@ -433,7 +487,7 @@ export class TraduccionService {
         'El proveedor no devolvió texto en el formato esperado (choices[0].message.content).',
       );
     }
-    return texto;
+    return { texto, uso: usoDeCompatible(json?.usage) };
   }
 
   /** Mapea los errores tipados del SDK de Anthropic a errores HTTP claros. */

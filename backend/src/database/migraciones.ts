@@ -200,6 +200,18 @@ const MIGRACIONES: string[] = [
   ALTER TABLE traducciones ADD COLUMN reglas_aplicadas TEXT;
   ALTER TABLE traducciones ADD COLUMN glosa TEXT;
   `,
+  // v7: consumo de cada traducción —tokens de entrada y salida, tokens
+  // servidos y escritos por la caché de prompts, y duración— para seguir el
+  // gasto de los créditos de Anthropic y comprobar que la caché entra.
+  // Nullable a propósito: las filas anteriores no lo saben y los proveedores
+  // compatibles pueden no informarlo.
+  `
+  ALTER TABLE traducciones ADD COLUMN tokens_entrada INTEGER;
+  ALTER TABLE traducciones ADD COLUMN tokens_salida INTEGER;
+  ALTER TABLE traducciones ADD COLUMN tokens_cache_leidos INTEGER;
+  ALTER TABLE traducciones ADD COLUMN tokens_cache_creados INTEGER;
+  ALTER TABLE traducciones ADD COLUMN duracion_ms INTEGER;
+  `,
 ];
 
 export function ejecutarMigraciones(db: Database): void {

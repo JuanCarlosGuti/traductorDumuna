@@ -1,22 +1,31 @@
 import Database from 'better-sqlite3';
 import { ejecutarMigraciones } from './migraciones';
 
-const VERSION_ACTUAL = 6;
+const VERSION_ACTUAL = 7;
 
 /**
  * Deja una base recién migrada como si se hubiera quedado en una versión
  * anterior: quita lo que añadieron las versiones posteriores y retrocede
  * user_version. Así se prueba que las migraciones corren sobre datos reales.
  */
-function retrocederA(db: Database.Database, version: 4 | 5): void {
+function retrocederA(db: Database.Database, version: 4 | 5 | 6): void {
   db.exec(`
-    DROP TABLE reglas; DROP TABLE nombres_propios; DROP TABLE pendientes; DROP TABLE validadas;
-    ALTER TABLE oraciones DROP COLUMN dominio;
-    ALTER TABLE frases DROP COLUMN dominio;
-    ALTER TABLE traducciones DROP COLUMN confianza;
-    ALTER TABLE traducciones DROP COLUMN reglas_aplicadas;
-    ALTER TABLE traducciones DROP COLUMN glosa;
+    ALTER TABLE traducciones DROP COLUMN tokens_entrada;
+    ALTER TABLE traducciones DROP COLUMN tokens_salida;
+    ALTER TABLE traducciones DROP COLUMN tokens_cache_leidos;
+    ALTER TABLE traducciones DROP COLUMN tokens_cache_creados;
+    ALTER TABLE traducciones DROP COLUMN duracion_ms;
   `);
+  if (version <= 5) {
+    db.exec(`
+      DROP TABLE reglas; DROP TABLE nombres_propios; DROP TABLE pendientes; DROP TABLE validadas;
+      ALTER TABLE oraciones DROP COLUMN dominio;
+      ALTER TABLE frases DROP COLUMN dominio;
+      ALTER TABLE traducciones DROP COLUMN confianza;
+      ALTER TABLE traducciones DROP COLUMN reglas_aplicadas;
+      ALTER TABLE traducciones DROP COLUMN glosa;
+    `);
+  }
   if (version === 4) {
     db.exec('ALTER TABLE traducciones DROP COLUMN ejemplos_en_contexto');
   }
@@ -110,6 +119,31 @@ describe('ejecutarMigraciones', () => {
         )
         .run(),
     ).toThrow();
+    db.close();
+  });
+
+  it('la v7 añade las columnas de consumo y deja en null las filas ya registradas (base parada en v6)', () => {
+    const db = new Database(':memory:');
+    ejecutarMigraciones(db);
+    retrocederA(db, 6);
+    db.prepare(
+      `INSERT INTO traducciones
+         (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
+          fuente_top, ejemplos_recuperados, palabras_dudosas, vocabulario_usado, modelo)
+       VALUES ('2026-10-01T00:00:00.000Z', 'nʉnka ñingui', 'agua otra vez',
+               'damana_a_espanol', 0.9, 0.4, 'frases', 3, '[]', '[]', 'claude-opus-5-5')`,
+    ).run();
+
+    ejecutarMigraciones(db);
+
+    expect(db.pragma('user_version', { simple: true })).toBe(VERSION_ACTUAL);
+    const fila = db
+      .prepare('SELECT texto, tokens_entrada, tokens_cache_leidos, duracion_ms FROM traducciones')
+      .get() as { texto: string; tokens_entrada: number | null; tokens_cache_leidos: number | null; duracion_ms: number | null };
+    expect(fila.texto).toBe('nʉnka ñingui'); // ʉ y ñ intactas
+    expect(fila.tokens_entrada).toBeNull();
+    expect(fila.tokens_cache_leidos).toBeNull();
+    expect(fila.duracion_ms).toBeNull();
     db.close();
   });
 

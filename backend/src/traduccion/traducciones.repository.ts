@@ -4,6 +4,21 @@ import { FuenteCorpus } from '../consulta/consulta.enums';
 import { CONEXION_DB } from '../database/database.constants';
 import { DireccionTraduccion, ParGlosaDto } from './dto/traduccion.dto';
 
+/**
+ * Consumo informado por el proveedor para una llamada. Con Anthropic los
+ * cuatro campos vienen de usage; los proveedores compatibles traen
+ * prompt_tokens/completion_tokens y rara vez los de caché. null = no lo
+ * informó.
+ */
+export interface UsoModelo {
+  tokensEntrada: number | null;
+  tokensSalida: number | null;
+  /** Tokens servidos desde la caché de prompts (cobrados al 10 %). */
+  tokensCacheLeidos: number | null;
+  /** Tokens escritos en la caché de prompts (cobrados al 125 %). */
+  tokensCacheCreados: number | null;
+}
+
 export interface RegistroTraduccion {
   texto: string;
   traduccion: string;
@@ -24,6 +39,10 @@ export interface RegistroTraduccion {
   confianza?: number;
   reglasAplicadas?: string[];
   glosa?: ParGlosaDto[];
+  /** null si el proveedor no informó el consumo. */
+  uso?: UsoModelo | null;
+  /** Lo que tardó la llamada al modelo (sin contar el retrieval). */
+  duracionMs?: number | null;
 }
 
 /** Fila tal como se lee de la tabla, para análisis posteriores. */
@@ -79,8 +98,9 @@ export class TraduccionesRepository {
         `INSERT INTO traducciones
            (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
             fuente_top, ejemplos_recuperados, ejemplos_en_contexto,
-            palabras_dudosas, vocabulario_usado, modelo, confianza, reglas_aplicadas, glosa)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            palabras_dudosas, vocabulario_usado, modelo, confianza, reglas_aplicadas, glosa,
+            tokens_entrada, tokens_salida, tokens_cache_leidos, tokens_cache_creados, duracion_ms)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         ahora.toISOString(),
@@ -98,6 +118,11 @@ export class TraduccionesRepository {
         registro.confianza ?? null,
         registro.reglasAplicadas ? JSON.stringify(registro.reglasAplicadas) : null,
         registro.glosa ? JSON.stringify(registro.glosa) : null,
+        registro.uso?.tokensEntrada ?? null,
+        registro.uso?.tokensSalida ?? null,
+        registro.uso?.tokensCacheLeidos ?? null,
+        registro.uso?.tokensCacheCreados ?? null,
+        registro.duracionMs ?? null,
       );
   }
 }

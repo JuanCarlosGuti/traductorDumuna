@@ -111,12 +111,17 @@ describe('TraduccionService', () => {
   const filasRegistradas = () => db.prepare('SELECT * FROM traducciones ORDER BY rowid').all() as any[];
   const pendientes = () => db.prepare('SELECT palabra, idioma, contexto, veces_pedida FROM pendientes ORDER BY palabra').all() as any[];
 
-  function clienteFalso(textoRespuesta: string, stopReason = 'end_turn') {
+  function clienteFalso(
+    textoRespuesta: string,
+    stopReason = 'end_turn',
+    usage?: Record<string, number | null>,
+  ) {
     return {
       messages: {
         create: jest.fn().mockResolvedValue({
           stop_reason: stopReason,
           content: [{ type: 'text', text: textoRespuesta }],
+          ...(usage ? { usage } : {}),
         }),
       },
     };
@@ -399,6 +404,34 @@ describe('TraduccionService', () => {
       expect(JSON.parse(filas[0].reglas_aplicadas)).toEqual([]);
     });
 
+    it('guarda los tokens de entrada, salida y caché y la duración; sin usage quedan en null', async () => {
+      const conUso = clienteFalso(JSON_TRADUCCION, 'end_turn', {
+        input_tokens: 1200,
+        output_tokens: 300,
+        cache_read_input_tokens: 700,
+        cache_creation_input_tokens: 0,
+      });
+      await crearServicio(conUso, CONFIG_ANTHROPIC).traducir(dmAEs('nʉnka ñingui'));
+      const [fila] = filasRegistradas();
+      expect(fila).toMatchObject({
+        tokens_entrada: 1200,
+        tokens_salida: 300,
+        tokens_cache_leidos: 700,
+        tokens_cache_creados: 0,
+      });
+      expect(fila.duracion_ms).toBeGreaterThanOrEqual(0);
+
+      await crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC).traducir(dmAEs('nʉnka'));
+      const [, sinUso] = filasRegistradas();
+      expect(sinUso).toMatchObject({
+        tokens_entrada: null,
+        tokens_salida: null,
+        tokens_cache_leidos: null,
+        tokens_cache_creados: null,
+      });
+      expect(sinUso.duracion_ms).toBeGreaterThanOrEqual(0);
+    });
+
     it('SEGURIDAD: si el registro falla, la traducción se entrega igual', async () => {
       const registroRoto = {
         registrar: jest.fn(() => {
@@ -487,7 +520,10 @@ describe('TraduccionService', () => {
     const respuestaOk = (contenido: string) => ({
       ok: true,
       status: 200,
-      json: async () => ({ choices: [{ message: { content: contenido } }] }),
+      json: async () => ({
+        choices: [{ message: { content: contenido } }],
+        usage: { prompt_tokens: 2500, completion_tokens: 120 },
+      }),
     });
 
     it('llama a {base}/chat/completions con Bearer, system/user y response_format json_object', async () => {
@@ -507,6 +543,13 @@ describe('TraduccionService', () => {
       expect(cuerpo.messages[1].role).toBe('user');
       expect(cuerpo.messages[1].content).toContain('=== FRASE A TRADUCIR ===');
       expect(cuerpo.messages[1].content).toContain('nʉnka gontka');
+      // usage estilo OpenAI: prompt/completion; de caché no informa → null
+      expect(filasRegistradas()[0]).toMatchObject({
+        tokens_entrada: 2500,
+        tokens_salida: 120,
+        tokens_cache_leidos: null,
+        tokens_cache_creados: null,
+      });
     });
 
     it('la temperatura configurada se envía tal cual, incluso 0', async () => {
