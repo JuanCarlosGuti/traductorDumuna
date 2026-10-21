@@ -1,0 +1,92 @@
+leccion,palabra_clave,tipo,damana
+01,Kʉntana,palabra,Kʉntana
+01,Kʉntana,texto,Washka kʉntanaru wiwaga aga uka dugulumamba ingwi siej ãzhingamba.
+01,Kʉntana,texto,Awananka gakwaga neka awãshkʉru akou nekwemdzi uragʉrga une ʉganeka.
+01,Kʉntana,pregunta,¿Ʉ̃zhina kangʉmba kʉntana awa kwaga nanú?
+01,Kʉntana,pregunta,¿Ñi agʉñi kʉntana ingegwa ugwana maú?
+02,Togua,palabra,Togua
+02,Togua,texto,Nawi dzhirra anzu angakurambaru Toguwa zhaginuka.
+02,Togua,texto,"Toguamba kima dzhirra mʉn anzhʉnga anzu angakurra, kua zhama gakuaga kʉnzhu gakurra, meme name agʉni togua agʉn nukuakuaga nekʉnzhʉnga."
+02,Togua,pregunta,¿Maka togua magaka ki nanu?
+02,Togua,pregunta,¿Ma toguamba manzhaga ki nanu?
+03,Abu,palabra,Abu
+03,Abu,texto,"Washka aburu shka ãzhingʉmandzina ingwi ãsewa dumtua nanuka, ingwi aburu uragamba ukwiandzina avi kwaga kʉmʉna."
+03,Abu,pregunta,¿Ñi avi abu kwaga nanú?
+03,Abu,pregunta,¿Washka aburu naka ʉ̃kʉgwana uwai ugwana awa kwaga nʉnka?
+04,Shoma,palabra,Shoma
+04,Shoma,texto,"Shomaru kʉmawa kuagumʉnka nanuwashka anamisha atunga, aginru anzisi, kua ambʉntshi, kua aginru atshiki, aginru batatia ye kuega, kua aginru anzhuzhu kuega."
+04,Shoma,texto,Shomaru sinduliga dzhirra anzhaga.
+05,Saga,palabra,Saga
+05,Saga,texto,"Sagaru sheku bo zhaktshika, sagaru dzhuiye ukunʉnka nʉnashka memaru sheku ukuka."
+05,Saga,texto,Sagaru shetu kʉminsha tuan zhaktshunʉnka.
+05,Saga,texto,"Sagaru zhandumaya nanunka, sagaru unzhu sanangui antenuka meme nane dzhuiga tuwa awashka meme bo zhaneka."
+05,Saga,pregunta,¿Ʉwerru ni ki nanu saga?
+05,Saga,pregunta,¿Maka mʉgʉntsha ni uka saga?
+06,Zhinzhoma,palabra,Zhinzhoma
+06,Zhinzhoma,texto,"Zhinzhomaru anzizhega dunga, ekuiya dula ungashega, kua ekuiya go awega, pintando nekega."
+06,Zhinzhoma,texto,Zhinzhomaru kʉnba mʉnzhi anzhiwʉrnʉnka.
+06,Zhinzhoma,texto,Zhinzhoma tukaru zhinzhomamba anzizhakin neka.
+06,Zhinzhoma,pregunta,¿Ni awega zhinzhomaru dunga ki nanu?
+06,Zhinzhoma,pregunta,¿Nimba zhinzhoma shambunga ki nanu?
+07,Mena,palabra,Mena
+07,Mena,texto,"Menaru terruwa angonekʉnka kʉskʉnkangui makumanka, menagaru duga unaka, menaru duzhi uragamba nukuanka terruwaga ankʉnguka."
+07,Mena,texto,Kʉ abunzhia duga kʉnʉnkaru abu kʉzhʉnga.
+07,Mena,pregunta,¿Ni neka ki nanu manzhe abu?
+07,Mena,pregunta,¿Menangua terruwaye kuega ki nanu?
+08,Kʉsokua,palabra,Kʉsokua
+08,Kʉsokua,texto,"Wiwanzhe kʉsokuaru guarenia zhaginuka, guareniaru shimbʉn ba gogumanka, mema kima wiwanzhe kʉsokua, meme name wiwa kʉnzhʉnga garu guarenia zhiyushakuaga."
+08,Kʉsokua,pregunta,¿Maka guarenia biyunuka ki nanu?
+08,Kʉsokua,pregunta,¿Nimba manzhe kʉsokua gogumanka ki biyunuka nanu?
+09,Uma,palabra,Uma
+09,Uma,texto,"Kʉ shka nekʉnzhʉngaru uma naikuaga, uma kima zha ekuiya kʉnzhʉnga netushishka, meme name umaru duma ankʉtuakuaga."
+09,Uma,texto,"Akʉ duma ankʉtuwa aunkurreru, atʉna nekankurrashka ukuangui nukuankurraye."
+09,Uma,texto,"Meme name zduwa zhakuaga, memeru uma mʉrrame arragubi ukuame."
+09,Uma,pregunta,¿Maka manzhe uma duma mʉnkatuka ki nanu?
+09,Uma,pregunta,¿Agʉni uma dunuwaye inzhina duma ankʉtuwakuaga ki nanu?
+10,Kʉntana,palabra,Kʉntana
+10,Kʉntana,texto,"Kʉntanaru nawi shkaga gakurra, kantanaru terga aga maweru buna neka, anzhe teka aga mawenzhingua dukuan nukuakuaga, memeru mʉrrame kin jinunwaye."
+10,Kʉntana,pregunta,¿Kʉntana magaka ki nanu?
+10,Kʉntana,pregunta,¿Inzhina kʉntana mangaka ki nanu?
+11,Urraga,palabra,Urraga
+11,Urraga,texto,"Urragaru duma netuwanka dzhingoka, urragaru terruaga kin goka, arrata kua kʉnata izhipashka, memeru dzhiwa nekunwanshka kua dzhui bʉgui anzhanekunwanshka wi zhaneshi aukuame."
+11,Urraga,pregunta,¿Ma urraga mʉkʉnʉnka ki nanu?
+11,Urraga,pregunta,¿Inzhuwe name urraga mʉkʉnʉnakuaga ki nanu?
+12,Kʉn,palabra,Kʉn
+12,Kʉn,texto,"Kʉnru urraga nʉngawega iba aguigurra, kua nawinzhe Puente go agawega, kua bʉgui ekuiya awega dunga, meme name kʉn kʉminsha ta ta ta ta koshawinka."
+12,Kʉn,texto,Kʉnru wi zhanegashka se zhakutshika name kʉminsha koshawinka.
+12,Kʉn,pregunta,¿Ma ni awega nawa mʉkʉneka ki nanu?
+12,Kʉn,pregunta,¿Inzhue name kʉminsha kʉn koshawinka ki nanu?
+13,Urrami,palabra,Urrami
+13,Urrami,texto,"Urramiru kʉnkʉnarga kuaga, urramiru gakuaga, sopamba inzhu gakuaga, urramiru dungʉrra ʉmʉktshi inuka, she tanaki zhameka kʉnʉnnarga, kua bo zhanekampanuwashka zhameka."
+13,Urrami,texto,Urramiru gakuaga name duma tuwakuaga.
+13,Urrami,pregunta,¿Maka urrami mʉngaka ki nanu?
+13,Urrami,pregunta,¿Inzhina duma tuakuaga ki nanu?
+14,Ñame,palabra,Ñame
+14,Ñame,texto,"Ñameru nawiga gakurra, memaru zhama, irruguaye kuega nʉnashka memaru agʉni samnʉnka, memaru aga awamnʉnka ingui kʉgimba kuiya awakuaga."
+14,Ñame,texto,Aga maunweru bʉgui zineka name memaru bʉgui agakuaga.
+14,Ñame,pregunta,¿Maka ñama mʉkʉnʉnka ki nanu?
+14,Ñame,pregunta,¿Bion winʉ aga awamnka ki nanu?
+15,Shima,palabra,Shima
+15,Shima,texto,"Shimaru tashimarga gunuka, shimaru garnanshe zhama, shimaru bʉgui sana antenuka, bʉgui zhaginuka sana antenuka."
+15,Shima,texto,"Shkuaru amʉtshi, shkuaru atshiki, shkuaru tanki kuega."
+15,Shima,pregunta,¿Maka bion shima sana antenuka mʉgʉntsha?
+15,Shima,pregunta,¿Bion shima sana zhaginuka mʉgʉntsha?
+16,Lema,palabra,Lema
+16,Lema,texto,"Lemaru mʉzhʉnga, bʉgui lema sana nekʉnʉnka, ninzhe nanuwo, pakanzhe, ubejunzhe, purkunzhe, garnanzhe, wakanzhe, kua ninzhe nanuwo."
+16,Lema,texto,"Sopamba inzhe gakuaga, kua gasha, kua mantekamba shusha."
+16,Lema,texto,"Lema gairu dʉma mushakuaga name lema gakuaga, zhinzhoma mʉrrakin mʉkshenunwaye."
+16,Lema,pregunta,¿Inzhue name lema zhakuaga ki nanu?
+16,Lema,pregunta,¿Ni sana lema agʉni mangaka ki nanu?
+17,Misi,palabra,Misi
+17,Misi,texto,"Misiru tshukui sozhanka gunuka, urragamba tshukui antenukuampanuwanshka misigaru gaka, kʉmisha antekubi ukuame, misiru duma tuwakuaga."
+17,Misi,pregunta,¿Maka shkua misi mʉkʉnʉnka ki nanu?
+17,Misi,pregunta,¿Ni neka ki nanu minsinzhina?
+18,Zeku,palabra,Zeku
+18,Zeku,texto,"Zekuru zomarga gunuka, mema manganʉnkaru azhi tuwa mikutshakuaga name duma atuwakuaga, meme name kʉminsha guna ambunukamba mʉtsha mʉtsha nekawinka azhio bimsi ukuame."
+18,Zeku,pregunta,¿Iwina zeku mʉnganka ki nanu?
+18,Zeku,pregunta,¿Izhina zhaginikanzhia mʉgʉntsha ki nanu?
+19,Suzhi,palabra,Suzhi
+19,Suzhi,texto,"Zuzhiru kʉnkʉnarga antenuka, zuzhigaru kʉmawa kin zhaga, kua malulu anekanka kin zhaga, zuzhiru bagui sana antenuka, shkuaru anzisi, kua amʉtshi, kua ambʉntshi, kua atshiki."
+19,Suzhi,texto,"Zuzhi agina ipashawinka, kinzhatsha zhaneshi aukuame."
+19,Suzhi,pregunta,¿Maka mʉgʉntsha inzhina zhaginukanzhia zuzhi?
+19,Suzhi,pregunta,¿Inzhina duma tuwakuaga ki nanu?
