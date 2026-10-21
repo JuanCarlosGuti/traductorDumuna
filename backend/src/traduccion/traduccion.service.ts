@@ -23,6 +23,7 @@ import { evaluarApoyo, SenalesApoyo } from './apoyo';
 import {
   CONFIG_TRADUCTOR,
   ConfigTraductor,
+  TEMPERATURA_POR_DEFECTO,
   timeoutModeloMs,
 } from './config-traductor.provider';
 import {
@@ -303,7 +304,13 @@ export class TraduccionService {
         max_tokens: MAX_TOKENS_ANTHROPIC,
         system: sistema,
         messages: [{ role: 'user', content: usuario }],
-        output_config: { format: { type: 'json_schema', schema: esquema } },
+        // Sin temperature: claude-opus-5-5 la rechaza con 400 (ver
+        // config-traductor.provider.ts). El esfuerzo solo se manda si se
+        // configuró; si no, vale el valor por defecto de la API.
+        output_config: {
+          format: { type: 'json_schema', schema: esquema },
+          ...(this.config.esfuerzo ? { effort: this.config.esfuerzo } : {}),
+        },
       });
       if (respuesta.stop_reason === 'refusal') {
         throw new BadGatewayException(
@@ -352,6 +359,7 @@ export class TraduccionService {
         body: JSON.stringify({
           model: this.config.modelo,
           max_tokens: MAX_TOKENS_COMPATIBLE,
+          temperature: this.config.temperatura ?? TEMPERATURA_POR_DEFECTO,
           ...(conFormatoJson ? { response_format: { type: 'json_object' } } : {}),
           messages: [
             { role: 'system', content: sistema },

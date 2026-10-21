@@ -184,6 +184,10 @@ describe('TraduccionService', () => {
       expect(params.model).toBe(MODELO_CLAUDE);
       expect(params.output_config.format.type).toBe('json_schema');
       expect(params.output_config.format.schema.required).toContain('palabras_sin_equivalente');
+      // claude-opus-5-5 rechaza temperature con 400: nunca se envía. El
+      // esfuerzo solo va si se configuró.
+      expect(params.temperature).toBeUndefined();
+      expect(params.output_config.effort).toBeUndefined();
       expect(params.system).toContain('traductor');
       expect(params.system).toContain('palabra_dm');
       expect(params.system).toContain('artículos');
@@ -263,6 +267,12 @@ describe('TraduccionService', () => {
       expect(r2.disparadores).toEqual([]);
       expect(r2.diccionario.map((a) => a.damana)).not.toContain('Nandunun');
       expect(cliente2.messages.create.mock.calls[0][0].messages[0].content).not.toContain('Nandunun');
+    });
+
+    it('con ANTHROPIC_ESFUERZO configurado manda output_config.effort', async () => {
+      const cliente = clienteFalso(JSON_TRADUCCION);
+      await crearServicio(cliente, { ...CONFIG_ANTHROPIC, esfuerzo: 'low' }).traducir(dmAEs('nʉnka'));
+      expect(cliente.messages.create.mock.calls[0][0].output_config.effort).toBe('low');
     });
 
     it('los nombres propios viajan con la grafía del corpus', async () => {
@@ -473,10 +483,18 @@ describe('TraduccionService', () => {
       const cuerpo = JSON.parse(opciones.body);
       expect(cuerpo.model).toBe('openai/gpt-oss-120b');
       expect(cuerpo.response_format).toEqual({ type: 'json_object' });
+      expect(cuerpo.temperature).toBe(0.2); // baja por defecto: misma frase, misma traducción
       expect(cuerpo.messages[0].role).toBe('system');
       expect(cuerpo.messages[1].role).toBe('user');
       expect(cuerpo.messages[1].content).toContain('=== FRASE A TRADUCIR ===');
       expect(cuerpo.messages[1].content).toContain('nʉnka gontka');
+    });
+
+    it('la temperatura configurada se envía tal cual, incluso 0', async () => {
+      const fetchFalso = jest.fn().mockResolvedValue(respuestaOk(JSON_TRADUCCION));
+      global.fetch = fetchFalso as unknown as typeof fetch;
+      await crearServicio(null, { ...CONFIG_COMPATIBLE, temperatura: 0 }).traducir(dmAEs('ñingui'));
+      expect(JSON.parse(fetchFalso.mock.calls[0][1].body).temperature).toBe(0);
     });
 
     it('si el proveedor rechaza response_format (400) reintenta sin él', async () => {
