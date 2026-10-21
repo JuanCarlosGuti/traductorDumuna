@@ -1,5 +1,5 @@
 import { normalizar } from '../comun/texto/normalizador';
-import { esStopwordEspanol } from '../comun/texto/stopwords-es';
+import { esNegacionEspanol, esStopwordEspanol } from '../comun/texto/stopwords-es';
 import { tokenizarDamana } from '../comun/texto/tokenizador';
 import { Idioma } from './consulta.enums';
 import { VocabularioDto } from './dto/consulta.dto';
@@ -142,9 +142,13 @@ export class IndiceDiccionario {
           agregar(this.exactaEs, tokens[0].original.toLowerCase().normalize('NFC'), entrada);
           agregar(this.normalizadaEs, tokens[0].normalizada, entrada);
         } else if (tokens.length > 1) {
+          // Las negaciones se conservan como contenido: «No quiero» solo debe
+          // entrar cuando la frase trae el «no». Si se quitaran como
+          // stopwords, la forma negativa saldría también para «quiero» y el
+          // modelo recibiría un verbo negado para una frase afirmativa.
           const contenido = tokens
             .map((t) => t.normalizada)
-            .filter((t) => !esStopwordEspanol(t));
+            .filter((t) => !esStopwordEspanol(t) || esNegacionEspanol(t));
           if (contenido.length > 0) {
             this.frasesEs.push({ texto: alternativa, tokens: contenido, entrada });
           }

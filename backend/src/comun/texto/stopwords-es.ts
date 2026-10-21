@@ -15,7 +15,22 @@ const STOPWORDS_ES = new Set([
   'todos', 'tu', 'tus', 'un', 'una', 'uno', 'unos', 'y', 'ya', 'yo',
 ]);
 
+/**
+ * Negaciones del español, normalizadas. Varias son también stopwords («no»,
+ * «ni», «nada»), pero para el traductor cuentan como contenido: cambian el
+ * sentido de la frase y en damana se expresan en la forma del verbo.
+ */
+const NEGACIONES_ES = new Set([
+  'no', 'nunca', 'jamas', 'nadie', 'nada', 'ni', 'tampoco', 'ningun',
+  'ninguno', 'ninguna', 'ningunos', 'ningunas',
+]);
+
 /** Recibe la palabra YA normalizada (ver normalizar()). */
 export function esStopwordEspanol(palabraNormalizada: string): boolean {
   return STOPWORDS_ES.has(palabraNormalizada);
+}
+
+/** Recibe la palabra YA normalizada (ver normalizar()). */
+export function esNegacionEspanol(palabraNormalizada: string): boolean {
+  return NEGACIONES_ES.has(palabraNormalizada);
 }

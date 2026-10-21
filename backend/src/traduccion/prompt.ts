@@ -1,4 +1,5 @@
 import { DominioCorpus } from '../consulta/consulta.enums';
+import { Disparador } from '../consulta/reglas';
 import { ContextoRecuperado, FragmentoRecuperado } from '../consulta/retrieval.service';
 import { DireccionTraduccion } from './dto/traduccion.dto';
 
@@ -64,7 +65,13 @@ export function armarPromptSistema(direccion: DireccionTraduccion): string {
     'adverbios). Los artículos, preposiciones y demás palabras gramaticales ' +
     'del español (el, la, los, las, un, una, de, a, que…) NO se traducen una ' +
     'por una ni se dejan entre corchetes: el damana los expresa con sufijos o ' +
-    'no los expresa; resuélvelos con las reglas y los ejemplos.\n' +
+    'no los expresa; resuélvelos con las reglas y los ejemplos. La negación ' +
+    '(«no», «nunca», «nadie»…) tampoco es una palabra suelta: en damana va en ' +
+    'la forma del verbo. Si el diccionario o los ejemplos traen la forma ' +
+    'negativa de ese verbo (entradas como «No quiero», «yo no tengo»), úsala; ' +
+    'si no la traen, no dejes «no» entre corchetes: forma la negación como en ' +
+    'el ejemplo negativo más parecido, baja la confianza y dilo en ' +
+    'explicacion_breve.\n' +
     '4. Las acepciones marcadas «posible» son aproximaciones por prefijo: úsalas ' +
     'solo si encajan por significado. Las marcadas «frase» traducen un grupo de ' +
     'palabras completo y las marcadas «sinonimo» vienen de una variante ' +
@@ -79,6 +86,27 @@ export function armarPromptSistema(direccion: DireccionTraduccion): string {
     '"confianza": <número entre 0 y 1>, ' +
     '"explicacion_breve": "<1-3 frases sobre cómo llegaste a la traducción>"}'
   );
+}
+
+/**
+ * Qué decirle al modelo cuando la frase trae un rasgo para el que el corpus
+ * todavía no tiene regla. Se dice tal cual que falta —la confirmarán las
+ * hablantes— en vez de dejar que el modelo adivine si existe o no.
+ */
+const PISTA_SIN_REGLA: Record<Disparador, string> = {
+  negacion:
+    'Guíate por las formas negativas del diccionario y de los ejemplos ' +
+    '(entradas como «No quiero → Nandunun»); «no» no se traduce aparte ni va entre corchetes.',
+  plural: 'Guíate por los ejemplos.',
+  posesivo: 'Guíate por los ejemplos.',
+  pregunta: 'Guíate por los ejemplos que son preguntas.',
+  pasado: 'Guíate por las formas de pasado que aparezcan en los ejemplos.',
+  futuro: 'Guíate por las formas de futuro que aparezcan en los ejemplos.',
+};
+
+/** Rasgos detectados en la frase sin ninguna regla del corpus que los cubra. */
+export function disparadoresSinRegla(contexto: ContextoRecuperado): Disparador[] {
+  return contexto.disparadores.filter((d) => !contexto.reglas.some((r) => r.disparador === d));
 }
 
 function seccion(titulo: string, cuerpo: string): string {
@@ -114,7 +142,14 @@ export function armarPromptUsuario(
     contexto.disparadores.length > 0
       ? `Rasgos detectados en la frase: ${contexto.disparadores.join(', ')}.`
       : 'Rasgos detectados en la frase: ninguno.';
-  const reglas = [rasgos, ...(lineasReglas.length ? lineasReglas : ['(ninguna regla aplicable)'])].join('\n');
+  const sinRegla = disparadoresSinRegla(contexto).map(
+    (d) =>
+      `- ${d}: rasgo detectado, pero el corpus no tiene regla registrada ` +
+      `(pendiente de confirmar con las hablantes). ${PISTA_SIN_REGLA[d]}`,
+  );
+  const cuerpoReglas =
+    lineasReglas.length || sinRegla.length ? [...lineasReglas, ...sinRegla] : ['(ninguna regla aplicable)'];
+  const reglas = [rasgos, ...cuerpoReglas].join('\n');
 
   const lineasDiccionario = contexto.diccionario.map((a) => {
     const categoria = a.categoria ? `; ${a.categoria}` : '';

@@ -1,5 +1,5 @@
 import { normalizar } from '../comun/texto/normalizador';
-import { esStopwordEspanol } from '../comun/texto/stopwords-es';
+import { esNegacionEspanol, esStopwordEspanol } from '../comun/texto/stopwords-es';
 import { tokenizarDamana } from '../comun/texto/tokenizador';
 import { Idioma } from './consulta.enums';
 
@@ -76,11 +76,6 @@ const POSESIVOS = new Set([
   'suyas', 'de', 'del',
 ]);
 
-const NEGACIONES = new Set([
-  'no', 'nunca', 'jamas', 'nadie', 'nada', 'ni', 'tampoco', 'ningun',
-  'ninguno', 'ninguna', 'ningunos', 'ningunas',
-]);
-
 const INTERROGATIVOS = new Set([
   'que', 'quien', 'quienes', 'donde', 'adonde', 'cuando', 'como', 'cual',
   'cuales', 'cuanto', 'cuanta', 'cuantos', 'cuantas', 'por',
@@ -121,7 +116,7 @@ export function detectarDisparadoresEspanol(texto: string): Disparador[] {
   if (/[¿?]/.test(texto) || INTERROGATIVOS.has(normalizados[0] ?? '')) {
     encontrados.add('pregunta');
   }
-  if (normalizados.some((t) => NEGACIONES.has(t))) encontrados.add('negacion');
+  if (normalizados.some((t) => esNegacionEspanol(t))) encontrados.add('negacion');
   if (normalizados.some((t) => POSESIVOS.has(t))) encontrados.add('posesivo');
 
   const pluralLexico = normalizados.some(

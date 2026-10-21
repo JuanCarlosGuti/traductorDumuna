@@ -30,6 +30,8 @@ const VOCABULARIO: VocabularioDto[] = [
   entrada(13, 'En', 'Mba', 'Otros'),
   entrada(14, 'Feliz', 'Zen zhiguana', 'Sentimientos / estados'),
   entrada(15, 'Ese o esa', 'Mema', 'Conectores / determinantes'),
+  entrada(16, 'No quiero', 'Nandunun', 'Sentimientos / estados'),
+  entrada(17, 'No tengo', 'Nʉjkʉnanun', 'Verbos'),
 ];
 
 describe('alternativasEspanol', () => {
@@ -111,6 +113,17 @@ describe('IndiceDiccionario (español → damana)', () => {
     expect(buscar('Esa mujer')).toContainEqual(
       expect.objectContaining({ palabra: 'Esa', damana: 'Mema', coincidencia: 'exacta' }),
     );
+  });
+
+  it('las entradas negativas («No tengo», con ʉ) solo entran cuando la frase trae el «no»', () => {
+    expect(buscar('no tengo agua')).toContainEqual(
+      expect.objectContaining({ palabra: 'No tengo', damana: 'Nʉjkʉnanun', coincidencia: 'frase' }),
+    );
+    // Afirmativa: la forma negada NO debe aparecer (antes salía como «frase»
+    // porque «no» se descartaba como stopword).
+    expect(buscar('tengo agua').map((a) => a.damana)).not.toContain('Nʉjkʉnanun');
+    // Otra negación distinta de «no» tampoco la activa.
+    expect(buscar('nunca quiero').map((a) => a.damana)).not.toContain('Nandunun');
   });
 });
 

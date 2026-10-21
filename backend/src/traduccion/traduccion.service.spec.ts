@@ -144,6 +144,7 @@ describe('TraduccionService', () => {
     insVocab.run('mamá', 'Abu', 'Personas y familia', 'dic');
     insVocab.run('Cocinar', 'Dugua', 'Verbos', 'dic');
     insVocab.run('Casa', 'Urraga', 'Casa / objetos / herramientas', 'dic');
+    insVocab.run('No quiero', 'Nandunun', 'Sentimientos / estados', 'dic');
     db.prepare(
       `INSERT INTO reglas (tipo, forma, significado, ejemplo_base, ejemplo_regla, traduccion_ejemplo, notas, disparador)
        VALUES ('sufijo', '-nzhe', 'posesivo / "de"', 'Kunkujshina (Dios)', 'Kunkujshinanzhe', 'de Dios', NULL, 'posesivo')`,
@@ -238,6 +239,30 @@ describe('TraduccionService', () => {
       expect(usuario).toContain('- -nzhe — posesivo');
       expect(usuario).toContain('- mamá → Abu (mamá) [exacta');
       expect(usuario).toContain('Dirección: del español al damana.');
+    });
+
+    it('negación sin regla en el corpus: el prompt lo dice y ofrece la forma negativa del diccionario solo si hay «no»', async () => {
+      const cliente = clienteFalso(JSON_TRADUCCION);
+      const r = await crearServicio(cliente, CONFIG_ANTHROPIC).traducir(esADm('no quiero agua'));
+      expect(r.disparadores).toEqual(['negacion']);
+      expect(r.reglas).toEqual([]); // la base de prueba solo tiene -nzhe (posesivo)
+      expect(r.diccionario).toContainEqual(
+        expect.objectContaining({ palabra: 'No quiero', damana: 'Nandunun', coincidencia: 'frase' }),
+      );
+      const params = cliente.messages.create.mock.calls[0][0];
+      expect(params.system).toContain('La negación');
+      const usuario: string = params.messages[0].content;
+      expect(usuario).toContain('Rasgos detectados en la frase: negacion.');
+      expect(usuario).toContain('- negacion: rasgo detectado, pero el corpus no tiene regla registrada');
+      expect(usuario).toContain('No quiero → Nandunun');
+      expect(usuario).not.toContain('(ninguna regla aplicable)');
+
+      // Afirmativa: ni rasgo, ni aviso, ni la forma negada en el diccionario.
+      const cliente2 = clienteFalso(JSON_TRADUCCION);
+      const r2 = await crearServicio(cliente2, CONFIG_ANTHROPIC).traducir(esADm('quiero agua'));
+      expect(r2.disparadores).toEqual([]);
+      expect(r2.diccionario.map((a) => a.damana)).not.toContain('Nandunun');
+      expect(cliente2.messages.create.mock.calls[0][0].messages[0].content).not.toContain('Nandunun');
     });
 
     it('los nombres propios viajan con la grafía del corpus', async () => {
