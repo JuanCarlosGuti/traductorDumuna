@@ -4,11 +4,35 @@ Paso 5 de `INSTRUCCIONES-CLAUDE-CODE.md`. Hecho el 21 de octubre de 2026.
 
 ## Lo primero: qué entró al corpus
 
-**Nada.** Por diseño: las instrucciones piden aprobación del dueño antes de
-tocar `/datos`, y el cruce mostró que buena parte del material choca con lo
-que ya hay (grafía, sentido o glosa). Todo quedó preparado en `salida/` para
-cargar lo que se apruebe. Las cuatro capas de pruebas y `npm run importar`
-siguen en verde porque el corpus no cambió.
+En la primera pasada, nada: las instrucciones piden aprobación del dueño
+antes de tocar `/datos`, y el cruce mostró que buena parte del material
+choca con lo que ya hay (grafía, sentido o glosa). Después, con aprobación
+expresa del dueño el mismo 21 de octubre:
+
+1. **Sal: Nungu → Nʉngu** en el vocabulario y en las dos oraciones del
+   folleto (regla de la ʉ, ver abajo).
+2. **35 palabras del material externo que cubrían pendientes del lote 1**,
+   todas con seguridad alta (33 del Living Dictionary, 2 del Swadesh que
+   coinciden con otra fuente), añadidas al final de
+   `corpus_vocabulario_v3.csv` con su `fuente` y la URL en `notas`
+   (`herramientas/cargar_pendientes_cubiertas.js --aplicar`; la lista exacta
+   en `salida/vocabulario_cargado_2026-10-21.csv`): bailar, cama, cocina,
+   dedo, escuela, frío, hamaca, leer, nariz, negro, nombre, ojo, pie,
+   pierna, rojo, sombrero, tejer, traer, uña, zapatos, amarillo, boca,
+   olla, pecho, piel, humo (suta; kazhia como variante)… Las otras 16
+   pendientes cubiertas solo tenían candidatas de seguridad media (Hoppe,
+   Swadesh dudoso) y siguen esperando al revisor.
+3. **El importador ya no pide lo que el corpus sabe**
+   (`backend/src/importador/cobertura-vocabulario.ts`, con pruebas): una fila
+   de elicitación sin llenar cuya palabra ya está en el vocabulario no se
+   registra como pendiente, y las pendientes abiertas que el vocabulario
+   cubre se cierran. Al reimportar cerró **307 de las 515** pendientes del
+   lote 1 (277 que el corpus ya sabía y 30 de las palabras recién cargadas).
+   Quedan **207 abiertas del lote 1 y 1 del traductor**: eso es lo que de
+   verdad falta y lo que vale la pena pagar.
+
+Las cuatro capas de pruebas, el tipado y `npm run importar` quedaron en
+verde tras cada cambio.
 
 ## Conteos
 

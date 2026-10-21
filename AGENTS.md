@@ -148,6 +148,14 @@ experiencia en TypeScript/Angular y backend.
   JSON: traduccion, glosa, palabras_sin_equivalente, reglas_aplicadas,
   confianza, explicacion_breve. Lo que no está en el corpus va entre
   corchetes `[palabra]` y se registra en `pendientes`.
+- Las hablantes cobran por palabra: el importador NO registra como
+  pendiente una fila de elicitación sin llenar cuya palabra ya está en el
+  vocabulario (incluida la que trae el mismo lote), y cierra las pendientes
+  abiertas que el vocabulario cubre (`importador/cobertura-vocabulario.ts`:
+  alternativas del español, paréntesis, singular; ʉ ≠ u, ñ ≠ n). El 21 oct
+  2026 eso cerró 277 de las 515 del lote 1 que el corpus ya sabía, y otras
+  tantas al cargar vocabulario externo. Una pendiente resuelta que el
+  traductor vuelve a pedir se reabre sola.
 - Ciclo con las hablantes: vista /pendientes → «exportar lote» genera
   `formato_elicitacion_pendientes_<fecha>.xlsx` (columnas del formato de
   elicitación, celdas por llenar en amarillo). El lote vuelto lleno se
