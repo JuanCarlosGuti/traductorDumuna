@@ -122,6 +122,10 @@ describe('TraduccionService', () => {
     };
   }
 
+  /** El system viaja como bloques (caché de prompts): se junta su texto. */
+  const sistemaDe = (params: any): string =>
+    (params.system as { text: string }[]).map((b) => b.text).join('\n');
+
   const dmAEs = (texto: string) => ({ texto, direccion: DireccionTraduccion.damana_a_espanol });
   const esADm = (texto: string) => ({ texto, direccion: DireccionTraduccion.espanol_a_damana });
 
@@ -188,9 +192,9 @@ describe('TraduccionService', () => {
       // esfuerzo solo va si se configuró.
       expect(params.temperature).toBeUndefined();
       expect(params.output_config.effort).toBeUndefined();
-      expect(params.system).toContain('traductor');
-      expect(params.system).toContain('palabra_dm');
-      expect(params.system).toContain('artículos');
+      expect(sistemaDe(params)).toContain('traductor');
+      expect(sistemaDe(params)).toContain('palabra_dm');
+      expect(sistemaDe(params)).toContain('artículos');
       const usuario: string = params.messages[0].content;
       for (const seccion of [
         '=== REGLAS GRAMATICALES ===',
@@ -237,7 +241,7 @@ describe('TraduccionService', () => {
       expect(r.glosa[1]).toEqual({ origen: 'mamá', destino: 'abu' });
 
       const params = cliente.messages.create.mock.calls[0][0];
-      expect(params.system).toContain('palabra_es');
+      expect(sistemaDe(params)).toContain('palabra_es');
       const usuario: string = params.messages[0].content;
       expect(usuario).toContain('Rasgos detectados en la frase: posesivo');
       expect(usuario).toContain('- -nzhe — posesivo');
@@ -254,7 +258,7 @@ describe('TraduccionService', () => {
         expect.objectContaining({ palabra: 'No quiero', damana: 'Nandunun', coincidencia: 'frase' }),
       );
       const params = cliente.messages.create.mock.calls[0][0];
-      expect(params.system).toContain('La negación');
+      expect(sistemaDe(params)).toContain('La negación');
       const usuario: string = params.messages[0].content;
       expect(usuario).toContain('Rasgos detectados en la frase: negacion.');
       expect(usuario).toContain('- negacion: rasgo detectado, pero el corpus no tiene regla registrada');
@@ -267,6 +271,21 @@ describe('TraduccionService', () => {
       expect(r2.disparadores).toEqual([]);
       expect(r2.diccionario.map((a) => a.damana)).not.toContain('Nandunun');
       expect(cliente2.messages.create.mock.calls[0][0].messages[0].content).not.toContain('Nandunun');
+    });
+
+    it('marca el prompt de sistema para la caché de prompts (cache_control ephemeral)', async () => {
+      const cliente = clienteFalso(JSON_TRADUCCION);
+      await crearServicio(cliente, CONFIG_ANTHROPIC).traducir(dmAEs('nʉnka'));
+      const params = cliente.messages.create.mock.calls[0][0];
+      expect(params.system).toEqual([
+        {
+          type: 'text',
+          text: expect.stringContaining('traductor experto'),
+          cache_control: { type: 'ephemeral' },
+        },
+      ]);
+      // El mensaje de usuario cambia con cada frase: va sin marca de caché.
+      expect(typeof params.messages[0].content).toBe('string');
     });
 
     it('con ANTHROPIC_ESFUERZO configurado manda output_config.effort', async () => {

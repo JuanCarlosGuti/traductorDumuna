@@ -302,7 +302,15 @@ export class TraduccionService {
       const respuesta = await this.cliente!.messages.create({
         model: this.config.modelo,
         max_tokens: MAX_TOKENS_ANTHROPIC,
-        system: sistema,
+        // El prompt de sistema es idéntico en todas las traducciones de una
+        // misma dirección: se marca para la caché de prompts de Anthropic
+        // (prefijo mínimo de 512 tokens en claude-opus-5-5; este prompt
+        // ronda los 750). La caché dura 5 min entre llamadas: entra en
+        // rachas (evaluaciones, sesiones de trabajo), no en traducciones
+        // sueltas. El mensaje de usuario cambia con cada frase (diccionario,
+        // reglas y ejemplos dependen de ella), así que no tiene prefijo
+        // estable que marcar.
+        system: [{ type: 'text', text: sistema, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: usuario }],
         // Sin temperature: claude-opus-5-5 la rechaza con 400 (ver
         // config-traductor.provider.ts). El esfuerzo solo se manda si se
