@@ -212,8 +212,8 @@ Render sigue vivo hasta que esta versión lleve una semana estable.
   `159.195.235.225` con proxy apagado (nube gris); con la nube naranja
   Let's Encrypt no puede emitir el certificado. Y en GitHub → Settings →
   Secrets and variables → Actions: `SSH_PRIVATE_KEY`, `SERVER_IP`,
-  `ANTHROPIC_API_KEY` (pendiente de crear; mientras falte, el servidor
-  propio traduce con Groq), `TRADUCTOR_API_KEY`, `AUTH_USUARIO`,
+  `ANTHROPIC_API_KEY` (si faltara, el servidor propio traduce con Groq),
+  `TRADUCTOR_API_KEY`, `AUTH_USUARIO`,
   `AUTH_PASSWORD`, `AUTH_JWT_SECRET`. `KAMAL_REGISTRY_PASSWORD` no se
   crea: es el `GITHUB_TOKEN`.
 - **Verificar:** `curl -sI https://damana.crearcodecesar.com/` → 200 con

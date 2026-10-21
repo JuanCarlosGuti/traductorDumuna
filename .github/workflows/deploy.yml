@@ -81,8 +81,8 @@ jobs:
       - name: Desplegar
         env:
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-          # Claude, motor principal. Si el secreto aún no existe llega vacío y
-          # la app cae sola a Groq (TRADUCTOR_*).
+          # Claude, motor principal. Si el secreto faltara llegaría vacío y
+          # la app caería sola a Groq (TRADUCTOR_*).
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TRADUCTOR_API_KEY: ${{ secrets.TRADUCTOR_API_KEY }}
           AUTH_USUARIO: ${{ secrets.AUTH_USUARIO }}

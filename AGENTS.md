@@ -40,10 +40,9 @@ experiencia en TypeScript/Angular y backend.
   la clave de Anthropic. Ollama quedó abandonado por lentitud (~29 s con
   qwen2.5:7b), aunque el soporte por variables sigue existiendo. En local
   ambas claves son variables de usuario de Windows.
-- **Pendiente (lo hace Juan a mano):** crear el secreto `ANTHROPIC_API_KEY`
-  en GitHub → Settings → Secrets and variables → Actions para el
-  despliegue con Kamal. Mientras no exista, el workflow lo exporta vacío
-  y el servidor propio traduce con Groq.
+- El secreto `ANTHROPIC_API_KEY` de GitHub Actions (para Kamal) ya existe
+  (lo creó Juan el 21 oct 2026). Si algún día faltara, el workflow lo
+  exporta vacío y el servidor propio traduciría con Groq.
 - Trampas ya sufridas en Render (no repetir): exige
   `NODE_VERSION >= 24.15.0` (la CLI de Angular rechaza menores) y,
   por ser monorepo con npm workspaces (lock único en la raíz), TODO
