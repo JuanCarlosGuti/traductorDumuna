@@ -38,18 +38,25 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
       rows="4"
       placeholder="Texto a traducir… (u+ → ʉ)"
       [value]="texto()"
+      [disabled]="cargando()"
       (input)="texto.set(campo.value)"
     ></textarea>
     <div class="controles">
-      <select #selDir [value]="direccion()" (change)="direccion.set($any(selDir.value))" aria-label="Dirección">
+      <select #selDir [value]="direccion()" [disabled]="cargando()" (change)="direccion.set($any(selDir.value))" aria-label="Dirección">
         <option value="espanol_a_damana">español → damana</option>
         <option value="damana_a_espanol">damana → español</option>
       </select>
-      <button type="button" class="boton-suave" (click)="intercambiarDireccion()" title="Invertir dirección">⇄</button>
+      <button type="button" class="boton-suave" (click)="intercambiarDireccion()" [disabled]="cargando()" title="Invertir dirección">⇄</button>
       <button type="submit" class="boton" [disabled]="cargando() || !texto().trim()">
         {{ cargando() ? 'Traduciendo…' : 'Traducir' }}
       </button>
     </div>
+    @if (cargando()) {
+      <p class="espera suave chiquito" role="status" aria-live="polite">
+        <span class="latido" aria-hidden="true"></span>
+        {{ mensajeEspera() }}
+      </p>
+    }
   </form>
 
   @if (error()) {

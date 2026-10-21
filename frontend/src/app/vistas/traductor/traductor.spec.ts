@@ -88,6 +88,42 @@ describe('Traductor', () => {
     expect(texto(fixture)).toContain('Ranzhe abu urragamba');
   });
 
+  it('mientras traduce avisa de la espera (Claude: 5-15 s), bloquea la caja y la libera al terminar', async () => {
+    await arrancar({ disponible: true, proveedor: 'anthropic', modelo: 'claude-opus-5-5' });
+    await escribir('mi mamá cocina en la casa');
+    await traducir();
+
+    // Petición en vuelo: aviso visible, caja y controles bloqueados.
+    const area = (fixture.nativeElement as HTMLElement).querySelector('textarea')!;
+    expect(area.disabled).toBe(true);
+    expect((fixture.nativeElement as HTMLElement).querySelector('select')!.disabled).toBe(true);
+    expect((boton(/Traduciendo/) as HTMLButtonElement).disabled).toBe(true);
+    const aviso = (fixture.nativeElement as HTMLElement).querySelector('.espera')!;
+    expect(aviso.getAttribute('role')).toBe('status');
+    expect(aviso.textContent).toContain('Traduciendo con Claude… suele tardar entre 5 y 15 s');
+
+    http.expectOne('/api/traducir').flush(RESPUESTA);
+    await asentar(fixture);
+
+    // Terminó: se puede volver a escribir (con ʉ) y el aviso desaparece.
+    expect(area.disabled).toBe(false);
+    expect(buscarTodos(fixture, '.espera').length).toBe(0);
+    await escribir('nʉnka ñingui');
+    expect(area.value).toBe('nʉnka ñingui');
+    expect((boton(/^\s*Traducir\s*$/) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('con un proveedor compatible el aviso nombra al modelo y no a Claude', async () => {
+    await arrancar(); // DISPONIBLE: compatible, gpt-oss-120b
+    await escribir('nʉnka');
+    await traducir();
+    const aviso = (fixture.nativeElement as HTMLElement).querySelector('.espera')!;
+    expect(aviso.textContent).toContain('Traduciendo con gpt-oss-120b…');
+    expect(aviso.textContent).not.toContain('Claude');
+    http.expectOne('/api/traducir').flush(RESPUESTA);
+    await asentar(fixture);
+  });
+
   it('no manda nada si el texto está vacío', async () => {
     await arrancar();
     await traducir();

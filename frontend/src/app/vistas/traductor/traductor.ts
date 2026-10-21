@@ -84,6 +84,18 @@ export class Traductor {
     Math.round((this.resultado()?.confianza ?? 0) * 100),
   );
 
+  /**
+   * Qué decir mientras se espera. Claude tarda bastante más que Groq (5-15 s
+   * frente a 2-3 s) y sin aviso parece que la página se colgó.
+   */
+  protected readonly mensajeEspera = computed(() => {
+    const e = this.estado();
+    if (e?.proveedor === 'anthropic') {
+      return 'Traduciendo con Claude… suele tardar entre 5 y 15 s.';
+    }
+    return `Traduciendo con ${e?.modelo ?? 'el modelo'}… suele tardar unos segundos (un modelo local puede tardar más).`;
+  });
+
   constructor() {
     void this.cargarEstado();
   }
