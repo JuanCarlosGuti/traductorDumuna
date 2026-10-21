@@ -2,14 +2,15 @@
 
 Aplicación de estudio del damana (dʉmʉna), lengua del pueblo Wiwa
 (Sierra Nevada de Santa Marta, Colombia): concordancias, diccionario de
-frecuencias, flashcards con repetición espaciada y traductor asistido
-por IA apoyado en el corpus.
+frecuencias, flashcards con repetición espaciada, traductor asistido por
+IA apoyado en el corpus y ciclo de pendientes con las hablantes nativas.
 
 > **🌍 En producción: https://corpus-damana.onrender.com** (Render, plan
 > gratuito — tras ~15 min sin visitas el servicio se duerme y la primera
-> petición tarda ~30-60 s en despertarlo). Motor de traducción actual:
-> **Groq** (`openai/gpt-oss-120b`). Ver [Despliegue](#despliegue-render)
-> y, sobre todo, [Actualizar el corpus](#actualizar-el-corpus-agregar-palabrasoraciones).
+> petición tarda ~30-60 s en despertarlo). Pide usuario y contraseña (un
+> solo usuario). Motor de traducción actual: **Groq**
+> (`openai/gpt-oss-120b`). Ver [Despliegue](#despliegue-render) y
+> [Actualizar el corpus](#actualizar-el-corpus).
 
 ## Requisitos
 
@@ -20,14 +21,14 @@ por IA apoyado en el corpus.
 
 ```bash
 npm install          # instala backend y frontend (workspaces)
-npm run importar     # crea datos/corpus.db desde los CSV de /datos
+npm run importar     # crea datos/corpus.db desde los CSV y Excel de /datos
 npm run build        # compila el frontend hacia backend/public
 npm start            # backend en modo desarrollo (sirve también la web)
 ```
 
-Abrir **http://localhost:3000** — ahí están las cuatro vistas (Buscar,
-Diccionario, Flashcards, Traductor) y la documentación de la API en
-`/api/docs`.
+Abrir **http://localhost:3000** — ahí están las vistas (Buscar,
+Diccionario, Gramática, Flashcards, Traductor, Pendientes) y la
+documentación de la API en `/api/docs`.
 
 Para desarrollo del frontend con recarga automática: `npm run front`
 (Angular en http://localhost:4200 con proxy hacia el backend en :3000).
@@ -36,15 +37,13 @@ Para producción: `npm run build` y luego `npm run start:prod`.
 
 ## Configurar el traductor
 
-Las tres primeras vistas funcionan sin configuración. El **Traductor**
-necesita un motor de IA, elegido por variables de entorno.
+Las demás vistas funcionan sin configuración. El **Traductor** necesita
+un motor de IA, elegido por variables de entorno.
 
 ### Motor actual: Groq (gratis, ~2 s por traducción)
 
-Es la configuración vigente **tanto en local como en Render** desde
-julio 2026 (reemplazó al Ollama local, que tardaba ~29 s por traducción
-con qwen2.5:7b). Clave gratis sin tarjeta en https://console.groq.com
-(API Keys → Create):
+Es la configuración vigente **tanto en local como en Render**. Clave
+gratis sin tarjeta en https://console.groq.com (API Keys → Create):
 
 ```powershell
 setx TRADUCTOR_BASE_URL "https://api.groq.com/openai/v1"
@@ -55,20 +54,84 @@ setx TRADUCTOR_API_KEY "gsk_..."
 
 ### Alternativas (mismo mecanismo, otras variables)
 
-- **Cualquier API compatible con OpenAI**: Google Gemini
-  (https://aistudio.google.com, gratis sin tarjeta,
-  `TRADUCTOR_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai`,
-  `TRADUCTOR_MODELO=gemini-2.0-flash`), el router de Hugging Face, etc.
-- **Ollama local** (sin internet, lento): `ollama pull qwen2.5:7b`,
-  `TRADUCTOR_BASE_URL=http://localhost:11434/v1`,
-  `TRADUCTOR_MODELO=qwen2.5:7b`, `TRADUCTOR_TIMEOUT_MS=300000`.
-- **Claude por API** (mejor calidad, de pago — la suscripción de
-  claude.ai NO incluye API): crédito en https://console.anthropic.com
-  y `ANTHROPIC_API_KEY=sk-ant-...`. Si está definida, **tiene prioridad**
-  sobre las variables TRADUCTOR_*.
+- **Cualquier API compatible con OpenAI**: Google Gemini, el router de
+  Hugging Face, Ollama local (`TRADUCTOR_BASE_URL=http://localhost:11434/v1`,
+  `TRADUCTOR_MODELO=qwen2.5:7b`, `TRADUCTOR_TIMEOUT_MS=300000`; lento).
+- **Claude por API** (SDK oficial de Anthropic, de pago — la suscripción
+  de claude.ai NO incluye API): crédito en https://console.anthropic.com
+  y `ANTHROPIC_API_KEY=sk-ant-...`. Si está definida **tiene prioridad**
+  sobre las variables TRADUCTOR_*. Modelo por defecto `claude-opus-5-5`;
+  se cambia con `ANTHROPIC_MODELO`.
 
 Sin motor configurado, la vista Traductor lo explica y el resto de la
 app sigue funcionando.
+
+## Cómo traduce
+
+El objetivo es un traductor de **propósito general**: el corpus bíblico
+sigue siendo la fuente de gramática y morfología, pero los ejemplos
+cotidianos (frases de reuniones, elicitación con hablantes) mandan.
+Para cada frase el backend arma el prompt en este orden:
+
+1. **Diccionario de esta frase**: cada palabra se busca en el vocabulario
+   (exacta → sin tildes → sinónimo coloquial como mamá→madre → singular
+   → prefijo de 5 letras, marcado «posible»), con todas sus acepciones; más los nombres propios con la
+   grafía de la tabla.
+2. **Reglas gramaticales aplicables**: se detectan rasgos de la frase
+   (plural, posesivo, negación, pregunta, pasado, futuro) y se incluyen
+   las reglas de `reglas_damana.xlsx` que los cubren.
+3. **Ejemplos por similitud** repartidos por dominio: hasta 6 cotidianos,
+   4 de gramática (conjugaciones) y 4 bíblicos (2 si ya hay cotidianos
+   suficientes), nunca más de 14 ni casi repetidos.
+
+El modelo responde JSON con la traducción, la **glosa palabra por
+palabra**, las **palabras sin equivalente** (van entre corchetes y se
+anotan en Pendientes), las reglas aplicadas, una confianza y una
+explicación. La vista muestra todo eso y permite marcar **«esta
+traducción es correcta»** o **corregirla**: los pares validados se
+acumulan en la tabla `validadas`.
+
+### Pendientes: cerrar el bucle con las hablantes
+
+La vista **Pendientes** lista las palabras que el traductor no pudo
+resolver (ordenadas por las veces que se pidieron) y las filas de
+elicitación que volvieron sin llenar. El botón **Exportar lote**
+descarga `formato_elicitacion_pendientes_<fecha>.xlsx` con las columnas
+del formato de elicitación y las celdas por llenar en amarillo. Cuando el
+archivo vuelve lleno:
+
+```bash
+# dejarlo en datos/ con nombre formato_elicitacion_<lo que sea>.xlsx
+npm run importar      # lo absorbe: vocabulario + oraciones cotidianas
+```
+
+### Dudas para las hablantes
+
+```bash
+npm run dudas         # no corrige nada: escribe datos/dudas_para_hablantes_<fecha>.xlsx
+```
+
+Junta en un Excel lo que no está claro en los datos, una hoja por tipo de
+pregunta y las respuestas en las casillas amarillas: palabras escritas de
+varias maneras, palabras con varias traducciones, formas con varios
+significados, entradas confusas y terminaciones que se repiten. La primera
+hoja la puede llenar cualquier hablante; las demás son para quien revisa.
+El mismo comando crea, si no existe, `formato_elicitacion_lote2_gramatica.xlsx`:
+oraciones mínimas para sacar las reglas de la gramática.
+
+### Evaluación medible
+
+```bash
+npm run evaluar       # traduce datos/pruebas_traduccion.csv y escribe
+                      # evaluaciones/<fecha>_<modelo>.{json,md}
+```
+
+Reporta por ámbito la coincidencia exacta, el chrF (implementación
+propia sobre n-gramas de caracteres) y el % de palabras sin equivalente.
+Las pruebas las reserva el importador: 1 de cada 10 filas de elicitación
+con ejemplo completo, elegida por un hash estable del id, no entra al
+retrieval. También se pueden añadir filas a mano (`espanol,
+damana_esperado, ambito`); nunca se borran.
 
 ## Despliegue (Render)
 
@@ -78,33 +141,66 @@ gratuito de Render que construye y publica todo automáticamente en
 
 - **Cada `git push` a `main` redespliega solo** (build ~5-10 min):
   `npm ci` en la raíz → `npm run build` (Angular → `backend/public` +
-  Nest) → `npm run importar` (regenera `datos/corpus.db` desde los CSV)
-  → `npm run start:prod`.
-- La única variable secreta es `TRADUCTOR_API_KEY` (se configura en el
-  dashboard de Render, nunca en el repo). Las demás (`TRADUCTOR_BASE_URL`,
+  Nest) → `npm run importar` (regenera `datos/corpus.db`) →
+  `npm run start:prod`.
+- Los secretos (`TRADUCTOR_API_KEY`, `AUTH_USUARIO`, `AUTH_PASSWORD`) se
+  configuran en el dashboard de Render, nunca en el repo. Las demás (`TRADUCTOR_BASE_URL`,
   `TRADUCTOR_MODELO`, `NODE_VERSION`) viven en el `render.yaml`.
-- Lecciones aprendidas del primer despliegue (no repetir): Render
-  necesita `NODE_VERSION >= 24.15.0` (la CLI de Angular rechaza
-  versiones menores), y al ser un monorepo con **npm workspaces**
-  (un solo `package-lock.json` en la raíz) todo se instala y construye
-  **desde la raíz** — instalar por subcarpetas deja `node_modules`
-  donde el runtime no los encuentra.
+- Acceso con usuario único: sin `AUTH_USUARIO` y `AUTH_PASSWORD` el servicio
+  no arranca en producción, a propósito. `AUTH_JWT_SECRET` lo genera Render.
+- Lecciones aprendidas (no repetir): Render necesita
+  `NODE_VERSION >= 24.15.0`, y al ser un monorepo con **npm workspaces**
+  todo se instala y construye **desde la raíz**. No poner
+  `NODE_ENV=production` (dejaría fuera las devDependencies del build).
+- El filesystem es efímero: lo que se escribe en runtime (progreso de
+  flashcards, traducciones, pendientes, validadas) no persiste entre
+  deploys en Render; en local sí.
 
 Para una demo puntual desde el propio PC sin Render:
 `npm run start:prod` (o con `PORT=3001` si el 3000 está ocupado) +
 `cloudflared tunnel --url http://localhost:3000`.
 
-## Actualizar el corpus (agregar palabras/oraciones)
+## Despliegue en servidor propio (Kamal 2)
 
-**Este es el flujo de trabajo habitual.** Los archivos fuente son los
-CSV de [`datos/`](datos/) (UTF-8 con BOM; estructura de columnas en
+Preparado para el VPS propio (netcup, `159.195.235.225`), detrás de
+kamal-proxy junto a las otras apps, en **https://damana.crearcodecesar.com**.
+Render sigue vivo hasta que esta versión lleve una semana estable.
+
+- **Cómo se despliega:** cada push a `main` corre
+  [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): pruebas
+  (Jest, API, Vitest), construcción de la imagen con el corpus horneado
+  dentro (`npm run importar` en el [`Dockerfile`](Dockerfile)) y
+  `kamal deploy`. La imagen se publica en GHCR como
+  `ghcr.io/juancarlosguti/corpus-damana`.
+- **Antes del primer deploy:** en Cloudflare, registro A `damana` →
+  `159.195.235.225` con proxy apagado (nube gris); con la nube naranja
+  Let's Encrypt no puede emitir el certificado. Y en GitHub → Settings →
+  Secrets and variables → Actions: `SSH_PRIVATE_KEY`, `SERVER_IP`,
+  `TRADUCTOR_API_KEY`, `AUTH_USUARIO`, `AUTH_PASSWORD`, `AUTH_JWT_SECRET`.
+  `KAMAL_REGISTRY_PASSWORD` no se crea: es el `GITHUB_TOKEN`.
+- **Verificar:** `curl -sI https://damana.crearcodecesar.com/` → 200 con
+  `Strict-Transport-Security`, y
+  `curl -s https://damana.crearcodecesar.com/api/salud` → `{"estado":"ok"}`
+  (503 si la imagen salió sin corpus).
+- **Lo que no persiste:** la base va dentro de la imagen. Lo que la app
+  escribe (pendientes, validadas, traducciones, progreso de flashcards) se
+  pierde en cada deploy, igual que en Render. El siguiente paso es un
+  volumen de Kamal con una base de estado aparte.
+- **Probar la imagen en local:** `docker build -t corpus-damana .` y luego
+  `docker run --rm -p 3000:3000 -e NODE_ENV=production -e AUTH_USUARIO=… -e AUTH_PASSWORD=… -e AUTH_JWT_SECRET=… -e TRADUCTOR_API_KEY=… corpus-damana`.
+
+## Actualizar el corpus
+
+**Este es el flujo de trabajo habitual.** Los archivos fuente viven en
+[`datos/`](datos/) (CSV en UTF-8 con BOM; estructura de columnas en
 [CLAUDE.md](CLAUDE.md)) — `corpus.db` nunca se edita a mano, es
 regenerable y está fuera de git.
 
-1. Editar el CSV que corresponda: `corpus_vocabulario_v2.csv` (palabras
-   sueltas), `corpus_oraciones.csv` (pares oración a oración, con
-   columna `estado`), `corpus_frases_v2.csv` o
-   `corpus_conjugaciones.csv`.
+1. Editar el archivo que corresponda: `corpus_vocabulario_v3.csv`
+   (palabras sueltas), `corpus_oraciones.csv` (pares oración a oración,
+   con columna `estado`), `corpus_frases_v2.csv`,
+   `corpus_conjugaciones.csv`, `reglas_damana.xlsx` (reglas y nombres
+   propios) o dejar un nuevo `formato_elicitacion_*.xlsx` lleno.
 2. Regenerar la base y probar en local:
    ```bash
    npm run importar
@@ -117,30 +213,32 @@ regenerable y está fuera de git.
    git push
    ```
    Render detecta el push, reconstruye y **regenera la base en el
-   servidor con los CSV nuevos** — en ~10 min los cambios están en
-   https://corpus-damana.onrender.com sin ningún paso manual extra.
+   servidor** — en ~10 min los cambios están en producción.
 
 Notas: el importador corrige ü→ʉ automáticamente en las columnas damana
-y respeta ʉ y ñ como letras plenas (reglas completas en CLAUDE.md). La
-tabla de progreso de flashcards (`progreso_srs`) sobrevive a las
-reimportaciones locales; en Render no hay progreso persistente (el
-filesystem es efímero y la base se regenera en cada deploy).
+(y «u+»→ʉ en los Excel de elicitación, protegiendo palabras españolas
+como pingüino) y respeta ʉ y ñ como letras plenas (reglas completas en
+CLAUDE.md).
 
 ## Tests
 
 ```bash
-npm test             # unitarios del backend (Jest)
-npm run test:e2e     # e2e del backend (SQLite en memoria + supertest)
-npm run test:front   # frontend (Vitest)
+npm test                 # unitarios del backend (Jest)
+npm run test:e2e         # API del backend (SQLite en memoria + supertest)
+npm run test:front       # frontend (Vitest)
+npm run test:navegador   # Playwright: navegador real contra el build
 ```
 
 ## Estructura
 
-- `datos/` — CSV fuente del corpus (UTF-8 con BOM) y `corpus.db`
+- `datos/` — fuentes del corpus (CSV y Excel) y `corpus.db`
   (regenerable, fuera de git)
-- `backend/` — NestJS 11: importador, API de consulta, SRS y traductor
+- `evaluaciones/` — informes de `npm run evaluar`, uno por fecha y modelo
+- `backend/` — NestJS 11: importador, API de consulta, SRS, traductor,
+  pendientes, evaluación
 - `frontend/` — Angular (standalone + señales); su build sale a
   `backend/public`
+- `e2e/` — tests de navegador (Playwright) con su propio mini-corpus
 
 Más contexto y reglas del dominio (ʉ, ñ, normalización) en
 [CLAUDE.md](CLAUDE.md).
