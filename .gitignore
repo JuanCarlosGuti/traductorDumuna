@@ -17,3 +17,10 @@ playwright-report/
 e2e/datos/corpus.db
 e2e/datos/corpus.db-wal
 e2e/datos/corpus.db-shm
+
+# Generado por el importador del corpus de Playwright
+e2e/datos/pruebas_traduccion.csv
+
+# Entorno local con secretos: nunca se versiona
+.env
+.env.*

@@ -7,7 +7,7 @@ import { corregirOrtografiaDamana } from '../comun/texto/ortografia';
 import { resolverDirDatos } from '../importador/rutas-datos';
 import { ARCHIVO_DAMANA, ARCHIVO_ESPANOL } from './necesito';
 
-const CSV_VOCABULARIO = 'corpus_vocabulario_v2.csv';
+const CSV_VOCABULARIO = 'corpus_vocabulario_v3.csv';
 const FUENTE_NUEVA = 'lista automatica';
 const BOM = String.fromCharCode(0xfeff);
 
