@@ -259,6 +259,13 @@ experiencia en TypeScript/Angular y backend.
 - Leer CSV con csv-parse: { columns: true, bom: true }.
 - Las oraciones estado="revisar" participan en el retrieval del
   traductor con la mitad del puntaje (PESO_REVISAR = 0.5).
+- Decisión del dueño (21 oct 2026): cuando la misma palabra aparece en una
+  fuente con ʉ y en otra con u en la misma posición, **prevalece la forma
+  con ʉ**; quitarla es un error porque cambia el sonido. No se le pregunta
+  a nadie. El cruce de material externo la aplica solo
+  (`correcciones_u_partida.csv`); al resolver la hoja 1 del documento de
+  dudas (u/ʉ) vale la misma regla. Esto NO cambia que u ≠ ʉ en búsqueda e
+  indexación: es solo para decidir cuál de dos variantes se conserva.
 
 ## Convenciones
 - Cada servicio con tests; incluir siempre un caso con ʉ y uno con ñ.

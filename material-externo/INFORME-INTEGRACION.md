@@ -14,15 +14,20 @@ siguen en verde porque el corpus no cambió.
 
 | Fuente | Entradas leídas | Ya estaban | Divergen | Nuevas (alta / media / baja) |
 |---|---|---|---|---|
-| Living Dictionary (209) | 207 | 30 | 91 | 87 (87 / 0 / 0) |
-| Swadesh SIL 1990 (legibles) | 165 | 40 | 69 | 44 |
-| Hoppe 1974, glosario «La culebra» | 183 | 18 | 105 | 65 |
-| Hoppe 1973, cultura material | 13 | 1 | 3 | 9 |
-| **Total** | **568** | **89** | **268** | **205 (97 / 104 / 4)** |
+| Living Dictionary (209) | 207 | 43 | 83 | 84 (84 / 0 / 0) |
+| Swadesh SIL 1990 (legibles) | 165 | 56 | 55 | 42 |
+| Hoppe 1974, glosario «La culebra» | 183 | 27 | 97 | 65 |
+| Hoppe 1973, cultura material | 13 | 2 | 2 | 9 |
+| **Total** | **568** | **128** | **237** | **200 (94 / 102 / 4)** |
+
+De las 128 coincidencias, 29 tenían la glosa escrita distinto («Lea» /
+«leer», «Territorio (tierra)» / «Tierra», «pelo» / «cabello») y 5 solo se
+diferenciaban en ʉ frente a u: el cruce las da por iguales y no se preguntan
+(quedan listadas para el revisor en la hoja «ya resueltas»).
 
 Divergencias por tipo (una fila por entrada externa): mismo significado con
-otra grafía 34; misma forma damana con otro significado 70; grafía parecida
-con significado distinto 14; mismo significado con otra palabra 150.
+otra grafía 28; misma forma damana con otro significado 38; grafía parecida
+con significado distinto 14; mismo significado con otra palabra 157.
 
 Archivos: `salida/vocabulario_nuevo.csv` (formato exacto del corpus, con
 `fuente`), `salida/divergencias_vocabulario.csv`,
@@ -69,30 +74,57 @@ divergencias con casilla de respuesta). Se regeneran con
 
 ## Lo que fue a las hablantes y al revisor
 
-`salida/preguntas_hablantes.xlsx` es UN solo cuaderno con todo lo que quedó
-por confirmar, en lenguaje llano y con las casillas por llenar en amarillo
-(listas desplegables sí/no donde aplica):
-- «palabras nuevas» (205 filas, cualquier hablante): ¿se dice así?, si no
-  cómo, y una frase de ejemplo. Ordenadas por seguridad (97 altas primero).
-- «escritura» (34 pares + 5 preguntas generales, revisor): forma A del corpus
-  frente a forma B de la fuente, y las preguntas de fondo (gu/gw, dz/dzh,
-  j/h, ch/tsh, rr).
-- «significados» (84 filas, revisor): misma palabra con dos significados.
-- «palabras distintas» (150 filas, revisor): dos palabras para lo mismo.
-- «reglas» (26 filas, cualquier hablante): cada regla propuesta como pregunta
-  («para decir que NO se hace algo, ¿se le pega -un al verbo?») con el
-  ejemplo de la fuente, y espacio para otro ejemplo propio. Las cinco
-  prioritarias (negación, pregunta, «ki nanu», prohibición, «cantemos») van
-  en negrita.
-- «texto para traducir» (116 filas, cualquier hablante): 19 palabras clave,
-  38 preguntas y 38 oraciones de la cartilla de 2012, y 21 títulos y líneas
-  cortas de «El camino del muchacho». Damana ya escrito; español en amarillo.
-  Es el formato de elicitación del proyecto.
-- El archivo NO se llama `formato_elicitacion_*.xlsx` a propósito: el
-  importador actual exige `palabra_es` para crear vocabulario y, con filas
-  que solo traen damana, generaría pendientes vacías. Ver cambios de código.
-  Cuando vuelva lleno hará falta un paso que lea estas hojas y aplique las
-  respuestas (igual que falta para el documento de dudas).
+El dueño paga a las hablantes por palabra, así que se separó en dos
+cuadernos (ambos salen de `herramientas/generar_preguntas_hablantes.js`,
+casillas por llenar en amarillo, listas desplegables donde aplica):
+
+**`salida/preguntas_hablantes.xlsx` — solo dudas reales (24 filas).**
+- «significados» (17): la misma palabra damana con dos sentidos que no son
+  el mismo escrito distinto, de fuentes hechas con hablantes (Living
+  Dictionary, Swadesh): Gula «mano» / «brazo», Ambʉnshi «blanco» / «arroz»,
+  Busi «sobrina» / «hermana menor», Duga, Dunga, Ina, Kawa, Kʉn, Mawi, Nushi,
+  te, Zhama, zhinzhoma, Gana, Soma, Ingui, Kewa. Una fila por palabra.
+- «reglas» (7): las que de verdad necesitan a una hablante, como pregunta
+  con ejemplo y espacio para un ejemplo propio: negación (-un/-ún),
+  pregunta por acento, «ki nanu», prohibición (-wi nʉnka; nazhi), hortativo
+  uzhi y posesivos por prefijo.
+
+**`salida/revision_material_externo.xlsx` — para el revisor (una persona).**
+- «palabras nuevas» (200): ¿se aceptan tal cual? (84 del Living Dictionary
+  con seguridad alta; el resto, ortografías viejas convertidas).
+- «escritura» (28 pares + 5 preguntas generales: gu/gw, dz/dzh, j/h, ch/tsh,
+  rr): define la norma de escritura del corpus en adelante.
+- «palabras distintas» (157): dos palabras damana para lo mismo.
+- «grafía parecida» (14) y «significados (Hoppe 1974)» (18): partículas y
+  glosas literales del relato de 1974; son de gramática.
+- «reglas» (19): las demás reglas de Trillos.
+- «ya resueltas» (34): lo que el cruce dio por igual sin preguntar, por si
+  alguna no lo es.
+- «texto por traducir (opcional)» (116): la cartilla de 2012 y las líneas de
+  «El camino del muchacho», en el formato de elicitación del proyecto. No es
+  una duda: solo si se decide pagar ese trabajo.
+
+Ninguno de los dos se llama `formato_elicitacion_*.xlsx` a propósito: el
+importador actual exige `palabra_es` para crear vocabulario y, con filas que
+solo traen damana, generaría pendientes vacías (ver cambios de código).
+Cuando vuelvan llenos hará falta un paso que lea estas hojas y aplique las
+respuestas, igual que falta para el documento de dudas.
+
+## Reglas del dueño aplicadas el 21 de octubre
+1. **Solo dudas reales a las hablantes.** Lo que ya sabemos (mayúscula o
+   minúscula inicial, glosa en imperativo frente a infinitivo, sinónimos del
+   español, lo que va entre paréntesis) no se pregunta: el cruce lo da por
+   igual y lo deja en «ya resueltas» para el revisor.
+2. **Si dos formas solo se diferencian en ʉ frente a u, prevalece la que
+   lleva ʉ**, sea la fuente vieja o nueva: quitarla es un error porque cambia
+   el sonido. El cruce la aplica solo y escribe `correcciones_u_partida.csv`
+   cuando el que perdió la ʉ es el corpus. Hubo una, y se aplicó al corpus:
+   **Sal: Nungu → Nʉngu** (lo traen con ʉ el Living Dictionary y el Swadesh).
+   Ojo: el folleto bíblico escribe «nungu» en dos oraciones (lfb_MLY_p033_s001
+   y s005, «estatua de sal»); esas no se tocaron. Como u ≠ ʉ en la búsqueda,
+   buscar «nʉngu» ya no encuentra esas dos oraciones: decidir si se corrigen
+   también.
+   La misma regla vale para la hoja 1 del documento de dudas (u/ʉ).
 
 ## Lo que se descartó y por qué
 - *Fe y cultura entre Wiwa y Arhuaco*: solo español.

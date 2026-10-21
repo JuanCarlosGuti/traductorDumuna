@@ -39,15 +39,88 @@ function esqueleto(texto) {
     .replace(/kk/g, 'k')
     .replace(/\s+/g, ' ');
 }
+// Lo que va entre paréntesis también cuenta como alternativa: «Territorio
+// (tierra)» es «territorio» y «tierra». Se quitan artículos y «de» al inicio
+// («De noche» = «noche») y la marca de género «/a».
 function alternativasEs(espanol) {
-  return espanol
-    .replace(/\([^)]*\)/g, ' ')
+  const parentesis = [...espanol.matchAll(/\(([^)]*)\)/g)].map((m) => m[1]);
+  return [espanol.replace(/\([^)]*\)/g, ' '), ...parentesis]
+    .join(',')
     .replace(/^\s*\p{L}+:\s*/u, '')
     .replace(/\/[ao]s?\b/g, '')
     .split(/[,;/]|\s[–-]\s|\s[ou]\s/)
-    .map((a) => normalizar(a.replace(/[¿?¡!."«»]/g, ' ')).replace(/\s+/g, ' ').trim())
+    .map((a) =>
+      normalizar(a.replace(/[¿?¡!."«»]/g, ' '))
+        .replace(/^(de |del |el |la |los |las |un |una |al )+/, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
     .filter(Boolean);
 }
+
+// Sinónimos del español que las fuentes usan indistintamente. Lista corta y
+// evidente a propósito (como SINONIMOS_ES en la app).
+const SINONIMOS_ES = [
+  ['papa', 'padre'], ['mama', 'madre'], ['pelo', 'cabello'], ['camino', 'trocha'],
+  ['pez', 'pescado'], ['hamaca', 'chinchorro'], ['culebra', 'serpiente'],
+  ['tierra', 'territorio', 'suelo'], ['frio', 'frío'], ['xaman', 'curandero', 'mama'],
+  ['mochila', 'suzu'], ['hombre', 'varon'], ['bonito', 'bueno', 'lindo'],
+  ['brinco', 'brincar', 'salto', 'saltar'], ['lago', 'laguna'], ['nino', 'criatura', 'bebe'],
+  ['adios', 'hasta luego'], ['hola', 'buenos dias', 'saludo'],
+  ['feliz', 'contento', 'alegre', 'emocionado'], ['joven', 'muchacho', 'senorita', 'mujer joven'],
+];
+const prefijoComun = (a, b) => {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i;
+};
+const STOP_ES = new Set(['de', 'del', 'el', 'la', 'los', 'las', 'un', 'una', 'que', 'se', 'lo', 'a', 'en', 'y', 'o', 'algo', 'alguien', 'ud', 'usted']);
+const singular = (p) => p.replace(/(?<=\p{L}{3})es$/u, '').replace(/(?<=\p{L}{3})s$/u, '');
+function distancia(a, b) {
+  const m = a.length, n = b.length;
+  const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  }
+  return d[m][n];
+}
+/**
+ * ¿Dos glosas españolas dicen lo mismo aunque estén escritas distinto?
+ * Devuelve 'igual', 'parecida' (singular/plural, sinónimo, misma raíz:
+ * Lea/leer, sentado/sentar, seres vivos/vivo) o null.
+ */
+function glosasEquivalentes(a, b) {
+  const A = alternativasEs(a), B = alternativasEs(b);
+  if (A.some((x) => B.includes(x))) return 'igual';
+  const palabras = (lista) => lista.flatMap((x) => x.split(' ')).filter((p) => p && !STOP_ES.has(p)).map(singular);
+  const PA = palabras(A), PB = palabras(B);
+  if (PA.some((p) => PB.includes(p))) return 'parecida';
+  if (SINONIMOS_ES.some((g) => PA.some((p) => g.includes(p)) && PB.some((p) => g.includes(p)))) return 'parecida';
+  for (const x of A) for (const y of B) {
+    if (Math.max(x.length, y.length) >= 4 && distancia(x, y) <= 2) return 'parecida';
+    // Misma raíz larga: pregúntele / pregunta, territorio / territorial.
+    if (prefijoComun(x, y) >= 6) return 'parecida';
+  }
+  return null;
+}
+/**
+ * Regla del dueño (21 oct 2026): si dos formas de la misma palabra solo se
+ * diferencian en ʉ frente a u, prevalece la que lleva ʉ; quitarla es un
+ * error porque cambia el sonido. No se pregunta.
+ */
+const sinU = (s) => normalizar(s).replace(/ʉ/g, 'u');
+const soloDifierenEnU = (a, b) => normalizar(a) !== normalizar(b) && sinU(a) === sinU(b);
+const cuentaU = (s) => (normalizar(s).match(/ʉ/g) ?? []).length;
+const unicosPorForma = (entradas, campo) => {
+  const vistos = new Set();
+  return entradas.filter((e) => {
+    const k = normalizar(e[campo]).replace(/\s*\/\s*/g, '/');
+    if (vistos.has(k)) return false;
+    vistos.add(k);
+    return true;
+  });
+};
 const leerCsv = (ruta) => parse(fs.readFileSync(ruta), { columns: true, bom: true, skip_empty_lines: true });
 const campo = (v) => (/[",\n\r]/.test(v ?? '') ? `"${String(v).replace(/"/g, '""')}"` : String(v ?? ''));
 function escribirCsv(nombre, columnas, filas) {
@@ -162,6 +235,8 @@ for (const f of leerCsv(path.join(SALIDA, 'fuentes', 'swadesh1990_legible.csv'))
 const nuevas = [];
 const divergencias = [];
 const coincidencias = [];
+const correcciones = [];
+const soluEspanol = (e) => e.espanol;
 const vistasNuevas = new Set();
 for (const x of externas) {
   const dmN = normalizar(x.damana);
@@ -172,16 +247,28 @@ for (const x of externas) {
   const fuente = `${x.fuente} ${x.ref}`.trim();
 
   if (ambas.length > 0) {
-    coincidencias.push({ espanol: x.espanol, damana: x.damana, espanol_corpus: ambas[0].espanol, damana_corpus: ambas[0].damana, fuente_externa: fuente });
+    coincidencias.push({ espanol: x.espanol, damana: x.damana, espanol_corpus: ambas[0].espanol, damana_corpus: ambas[0].damana, fuente_externa: fuente, nota: '' });
+    continue;
+  }
+  // Misma palabra damana y glosa que dice lo mismo escrito distinto («Lea» /
+  // «leer», «Territorio (tierra)» / «Tierra», «pelo» / «cabello»): ya la
+  // teníamos; se anota para el revisor, no se le pregunta a la hablante.
+  const glosaParecida = mismasDm.find((e) => glosasEquivalentes(e.espanol, x.espanol));
+  if (glosaParecida) {
+    coincidencias.push({
+      espanol: x.espanol, damana: x.damana, espanol_corpus: glosaParecida.espanol, damana_corpus: glosaParecida.damana,
+      fuente_externa: fuente, nota: `glosa distinta: «${glosaParecida.espanol}» / «${x.espanol}» (misma palabra)`,
+    });
     continue;
   }
   // Una fila por entrada externa y tipo: las formas del corpus van juntas,
-  // separadas por « | », para que el revisor vea todo de una vez.
+  // separadas por « | » (sin repetir las que solo cambian mayúscula o
+  // espacios), para que el revisor vea todo de una vez.
   const divergencia = (entradas, tipo, propuesta) =>
     divergencias.push({
-      damana_corpus: [...new Set(entradas.map((e) => e.damana))].join(' | '),
+      damana_corpus: unicosPorForma(entradas, 'damana').map((e) => e.damana).join(' | '),
       damana_fuente: x.damanaOriginal,
-      espanol_corpus: [...new Set(entradas.map((e) => e.espanol))].join(' | '),
+      espanol_corpus: unicosPorForma(entradas, 'espanol').map((e) => e.espanol).join(' | '),
       espanol_fuente: x.espanol,
       fuente,
       tipo_divergencia: tipo,
@@ -190,6 +277,28 @@ for (const x of externas) {
   if (mismasDm.length > 0) {
     divergencia(mismasDm, 'misma forma damana, otro significado',
       'preguntar a la hablante si son dos sentidos de la misma palabra o dos palabras');
+    continue;
+  }
+  // Mismo significado y la única diferencia es ʉ / u: prevalece la forma con ʉ.
+  const soloU = mismasEs.find((e) => soloDifierenEnU(e.damana, x.damana));
+  if (soloU) {
+    const corpusTieneU = cuentaU(soloU.damana) >= cuentaU(x.damana);
+    if (corpusTieneU) {
+      coincidencias.push({
+        espanol: x.espanol, damana: x.damana, espanol_corpus: soloU.espanol, damana_corpus: soloU.damana,
+        fuente_externa: fuente, nota: `la fuente escribe u por ʉ («${x.damanaOriginal}»); prevalece la forma con ʉ del corpus`,
+      });
+    } else {
+      correcciones.push({
+        espanol_corpus: soluEspanol(soloU), damana_corpus: soloU.damana, damana_correcto: x.damana,
+        fuente, confianza: x.confianza,
+        motivo: 'el corpus escribe u donde la fuente escribe ʉ; prevalece ʉ',
+      });
+      coincidencias.push({
+        espanol: x.espanol, damana: x.damana, espanol_corpus: soloU.espanol, damana_corpus: soloU.damana,
+        fuente_externa: fuente, nota: `el corpus escribe u por ʉ; corregir a «${x.damana}» (ver correcciones_u_partida.csv)`,
+      });
+    }
     continue;
   }
   if (mismasEs.length > 0) {
@@ -228,7 +337,9 @@ const orden = { alta: 0, media: 1, baja: 2 };
 nuevas.sort((a, b) => orden[a._confianza] - orden[b._confianza] || a.espanol.localeCompare(b.espanol, 'es'));
 escribirCsv('vocabulario_nuevo.csv', ['espanol', 'damana', 'categoria', 'notas', 'fuente'], nuevas);
 escribirCsv('divergencias_vocabulario.csv', ['damana_corpus', 'damana_fuente', 'espanol_corpus', 'espanol_fuente', 'fuente', 'tipo_divergencia', 'propuesta'], divergencias);
-escribirCsv('coincidencias_vocabulario.csv', ['espanol', 'damana', 'espanol_corpus', 'damana_corpus', 'fuente_externa'], coincidencias);
+escribirCsv('coincidencias_vocabulario.csv', ['espanol', 'damana', 'espanol_corpus', 'damana_corpus', 'fuente_externa', 'nota'], coincidencias);
+correcciones.sort((a, b) => (a.confianza === 'alta' ? 0 : 1) - (b.confianza === 'alta' ? 0 : 1));
+escribirCsv('correcciones_u_partida.csv', ['espanol_corpus', 'damana_corpus', 'damana_correcto', 'fuente', 'confianza', 'motivo'], correcciones);
 
 // --- resumen ---
 const porFuente = (lista, clave) => {
@@ -241,6 +352,9 @@ const porFuente = (lista, clave) => {
 };
 console.log(`Corpus: ${corpus.length} entradas. Externas leídas: ${externas.length}.`);
 console.log(`COINCIDEN: ${coincidencias.length}  (${porFuente(coincidencias, 'fuente_externa')})`);
+console.log(`   de ellas con la glosa escrita distinto (misma palabra): ${coincidencias.filter((c) => /glosa distinta/.test(c.nota)).length}`);
+console.log(`   de ellas resueltas por la regla de la ʉ: ${coincidencias.filter((c) => /ʉ/.test(c.nota)).length}`);
+console.log(`CORRECCIONES al corpus por la regla de la ʉ (u → ʉ): ${correcciones.length}  (alta ${correcciones.filter((c) => c.confianza === 'alta').length})`);
 console.log(`DIVERGEN:  ${divergencias.length}  (${porFuente(divergencias, 'fuente')})`);
 const tipos = new Map();
 for (const d of divergencias) tipos.set(d.tipo_divergencia, (tipos.get(d.tipo_divergencia) ?? 0) + 1);
