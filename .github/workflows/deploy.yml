@@ -1,0 +1,88 @@
+name: Pruebas, imagen y despliegue
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pruebas:
+    name: Pruebas (backend, API y frontend) y build
+    runs-on: ubuntu-latest
+    env:
+      NG_CLI_ANALYTICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      # Monorepo con workspaces y un solo package-lock en la raíz: se instala
+      # desde la raíz o los módulos quedan donde el runtime no los encuentra.
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:e2e
+      - run: npm run test:front
+      # Construir aquí, aparte del docker build, hace que un error de Angular
+      # salga en su propio paso y no escondido en la salida de Docker.
+      - run: npm run build
+      # Playwright (npm run test:navegador) no corre aquí: necesita descargar
+      # Chromium y tarda minutos; se corre en local antes de subir.
+
+  imagen:
+    name: Docker (la imagen construye y trae la SPA y el corpus)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - run: docker build -t corpus-damana:ci .
+      # Lo que ha salvado despliegues en los otros repos: que el Angular
+      # construido y la base importada estén DENTRO de la imagen.
+      - name: Verificar SPA y corpus dentro de la imagen
+        run: |
+          docker run --rm --entrypoint sh corpus-damana:ci -c \
+            'test -f /app/backend/public/index.html && test -s /app/datos/corpus.db' \
+            || { echo "::error::Falta backend/public/index.html o datos/corpus.db en la imagen"; exit 1; }
+
+  desplegar:
+    name: Desplegar al servidor propio (Kamal)
+    # Cuelga de TODAS las pruebas; solo desde main y solo en push, nunca desde
+    # un PR.
+    needs: [pruebas, imagen]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write     # para publicar la imagen en GHCR con el GITHUB_TOKEN
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: false
+      - run: gem install kamal -v "~> 2.0" -N
+
+      - uses: docker/setup-buildx-action@v3
+
+      # La llave privada es la de infra-servidor (secret SSH_PRIVATE_KEY); el
+      # servidor solo conoce la pública.
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Sin -H y solo ed25519 a propósito: las entradas con hash y de
+          # varios tipos hacen que Net::SSH (el cliente Ruby de Kamal) falle
+          # con HostKeyMismatch aunque la huella sea correcta.
+          ssh-keyscan -t ed25519 "${{ secrets.SERVER_IP }}" >> ~/.ssh/known_hosts
+
+      - name: Desplegar
+        env:
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          TRADUCTOR_API_KEY: ${{ secrets.TRADUCTOR_API_KEY }}
+          AUTH_USUARIO: ${{ secrets.AUTH_USUARIO }}
+          AUTH_PASSWORD: ${{ secrets.AUTH_PASSWORD }}
+          AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
+        run: kamal deploy

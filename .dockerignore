@@ -1,0 +1,26 @@
+# Lo que NO entra al contexto de construcción.
+#
+# OJO con /datos: el Dockerfile corre `npm run importar`, que necesita los CSV,
+# reglas_damana.xlsx y los formato_elicitacion*.xlsx. Solo se excluyen la base
+# (se regenera dentro) y los Excel de trabajo que nadie lee en el build.
+node_modules
+**/node_modules
+dist
+**/dist
+backend/public
+.angular
+.git
+.github
+e2e
+test-results
+playwright-report
+evaluaciones
+coverage
+datos/corpus.db
+datos/corpus.db-shm
+datos/corpus.db-wal
+datos/por_traducir_*.xlsx
+datos/dudas_para_hablantes_*.xlsx
+.env
+.env.*
+**/.env

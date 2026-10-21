@@ -7,6 +7,8 @@ import { ConsultaModule } from './consulta/consulta.module';
 import { DatabaseModule } from './database/database.module';
 import { ImportadorModule } from './importador/importador.module';
 import { rutaDbPorDefecto } from './importador/rutas-datos';
+import { PendientesModule } from './pendientes/pendientes.module';
+import { SaludModule } from './salud/salud.module';
 import { SrsModule } from './srs/srs.module';
 import { TraduccionModule } from './traduccion/traduccion.module';
 
@@ -27,6 +29,8 @@ const RUTA_PUBLICO = path.resolve(__dirname, '..', 'public');
     ConsultaModule,
     SrsModule,
     TraduccionModule,
+    PendientesModule,
+    SaludModule,
     ...(fs.existsSync(RUTA_PUBLICO)
       ? [
           ServeStaticModule.forRoot({

@@ -1,0 +1,83 @@
+# Kamal 2 — corpus-damana en el servidor propio (netcup), junto a las otras
+# apps y detrás del mismo kamal-proxy. Mismo patrón que cesar-travel y
+# board-checkup: la imagen se construye en GitHub Actions, se publica en GHCR
+# y Kamal entra por SSH como `deploy` a arrancarla. En el servidor no queda
+# ningún panel; solo kamal-proxy y los contenedores.
+service: corpus-damana
+# SOLO owner/repo: Kamal antepone registry.server. Ponerlo completo deja la
+# imagen en ghcr.io/ghcr.io/…
+image: juancarlosguti/corpus-damana
+
+servers:
+  web:
+    - 159.195.235.225
+
+# El acceso por root está deshabilitado en el servidor.
+ssh:
+  user: deploy
+
+proxy:
+  # Subdominio del dominio que ya sirve crearcodecesar.com y
+  # app.crearcodecesar.com. Es un registro A aparte y kamal-proxy enruta por
+  # nombre: no toca ni afecta a las otras páginas. DNS en Cloudflare con el
+  # proxy APAGADO (nube gris): con la nube naranja Let's Encrypt no puede
+  # completar el desafío y no hay certificado. El registro tiene que resolver
+  # a esta IP ANTES del primer deploy.
+  host: damana.crearcodecesar.com
+  # Certificado de Let's Encrypt que kamal-proxy pide solo; además redirige
+  # http → https.
+  ssl: true
+  # Se declara aunque sea el valor por omisión con ssl: true. La app limita
+  # los intentos de login por IP (`trust proxy` en backend/src/main.ts), así
+  # que X-Forwarded-For lo tiene que escribir kamal-proxy, no el cliente.
+  forward_headers: false
+  app_port: 3000
+  healthcheck:
+    # Público y liviano (backend/src/salud/salud.controller.ts). Responde 503
+    # si la imagen salió sin corpus, y entonces el despliegue falla en vez
+    # de reemplazar al contenedor anterior.
+    path: /api/salud
+    interval: 5
+    timeout: 15
+
+# El arranque es solo abrir la base ya horneada y levantar Nest: segundos.
+deploy_timeout: 120
+
+registry:
+  server: ghcr.io
+  username: juancarlosguti
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# La imagen se construye en el runner de GitHub, NO en el servidor: el build de
+# Angular puede pedir 2-4 GB de pico y tumbaría la caja con todas las apps
+# encima. La caché de capas vive en GHCR, como en cesar-travel: `npm ci` y el
+# apt-get se reaprovechan entre despliegues que no tocan dependencias.
+builder:
+  arch: amd64
+  context: .
+  dockerfile: Dockerfile
+  cache:
+    type: registry
+    options: mode=max
+    image: juancarlosguti/corpus-damana-build-cache
+
+env:
+  clear:
+    # El Dockerfile ya lo declara; se repite porque de él depende que la auth
+    # sea obligatoria (auth.config.ts) y conviene verlo junto a lo demás.
+    NODE_ENV: production
+    PORT: "3000"
+    # Motor de traducción: Groq, API compatible con OpenAI. Para pasar a
+    # Claude bastaría añadir ANTHROPIC_API_KEY a `secret` (tiene prioridad).
+    TRADUCTOR_BASE_URL: https://api.groq.com/openai/v1
+    TRADUCTOR_MODELO: openai/gpt-oss-120b
+  secret:
+    - TRADUCTOR_API_KEY
+    # Usuario único de la app. Sin estas dos el servicio NO arranca en
+    # producción, a propósito.
+    - AUTH_USUARIO
+    - AUTH_PASSWORD
+    # Firma de las sesiones (30 días). Cambiarlo cierra la sesión en todos
+    # los dispositivos.
+    - AUTH_JWT_SECRET
