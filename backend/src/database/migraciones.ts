@@ -131,6 +131,75 @@ const MIGRACIONES: string[] = [
   `
   ALTER TABLE traducciones ADD COLUMN ejemplos_en_contexto INTEGER;
   `,
+  // v6 (traductor de propósito general, oct 2026):
+  //  - dominio en oraciones y frases: 'biblico' (folleto lfb), 'cotidiano'
+  //    (elicitación con hablantes, frases de reuniones/preguntas) o
+  //    'gramatica' (reservado; las conjugaciones lo llevan implícito).
+  //  - reglas y nombres_propios: contenido de reglas_damana.xlsx. El
+  //    importador las reconstruye como al resto del corpus.
+  //  - pendientes: palabras que el traductor no supo traducir o que la
+  //    elicitación dejó sin llenar; se exportan a las hablantes nativas.
+  //  - validadas: pares que el usuario confirmó o corrigió en el traductor.
+  //  Como progreso_srs y traducciones, pendientes y validadas NO las toca
+  //  el importador: sobreviven a las reimportaciones.
+  //  En traducciones, palabras_dudosas pasa a guardar las palabras SIN
+  //  EQUIVALENTE (mismo concepto, nombre nuevo en la API); no se renombra
+  //  la columna para no reescribir el histórico.
+  `
+  ALTER TABLE oraciones ADD COLUMN dominio TEXT NOT NULL DEFAULT 'biblico'
+    CHECK (dominio IN ('biblico', 'cotidiano', 'gramatica'));
+  ALTER TABLE frases ADD COLUMN dominio TEXT NOT NULL DEFAULT 'cotidiano'
+    CHECK (dominio IN ('biblico', 'cotidiano', 'gramatica'));
+
+  CREATE TABLE reglas (
+    tipo TEXT,
+    forma TEXT NOT NULL,
+    significado TEXT,
+    ejemplo_base TEXT,
+    ejemplo_regla TEXT,
+    traduccion_ejemplo TEXT,
+    notas TEXT,
+    -- Qué rasgo de la frase de entrada activa la regla: plural, posesivo,
+    -- negacion, pregunta, pasado, futuro. NULL = regla general (siempre).
+    disparador TEXT
+  );
+
+  CREATE TABLE nombres_propios (
+    damana TEXT NOT NULL,
+    espanol TEXT NOT NULL,
+    se_escribe_igual INTEGER NOT NULL DEFAULT 1,
+    otras_grafias TEXT,
+    notas TEXT
+  );
+
+  CREATE TABLE pendientes (
+    -- Clave normalizada (minúsculas, sin tildes; ʉ y ñ intactas).
+    clave TEXT PRIMARY KEY,
+    palabra TEXT NOT NULL,
+    idioma TEXT NOT NULL CHECK (idioma IN ('espanol', 'damana')),
+    contexto TEXT,
+    veces_pedida INTEGER NOT NULL DEFAULT 1,
+    estado TEXT NOT NULL DEFAULT 'pendiente'
+      CHECK (estado IN ('pendiente', 'exportada', 'resuelta')),
+    origen TEXT NOT NULL CHECK (origen IN ('traductor', 'elicitacion')),
+    creado_en TEXT NOT NULL,
+    actualizado_en TEXT NOT NULL
+  );
+
+  CREATE TABLE validadas (
+    creado_en TEXT NOT NULL,
+    espanol TEXT NOT NULL,
+    damana TEXT NOT NULL,
+    direccion TEXT NOT NULL
+      CHECK (direccion IN ('damana_a_espanol', 'espanol_a_damana')),
+    origen TEXT NOT NULL CHECK (origen IN ('confirmada', 'corregida')),
+    traduccion_modelo TEXT
+  );
+
+  ALTER TABLE traducciones ADD COLUMN confianza REAL;
+  ALTER TABLE traducciones ADD COLUMN reglas_aplicadas TEXT;
+  ALTER TABLE traducciones ADD COLUMN glosa TEXT;
+  `,
 ];
 
 export function ejecutarMigraciones(db: Database): void {

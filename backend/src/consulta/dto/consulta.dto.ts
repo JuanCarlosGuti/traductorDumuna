@@ -214,6 +214,9 @@ export class FraseDto {
 
   @ApiProperty({ nullable: true })
   notas!: string | null;
+
+  @ApiProperty({ enum: ['biblico', 'cotidiano', 'gramatica'], description: 'Registro de lengua del par' })
+  dominio!: 'biblico' | 'cotidiano' | 'gramatica';
 }
 
 export class LemaDto {
@@ -250,4 +253,24 @@ export class TablaConjugacionDto {
 
   @ApiProperty({ type: [ConjugacionDto] })
   conjugaciones!: ConjugacionDto[];
+}
+
+export class NombrePropioDto {
+  @ApiProperty({ description: 'rowid en la tabla nombres_propios' })
+  id!: number;
+
+  @ApiProperty({ example: 'Jehová', description: 'Grafía con la que aparece en el corpus damana' })
+  damana!: string;
+
+  @ApiProperty({ example: 'Jehová' })
+  espanol!: string;
+
+  @ApiProperty()
+  seEscribeIgual!: boolean;
+
+  @ApiProperty({ type: [String], description: 'Otras grafías vistas en las fuentes' })
+  otrasGrafias!: string[];
+
+  @ApiProperty({ nullable: true })
+  notas!: string | null;
 }

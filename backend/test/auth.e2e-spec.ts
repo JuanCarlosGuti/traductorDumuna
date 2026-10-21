@@ -40,7 +40,7 @@ function escribirCorpus(dir: string): void {
     'utf8',
   );
   fs.writeFileSync(
-    path.join(dir, 'corpus_vocabulario_v2.csv'),
+    path.join(dir, 'corpus_vocabulario_v3.csv'),
     BOM + 'espanol,damana,categoria,notas,fuente\nagua,nʉnka,Otros,,dic\n',
     'utf8',
   );
@@ -68,7 +68,7 @@ async function crearApp(configAuth: ConfigAuth): Promise<{
   const app = moduleRef.createNestApplication();
   configurarApp(app);
   await app.init();
-  app.get(ImportadorService).importarTodo(dirTmp);
+  await app.get(ImportadorService).importarTodo(dirTmp);
   return { app, dirTmp };
 }
 

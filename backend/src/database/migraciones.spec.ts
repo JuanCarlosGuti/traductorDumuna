@@ -1,24 +1,48 @@
 import Database from 'better-sqlite3';
 import { ejecutarMigraciones } from './migraciones';
 
+const VERSION_ACTUAL = 6;
+
+/**
+ * Deja una base recién migrada como si se hubiera quedado en una versión
+ * anterior: quita lo que añadieron las versiones posteriores y retrocede
+ * user_version. Así se prueba que las migraciones corren sobre datos reales.
+ */
+function retrocederA(db: Database.Database, version: 4 | 5): void {
+  db.exec(`
+    DROP TABLE reglas; DROP TABLE nombres_propios; DROP TABLE pendientes; DROP TABLE validadas;
+    ALTER TABLE oraciones DROP COLUMN dominio;
+    ALTER TABLE frases DROP COLUMN dominio;
+    ALTER TABLE traducciones DROP COLUMN confianza;
+    ALTER TABLE traducciones DROP COLUMN reglas_aplicadas;
+    ALTER TABLE traducciones DROP COLUMN glosa;
+  `);
+  if (version === 4) {
+    db.exec('ALTER TABLE traducciones DROP COLUMN ejemplos_en_contexto');
+  }
+  db.pragma(`user_version = ${version}`);
+}
+
 describe('ejecutarMigraciones', () => {
-  it('crea las tablas del corpus v3 y los índices', () => {
+  it('crea las tablas del corpus (v3 + v6) y los índices', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
 
     const tablas = db
-      .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
-      )
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .all()
       .map((f: any) => f.name);
     expect(tablas).toEqual([
       'conjugaciones',
       'frases',
+      'nombres_propios',
       'oraciones',
+      'pendientes',
       'progreso_srs',
+      'reglas',
       'tokens_damana',
       'traducciones',
+      'validadas',
       'vocabulario',
     ]);
 
@@ -35,17 +59,14 @@ describe('ejecutarMigraciones', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     expect(() => ejecutarMigraciones(db)).not.toThrow();
-    expect(db.pragma('user_version', { simple: true })).toBe(5);
+    expect(db.pragma('user_version', { simple: true })).toBe(VERSION_ACTUAL);
     db.close();
   });
 
-  it('la v5 añade ejemplos_en_contexto y deja en null las filas ya registradas', () => {
+  it('la v5 añade ejemplos_en_contexto y deja en null las filas ya registradas (base parada en v4)', () => {
     const db = new Database(':memory:');
-    // Simular una base parada en v4: se aplican las migraciones y se
-    // retrocede la versión para que la v5 corra sobre datos existentes.
     ejecutarMigraciones(db);
-    db.prepare('ALTER TABLE traducciones DROP COLUMN ejemplos_en_contexto').run();
-    db.pragma('user_version = 4');
+    retrocederA(db, 4);
     db.prepare(
       `INSERT INTO traducciones
          (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
@@ -56,24 +77,71 @@ describe('ejecutarMigraciones', () => {
 
     ejecutarMigraciones(db);
 
-    expect(db.pragma('user_version', { simple: true })).toBe(5);
+    expect(db.pragma('user_version', { simple: true })).toBe(VERSION_ACTUAL);
     const fila = db
-      .prepare('SELECT texto, ejemplos_en_contexto FROM traducciones')
-      .get() as { texto: string; ejemplos_en_contexto: number | null };
+      .prepare('SELECT texto, ejemplos_en_contexto, confianza FROM traducciones')
+      .get() as { texto: string; ejemplos_en_contexto: number | null; confianza: number | null };
     expect(fila.texto).toBe('nʉjkasheshisha ñingui'); // ʉ y ñ intactas
     expect(fila.ejemplos_en_contexto).toBeNull();
+    expect(fila.confianza).toBeNull();
+    db.close();
+  });
+
+  it('la v6 añade dominio con valor por defecto a las filas existentes (base parada en v5)', () => {
+    const db = new Database(':memory:');
+    ejecutarMigraciones(db);
+    retrocederA(db, 5);
+    db.prepare(
+      "INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente) VALUES ('o1', 'nʉnka', 'agua', 'aprobado', 'lfb')",
+    ).run();
+    db.prepare(
+      "INSERT INTO frases (fuente, damana, espanol, notas) VALUES ('Prueba', 'ñingui', 'otra vez', NULL)",
+    ).run();
+
+    ejecutarMigraciones(db);
+
+    expect(db.pragma('user_version', { simple: true })).toBe(VERSION_ACTUAL);
+    expect(db.prepare('SELECT dominio FROM oraciones').get()).toEqual({ dominio: 'biblico' });
+    expect(db.prepare('SELECT dominio FROM frases').get()).toEqual({ dominio: 'cotidiano' });
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente, dominio) VALUES ('o2', 'x', 'y', 'aprobado', 'p', 'poesia')",
+        )
+        .run(),
+    ).toThrow();
+    db.close();
+  });
+
+  it('pendientes y validadas restringen sus enumeraciones', () => {
+    const db = new Database(':memory:');
+    ejecutarMigraciones(db);
+    const pendiente = (estado: string) =>
+      db
+        .prepare(
+          `INSERT INTO pendientes (clave, palabra, idioma, veces_pedida, estado, origen, creado_en, actualizado_en)
+           VALUES (?, 'x', 'espanol', 1, ?, 'traductor', 't', 't')`,
+        )
+        .run(`clave-${estado}`, estado);
+    expect(() => pendiente('pendiente')).not.toThrow();
+    expect(() => pendiente('perdida')).toThrow();
+    expect(() =>
+      db
+        .prepare(
+          "INSERT INTO validadas (creado_en, espanol, damana, direccion, origen) VALUES ('t', 'a', 'b', 'espanol_a_damana', 'inventada')",
+        )
+        .run(),
+    ).toThrow();
     db.close();
   });
 
   it('la migración v3 conserva el progreso SRS de una base v2', () => {
     const db = new Database(':memory:');
-    // Simular una base que quedó en v2 con progreso guardado
-    ejecutarMigraciones(db); // crea todo en v3 directamente…
+    ejecutarMigraciones(db);
     db.prepare(
       `INSERT INTO progreso_srs (palabra, repeticiones, factor_facilidad, intervalo_dias, proxima_revision, actualizado_en)
        VALUES ('nʉnka', 3, 2.5, 15, '2026-07-01T00:00:00.000Z', '2026-06-16T00:00:00.000Z')`,
     ).run();
-    // …y volver a ejecutar no debe tocarla (idempotencia + tabla intacta)
     ejecutarMigraciones(db);
     const fila = db
       .prepare('SELECT repeticiones FROM progreso_srs WHERE palabra = ?')

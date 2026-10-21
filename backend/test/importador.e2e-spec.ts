@@ -32,7 +32,7 @@ describe('Importador (e2e, módulo Nest completo con SQLite en memoria)', () => 
       'utf8',
     );
     fs.writeFileSync(
-      path.join(dirTmp, 'corpus_vocabulario_v2.csv'),
+      path.join(dirTmp, 'corpus_vocabulario_v3.csv'),
       BOM + 'espanol,damana,categoria,notas,fuente\n' + 'tiene,kʉnʉnka,Verbos,,dic\n',
       'utf8',
     );
@@ -55,18 +55,20 @@ describe('Importador (e2e, módulo Nest completo con SQLite en memoria)', () => 
     fs.rmSync(dirTmp, { recursive: true, force: true });
   });
 
-  it('importa y reporta estadísticas coherentes de las 4 fuentes', () => {
-    const stats = servicio.importarTodo(dirTmp);
+  it('importa y reporta estadísticas coherentes de las 4 fuentes (sin reglas ni elicitación)', async () => {
+    const stats = await servicio.importarTodo(dirTmp);
     expect(stats.oraciones).toBe(2);
     expect(stats.frases).toBe(1);
     expect(stats.vocabulario).toBe(1);
     expect(stats.conjugaciones).toBe(1);
+    expect(stats.reglas).toBe(0);
+    expect(stats.elicitacion.archivos).toBe(0);
     expect(stats.totalTokens).toBeGreaterThan(8);
     expect(stats.topPalabras.length).toBeGreaterThan(0);
   });
 
-  it('los tokens conservan ʉ y ñ (nunca degradadas a u/n)', () => {
-    const stats = servicio.importarTodo(dirTmp);
+  it('los tokens conservan ʉ y ñ (nunca degradadas a u/n)', async () => {
+    const stats = await servicio.importarTodo(dirTmp);
     const palabras = stats.topPalabras.map((p) => p.palabra);
     expect(palabras).toContain('nʉnka');
     expect(palabras).toContain('ñingui');
@@ -74,9 +76,15 @@ describe('Importador (e2e, módulo Nest completo con SQLite en memoria)', () => 
     expect(palabras).not.toContain('ningui');
   });
 
-  it('es idempotente al importar dos veces', () => {
-    const primera = servicio.importarTodo(dirTmp);
-    const segunda = servicio.importarTodo(dirTmp);
+  it('deja escrito pruebas_traduccion.csv aunque no haya pruebas (solo encabezado)', async () => {
+    await servicio.importarTodo(dirTmp);
+    const csv = fs.readFileSync(path.join(dirTmp, 'pruebas_traduccion.csv'), 'utf8');
+    expect(csv).toContain('espanol,damana_esperado,ambito');
+  });
+
+  it('es idempotente al importar dos veces', async () => {
+    const primera = await servicio.importarTodo(dirTmp);
+    const segunda = await servicio.importarTodo(dirTmp);
     expect(segunda).toEqual(primera);
   });
 });

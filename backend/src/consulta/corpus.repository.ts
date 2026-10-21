@@ -1,8 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Database } from 'better-sqlite3';
 import { CONEXION_DB } from '../database/database.constants';
-import { FuenteCorpus } from './consulta.enums';
-import { ConjugacionDto, FraseDto, LemaDto, VocabularioDto } from './dto/consulta.dto';
+import { DominioCorpus, FuenteCorpus } from './consulta.enums';
+import {
+  ConjugacionDto,
+  FraseDto,
+  LemaDto,
+  NombrePropioDto,
+  VocabularioDto,
+} from './dto/consulta.dto';
+import { Disparador, ReglaGramatical } from './reglas';
 
 export interface FilaTexto {
   id: number;
@@ -11,6 +18,8 @@ export interface FilaTexto {
   textoEspanol: string;
   /** Solo oraciones: 'aprobado' | 'revisar' (calidad de la alineación). */
   estado?: string;
+  /** Registro de lengua del fragmento (bíblico, cotidiano, gramática). */
+  dominio: DominioCorpus;
 }
 
 export interface FrecuenciaPalabra {
@@ -33,8 +42,56 @@ export class CorpusRepository {
 
   listarFrases(): FraseDto[] {
     return this.db
-      .prepare('SELECT rowid AS id, fuente, damana, espanol, notas FROM frases ORDER BY rowid')
+      .prepare(
+        'SELECT rowid AS id, fuente, damana, espanol, notas, dominio FROM frases ORDER BY rowid',
+      )
       .all() as FraseDto[];
+  }
+
+  /** Reglas gramaticales de reglas_damana.xlsx, con su disparador. */
+  listarReglas(): ReglaGramatical[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT rowid AS id, tipo, forma, significado, ejemplo_base, ejemplo_regla,
+                  traduccion_ejemplo, notas, disparador
+           FROM reglas ORDER BY rowid`,
+        )
+        .all() as any[]
+    ).map((f) => ({
+      id: f.id,
+      tipo: f.tipo,
+      forma: f.forma,
+      significado: f.significado,
+      ejemploBase: f.ejemplo_base,
+      ejemploRegla: f.ejemplo_regla,
+      traduccionEjemplo: f.traduccion_ejemplo,
+      notas: f.notas,
+      disparador: (f.disparador as Disparador | null) ?? null,
+    }));
+  }
+
+  listarNombresPropios(): NombrePropioDto[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT rowid AS id, damana, espanol, se_escribe_igual, otras_grafias, notas
+           FROM nombres_propios ORDER BY rowid`,
+        )
+        .all() as any[]
+    ).map((f) => ({
+      id: f.id,
+      damana: f.damana,
+      espanol: f.espanol,
+      seEscribeIgual: f.se_escribe_igual === 1,
+      otrasGrafias: f.otras_grafias
+        ? String(f.otras_grafias)
+            .split(/[,;]/)
+            .map((g: string) => g.trim())
+            .filter(Boolean)
+        : [],
+      notas: f.notas,
+    }));
   }
 
   /** Lemas verbales con su número de formas conjugadas. */
@@ -98,7 +155,7 @@ export class CorpusRepository {
         return (
           this.db
             .prepare(
-              'SELECT rowid AS id, damana, espanol, estado FROM oraciones ORDER BY rowid',
+              'SELECT rowid AS id, damana, espanol, estado, dominio FROM oraciones ORDER BY rowid',
             )
             .all() as any[]
         ).map((f) => ({
@@ -107,17 +164,21 @@ export class CorpusRepository {
           textoDamana: f.damana,
           textoEspanol: f.espanol ?? '',
           estado: f.estado,
+          dominio: f.dominio as DominioCorpus,
         }));
       case FuenteCorpus.frases:
         return (
           this.db
-            .prepare('SELECT rowid AS id, fuente, damana, espanol FROM frases ORDER BY rowid')
+            .prepare(
+              'SELECT rowid AS id, fuente, damana, espanol, dominio FROM frases ORDER BY rowid',
+            )
             .all() as any[]
         ).map((f) => ({
           id: f.id,
           referencia: f.fuente ? `frase ${f.id} (${f.fuente})` : `frase ${f.id}`,
           textoDamana: f.damana,
           textoEspanol: f.espanol ?? '',
+          dominio: f.dominio as DominioCorpus,
         }));
       case FuenteCorpus.vocabulario:
         return (
@@ -129,6 +190,7 @@ export class CorpusRepository {
           referencia: `vocabulario ${f.id}`,
           textoDamana: f.damana,
           textoEspanol: f.espanol,
+          dominio: DominioCorpus.cotidiano,
         }));
       case FuenteCorpus.conjugaciones:
         return (
@@ -140,6 +202,7 @@ export class CorpusRepository {
           referencia: `conjugación ${f.id} (${f.lema})`,
           textoDamana: f.damana,
           textoEspanol: f.espanol,
+          dominio: DominioCorpus.gramatica,
         }));
     }
   }

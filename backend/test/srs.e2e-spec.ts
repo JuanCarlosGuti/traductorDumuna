@@ -32,7 +32,7 @@ describe('SRS (e2e, corpus v3)', () => {
       'utf8',
     );
     fs.writeFileSync(
-      path.join(dirTmp, 'corpus_vocabulario_v2.csv'),
+      path.join(dirTmp, 'corpus_vocabulario_v3.csv'),
       BOM + 'espanol,damana,categoria,notas,fuente\n' + 'agua,nʉnka,Otros,,dic\n',
       'utf8',
     );
@@ -53,7 +53,7 @@ describe('SRS (e2e, corpus v3)', () => {
     app = moduleRef.createNestApplication();
     configurarApp(app);
     await app.init();
-    app.get(ImportadorService).importarTodo(dirTmp);
+    await app.get(ImportadorService).importarTodo(dirTmp);
   });
 
   afterAll(async () => {
