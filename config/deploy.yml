@@ -68,6 +68,11 @@ env:
     # sea obligatoria (auth.config.ts) y conviene verlo junto a lo demás.
     NODE_ENV: production
     PORT: "3000"
+    # Esfuerzo de razonamiento de Claude (decisión del dueño, 22 oct 2026):
+    # low recorta los tokens de salida y la latencia; el prompt ya trae el
+    # diccionario, las reglas y los ejemplos, así que el razonamiento largo
+    # aporta poco. Solo aplica a Claude; Groq no lo lee.
+    ANTHROPIC_ESFUERZO: low
     # Motor de traducción principal: Claude (ANTHROPIC_API_KEY en `secret`,
     # tiene prioridad). Groq queda como respaldo: solo se usa si falta la
     # clave de Anthropic.
