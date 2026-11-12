@@ -1,65 +1,65 @@
-import { Idioma } from './consulta.enums';
+import { Language } from './consulta.enums';
 import {
-  alternativasEspanol,
-  candidatosSingular,
-  IndiceDiccionario,
-  MAX_POSIBLES_POR_PALABRA,
+  spanishAlternatives,
+  singularCandidates,
+  DictionaryIndex,
+  MAX_POSSIBLE_PER_WORD,
 } from './diccionario';
-import { VocabularioDto } from './dto/consulta.dto';
+import { VocabularyDto } from './dto/consulta.dto';
 
-const entrada = (
+const entry = (
   id: number,
-  espanol: string,
+  spanish: string,
   damana: string,
-  categoria = 'Otros',
-): VocabularioDto => ({ id, espanol, damana, categoria, notas: null, fuente: 'dic' });
+  category = 'Otros',
+): VocabularyDto => ({ id, espanol: spanish, damana, categoria: category, notas: null, fuente: 'dic' });
 
-const VOCABULARIO: VocabularioDto[] = [
-  entrada(1, 'Madre', 'Abu', 'Personas y familia'),
-  entrada(2, 'mamá', 'Abu', 'Personas y familia'),
-  entrada(3, 'Casa', 'Urraga', 'Casa / objetos / herramientas'),
-  entrada(4, 'Cocinar', 'Dugua', 'Verbos'),
-  entrada(5, 'Cocinando', 'Duzhi', 'Verbos'),
-  entrada(6, 'Flor', 'Shoma', 'Plantas / árboles / frutos'),
-  entrada(7, 'Año', 'Kʉgui', 'Tiempo / días / clima'),
-  entrada(8, 'Tengo frío', 'Se namsi', 'Sentimientos / estados'),
-  entrada(9, 'Cocinera (ave)', 'Abi', 'Animales'),
-  entrada(10, 'Igual, lo mismo', 'Anzhengwi', 'Adjetivos'),
-  entrada(11, 'Verb: Hacer', 'Awa', 'Verbos'),
-  entrada(12, 'Agua', 'Dzira', 'Naturaleza / geografía'),
-  entrada(13, 'En', 'Mba', 'Otros'),
-  entrada(14, 'Feliz', 'Zen zhiguana', 'Sentimientos / estados'),
-  entrada(15, 'Ese o esa', 'Mema', 'Conectores / determinantes'),
-  entrada(16, 'No quiero', 'Nandunun', 'Sentimientos / estados'),
-  entrada(17, 'No tengo', 'Nʉjkʉnanun', 'Verbos'),
+const VOCABULARY: VocabularyDto[] = [
+  entry(1, 'Madre', 'Abu', 'Personas y familia'),
+  entry(2, 'mamá', 'Abu', 'Personas y familia'),
+  entry(3, 'Casa', 'Urraga', 'Casa / objetos / herramientas'),
+  entry(4, 'Cocinar', 'Dugua', 'Verbos'),
+  entry(5, 'Cocinando', 'Duzhi', 'Verbos'),
+  entry(6, 'Flor', 'Shoma', 'Plantas / árboles / frutos'),
+  entry(7, 'Año', 'Kʉgui', 'Tiempo / días / clima'),
+  entry(8, 'Tengo frío', 'Se namsi', 'Sentimientos / estados'),
+  entry(9, 'Cocinera (ave)', 'Abi', 'Animales'),
+  entry(10, 'Igual, lo mismo', 'Anzhengwi', 'Adjetivos'),
+  entry(11, 'Verb: Hacer', 'Awa', 'Verbos'),
+  entry(12, 'Agua', 'Dzira', 'Naturaleza / geografía'),
+  entry(13, 'En', 'Mba', 'Otros'),
+  entry(14, 'Feliz', 'Zen zhiguana', 'Sentimientos / estados'),
+  entry(15, 'Ese o esa', 'Mema', 'Conectores / determinantes'),
+  entry(16, 'No quiero', 'Nandunun', 'Sentimientos / estados'),
+  entry(17, 'No tengo', 'Nʉjkʉnanun', 'Verbos'),
 ];
 
-describe('alternativasEspanol', () => {
+describe('spanishAlternatives', () => {
   it('removes parentheses and prefixes like «Verb:» and splits on commas', () => {
-    expect(alternativasEspanol('Cocinera (ave)')).toEqual(['Cocinera']);
-    expect(alternativasEspanol('Verb: Hacer')).toEqual(['Hacer']);
-    expect(alternativasEspanol('Igual, lo mismo')).toEqual(['Igual', 'lo mismo']);
-    expect(alternativasEspanol('Sí/akʉñí')).toEqual(['Sí', 'akʉñí']);
-    expect(alternativasEspanol('Ese o esa')).toEqual(['Ese', 'esa']);
-    expect(alternativasEspanol('Conocer o ver')).toEqual(['Conocer', 'ver']);
-    expect(alternativasEspanol('Madre del agua y peces')).toEqual(['Madre del agua y peces']);
+    expect(spanishAlternatives('Cocinera (ave)')).toEqual(['Cocinera']);
+    expect(spanishAlternatives('Verb: Hacer')).toEqual(['Hacer']);
+    expect(spanishAlternatives('Igual, lo mismo')).toEqual(['Igual', 'lo mismo']);
+    expect(spanishAlternatives('Sí/akʉñí')).toEqual(['Sí', 'akʉñí']);
+    expect(spanishAlternatives('Ese o esa')).toEqual(['Ese', 'esa']);
+    expect(spanishAlternatives('Conocer o ver')).toEqual(['Conocer', 'ver']);
+    expect(spanishAlternatives('Madre del agua y peces')).toEqual(['Madre del agua y peces']);
   });
 });
 
-describe('candidatosSingular', () => {
+describe('singularCandidates', () => {
   it('flores → flor and flore; casas → casa; mes → (nothing: too short)', () => {
-    expect(candidatosSingular('flores')).toEqual(['flor', 'flore']);
-    expect(candidatosSingular('casas')).toEqual(['casa']);
-    expect(candidatosSingular('mes')).toEqual([]);
+    expect(singularCandidates('flores')).toEqual(['flor', 'flore']);
+    expect(singularCandidates('casas')).toEqual(['casa']);
+    expect(singularCandidates('mes')).toEqual([]);
   });
 });
 
-describe('IndiceDiccionario (Spanish → Damana)', () => {
-  const indice = new IndiceDiccionario(VOCABULARIO);
-  const buscar = (texto: string) => indice.buscar(texto, Idioma.espanol);
+describe('DictionaryIndex (Spanish → Damana)', () => {
+  const index = new DictionaryIndex(VOCABULARY);
+  const search = (text: string) => index.search(text, Language.espanol);
 
   it('resolves mamá, cocina and casa for «mi mamá cocina en la casa»', () => {
-    const r = buscar('mi mamá cocina en la casa');
+    const r = search('mi mamá cocina en la casa');
     const mama = r.filter((a) => a.palabra === 'mamá');
     expect(mama.map((a) => a.coincidencia)).toEqual(['exacta']);
     expect(mama[0].damana).toBe('Abu');
@@ -75,103 +75,103 @@ describe('IndiceDiccionario (Spanish → Damana)', () => {
   });
 
   it('exact before no-accents: «mama» without accent falls under sin_tildes', () => {
-    expect(buscar('mama')[0]).toMatchObject({ damana: 'Abu', coincidencia: 'sin_tildes' });
-    expect(buscar('MAMÁ')[0]).toMatchObject({ damana: 'Abu', coincidencia: 'exacta' });
+    expect(search('mama')[0]).toMatchObject({ damana: 'Abu', coincidencia: 'sin_tildes' });
+    expect(search('MAMÁ')[0]).toMatchObject({ damana: 'Abu', coincidencia: 'exacta' });
   });
 
   it('singular: «flores» finds Flor', () => {
-    expect(buscar('flores')).toEqual([
+    expect(search('flores')).toEqual([
       expect.objectContaining({ palabra: 'flores', damana: 'Shoma', coincidencia: 'singular' }),
     ]);
   });
 
   it('returns all senses by prefix, up to the per-word cap (cocina → cocinar, cocinando, cocinera)', () => {
-    const r = buscar('cocina');
+    const r = search('cocina');
     expect(r.map((a) => a.damana)).toEqual(expect.arrayContaining(['Dugua', 'Duzhi']));
-    expect(r.length).toBeLessThanOrEqual(MAX_POSIBLES_POR_PALABRA);
+    expect(r.length).toBeLessThanOrEqual(MAX_POSSIBLE_PER_WORD);
     expect(r.every((a) => a.coincidencia === 'posible')).toBe(true);
   });
 
   it('dictionary phrases when all their words are in the text', () => {
-    const r = buscar('hoy tengo frío');
+    const r = search('hoy tengo frío');
     expect(r).toContainEqual(
       expect.objectContaining({ damana: 'Se namsi', coincidencia: 'frase' }),
     );
-    expect(buscar('tengo hambre').some((a) => a.damana === 'Se namsi')).toBe(false);
+    expect(search('tengo hambre').some((a) => a.damana === 'Se namsi')).toBe(false);
   });
 
   it('respects ñ ≠ n: «año» finds Kʉgui (with ʉ) and «ano» does not', () => {
-    expect(buscar('año')[0]).toMatchObject({ damana: 'Kʉgui', coincidencia: 'exacta' });
-    expect(buscar('ano')).toEqual([]);
+    expect(search('año')[0]).toMatchObject({ damana: 'Kʉgui', coincidencia: 'exacta' });
+    expect(search('ano')).toEqual([]);
   });
 
   it('stopwords without an entry are not approximated by prefix', () => {
-    expect(buscar('las')).toEqual([]);
+    expect(search('las')).toEqual([]);
   });
 
   it('«Ese o esa» is split on the «o»: «Esa» finds Mema even though it is a function word', () => {
-    expect(buscar('Esa mujer')).toContainEqual(
+    expect(search('Esa mujer')).toContainEqual(
       expect.objectContaining({ palabra: 'Esa', damana: 'Mema', coincidencia: 'exacta' }),
     );
   });
 
   it('negative entries («No tengo», with ʉ) only come in when the sentence carries the «no»', () => {
-    expect(buscar('no tengo agua')).toContainEqual(
+    expect(search('no tengo agua')).toContainEqual(
       expect.objectContaining({ palabra: 'No tengo', damana: 'Nʉjkʉnanun', coincidencia: 'frase' }),
     );
     // Affirmative: the negated form must NOT appear (it used to show up as «frase»
     // because «no» was discarded as a stopword).
-    expect(buscar('tengo agua').map((a) => a.damana)).not.toContain('Nʉjkʉnanun');
+    expect(search('tengo agua').map((a) => a.damana)).not.toContain('Nʉjkʉnanun');
     // Another negation other than «no» does not trigger it either.
-    expect(buscar('nunca quiero').map((a) => a.damana)).not.toContain('Nandunun');
+    expect(search('nunca quiero').map((a) => a.damana)).not.toContain('Nandunun');
   });
 });
 
-describe('IndiceDiccionario (colloquial Spanish synonyms)', () => {
+describe('DictionaryIndex (colloquial Spanish synonyms)', () => {
   // Like the real vocabulary: it records «Madre», not «mamá».
-  const indice = new IndiceDiccionario([
-    entrada(1, 'Madre', 'Abu', 'Personas y familia'),
-    entrada(2, 'Padre', 'Ade', 'Personas y familia'),
-    entrada(3, 'Mi hermana menor', 'Ranzhibusi', 'Personas y familia'),
-    entrada(4, 'Hermana menor', 'Busi', 'Personas y familia'),
+  const index = new DictionaryIndex([
+    entry(1, 'Madre', 'Abu', 'Personas y familia'),
+    entry(2, 'Padre', 'Ade', 'Personas y familia'),
+    entry(3, 'Mi hermana menor', 'Ranzhibusi', 'Personas y familia'),
+    entry(4, 'Hermana menor', 'Busi', 'Personas y familia'),
   ]);
-  const buscar = (texto: string) => indice.buscar(texto, Idioma.espanol);
+  const search = (text: string) => index.search(text, Language.espanol);
 
   it('mamá → Madre (Abu) marked as synonym; papi → Padre', () => {
-    expect(buscar('mi mamá cocina')).toContainEqual(
+    expect(search('mi mamá cocina')).toContainEqual(
       expect.objectContaining({ palabra: 'mamá', damana: 'Abu', coincidencia: 'sinonimo' }),
     );
-    expect(buscar('papi')).toEqual([expect.objectContaining({ damana: 'Ade', coincidencia: 'sinonimo' })]);
+    expect(search('papi')).toEqual([expect.objectContaining({ damana: 'Ade', coincidencia: 'sinonimo' })]);
   });
 
   it('the synonym can be a multi-word entry (hermanita → hermana menor)', () => {
-    expect(buscar('hermanita')).toEqual([expect.objectContaining({ damana: 'Busi', coincidencia: 'sinonimo' })]);
+    expect(search('hermanita')).toEqual([expect.objectContaining({ damana: 'Busi', coincidencia: 'sinonimo' })]);
   });
 
   it('recognized phrases show the full text of the entry', () => {
-    const frase = buscar('mi hermana menor llegó').find((a) => a.coincidencia === 'frase');
-    expect(frase).toMatchObject({ palabra: 'Mi hermana menor', damana: 'Ranzhibusi' });
+    const phrase = search('mi hermana menor llegó').find((a) => a.coincidencia === 'frase');
+    expect(phrase).toMatchObject({ palabra: 'Mi hermana menor', damana: 'Ranzhibusi' });
   });
 });
 
-describe('IndiceDiccionario (Damana → Spanish)', () => {
-  const indice = new IndiceDiccionario(VOCABULARIO);
+describe('DictionaryIndex (Damana → Spanish)', () => {
+  const index = new DictionaryIndex(VOCABULARY);
 
   it('exact normalized match with ʉ intact; u ≠ ʉ', () => {
-    const r = indice.buscar('Kʉgui', Idioma.damana);
+    const r = index.search('Kʉgui', Language.damana);
     expect(r).toEqual([expect.objectContaining({ espanol: 'Año', coincidencia: 'exacta' })]);
-    expect(indice.buscar('Kugui', Idioma.damana)).toEqual([]);
+    expect(index.search('Kugui', Language.damana)).toEqual([]);
   });
 
   it('multi-word Damana phrase (zen zhiguana) only when all words are present', () => {
-    expect(indice.buscar('zen zhiguana nukurra', Idioma.damana)).toContainEqual(
+    expect(index.search('zen zhiguana nukurra', Language.damana)).toContainEqual(
       expect.objectContaining({ espanol: 'Feliz', coincidencia: 'frase' }),
     );
-    expect(indice.buscar('zen', Idioma.damana)).toEqual([]);
+    expect(index.search('zen', Language.damana)).toEqual([]);
   });
 
   it('by prefix it marks «posible»', () => {
-    expect(indice.buscar('Urragamba', Idioma.damana)).toEqual([
+    expect(index.search('Urragamba', Language.damana)).toEqual([
       expect.objectContaining({ espanol: 'Casa', coincidencia: 'posible' }),
     ]);
   });

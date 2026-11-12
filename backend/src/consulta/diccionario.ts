@@ -1,8 +1,8 @@
-import { normalizar } from '../comun/texto/normalizador';
-import { esNegacionEspanol, esStopwordEspanol } from '../comun/texto/stopwords-es';
-import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { Idioma } from './consulta.enums';
-import { VocabularioDto } from './dto/consulta.dto';
+import { normalize } from '../comun/texto/normalizador';
+import { isSpanishNegation, isSpanishStopword } from '../comun/texto/stopwords-es';
+import { tokenizeDamana } from '../comun/texto/tokenizador';
+import { Language } from './consulta.enums';
+import { VocabularyDto } from './dto/consulta.dto';
 
 /**
  * How the sense was found, from most to least reliable:
@@ -14,7 +14,7 @@ import { VocabularioDto } from './dto/consulta.dto';
  *  - frase: multi-word entry whose words are all in the sentence.
  *  - posible: they share the first 5 letters (it may be another word).
  */
-export type TipoCoincidencia =
+export type MatchKind =
   | 'exacta'
   | 'sin_tildes'
   | 'sinonimo'
@@ -22,21 +22,21 @@ export type TipoCoincidencia =
   | 'frase'
   | 'posible';
 
-export interface AcepcionEncontrada {
+export interface FoundSense {
   /** Word of the input sentence that triggered the lookup. */
   palabra: string;
   espanol: string;
   damana: string;
   categoria: string | null;
   notas: string | null;
-  coincidencia: TipoCoincidencia;
+  coincidencia: MatchKind;
 }
 
 /** Global cap on senses that travel in the prompt. */
-export const MAX_ACEPCIONES = 40;
+export const MAX_SENSES = 40;
 /** Cap on «posible» senses (by prefix) per word. */
-export const MAX_POSIBLES_POR_PALABRA = 3;
-export const LETRAS_PREFIJO = 5;
+export const MAX_POSSIBLE_PER_WORD = 3;
+export const PREFIX_LETTERS = 5;
 
 /**
  * Colloquial or affectionate Spanish variants (normalized key) that the
@@ -44,7 +44,7 @@ export const LETRAS_PREFIJO = 5;
  * word. It is Spanish synonymy, not an invented translation: the
  * Damana word is the same. A short and obvious list on purpose.
  */
-export const SINONIMOS_ES: Record<string, string[]> = {
+export const SYNONYMS_ES: Record<string, string[]> = {
   mama: ['madre'],
   mami: ['madre'],
   mamita: ['madre'],
@@ -67,22 +67,22 @@ export const SINONIMOS_ES: Record<string, string[]> = {
   aguita: ['agua'],
 };
 
-interface Entrada {
+interface Entry {
   espanol: string;
   damana: string;
   categoria: string | null;
   notas: string | null;
 }
 
-interface Frase {
+interface Phrase {
   /** Verbatim text of the alternative, to show what was recognized. */
   texto: string;
   /** Normalized content tokens (without Spanish stopwords). */
   tokens: string[];
-  entrada: Entrada;
+  entrada: Entry;
 }
 
-type Emisor = (palabra: string, entradas: Entrada[], coincidencia: TipoCoincidencia) => void;
+type Emitter = (word: string, entries: Entry[], match: MatchKind) => void;
 
 /**
  * Variants of the Spanish side of an entry: «Igual, lo mismo» and «Ese o
@@ -91,8 +91,8 @@ type Emisor = (palabra: string, entradas: Entrada[], coincidencia: TipoCoinciden
  * they are clarifications, not part of the word. It splits on «o»/«u» but NOT
  * on «y»: «Madre del agua y peces» is a single thing.
  */
-export function alternativasEspanol(espanol: string): string[] {
-  return espanol
+export function spanishAlternatives(spanish: string): string[] {
+  return spanish
     .replace(/\([^)]*\)/g, ' ')
     .replace(/^\s*\p{L}+:\s*/u, '')
     .split(/[,;/]|\s[–-]\s|\s[ou]\s/)
@@ -101,72 +101,72 @@ export function alternativasEspanol(espanol: string): string[] {
 }
 
 /** Singular candidates for a normalized word: flores → flor, casas → casa. */
-export function candidatosSingular(normalizada: string): string[] {
-  const candidatos: string[] = [];
-  if (normalizada.length > 4 && normalizada.endsWith('es')) {
-    candidatos.push(normalizada.slice(0, -2));
+export function singularCandidates(normalized: string): string[] {
+  const candidates: string[] = [];
+  if (normalized.length > 4 && normalized.endsWith('es')) {
+    candidates.push(normalized.slice(0, -2));
   }
-  if (normalizada.length > 3 && normalizada.endsWith('s')) {
-    candidatos.push(normalizada.slice(0, -1));
+  if (normalized.length > 3 && normalized.endsWith('s')) {
+    candidates.push(normalized.slice(0, -1));
   }
-  return candidatos;
+  return candidates;
 }
 
 /**
  * Vocabulary index used to resolve each word of a sentence. It is
  * built once (≈1,500 entries) and queried on every translation.
  */
-export class IndiceDiccionario {
-  private readonly exactaEs = new Map<string, Entrada[]>();
-  private readonly normalizadaEs = new Map<string, Entrada[]>();
-  private readonly frasesEs: Frase[] = [];
+export class DictionaryIndex {
+  private readonly exactEs = new Map<string, Entry[]>();
+  private readonly normalizedEs = new Map<string, Entry[]>();
+  private readonly phrasesEs: Phrase[] = [];
   /** Any complete Spanish alternative (one or several words), normalized. */
-  private readonly alternativaEs = new Map<string, Entrada[]>();
-  private readonly normalizadaDm = new Map<string, Entrada[]>();
-  private readonly frasesDm: Frase[] = [];
-  private readonly clavesEs: string[];
-  private readonly clavesDm: string[];
+  private readonly alternativeEs = new Map<string, Entry[]>();
+  private readonly normalizedDm = new Map<string, Entry[]>();
+  private readonly phrasesDm: Phrase[] = [];
+  private readonly keysEs: string[];
+  private readonly keysDm: string[];
 
-  constructor(entradas: VocabularioDto[]) {
-    for (const dto of entradas) {
-      const entrada: Entrada = {
+  constructor(entries: VocabularyDto[]) {
+    for (const dto of entries) {
+      const entry: Entry = {
         espanol: dto.espanol,
         damana: dto.damana,
         categoria: dto.categoria ?? null,
         notas: dto.notas ?? null,
       };
-      for (const alternativa of alternativasEspanol(dto.espanol)) {
-        const tokens = tokenizarDamana(alternativa);
-        agregar(this.alternativaEs, tokens.map((t) => t.normalizada).join(' '), entrada);
+      for (const alternative of spanishAlternatives(dto.espanol)) {
+        const tokens = tokenizeDamana(alternative);
+        add(this.alternativeEs, tokens.map((t) => t.normalizada).join(' '), entry);
         if (tokens.length === 1) {
-          agregar(this.exactaEs, tokens[0].original.toLowerCase().normalize('NFC'), entrada);
-          agregar(this.normalizadaEs, tokens[0].normalizada, entrada);
+          add(this.exactEs, tokens[0].original.toLowerCase().normalize('NFC'), entry);
+          add(this.normalizedEs, tokens[0].normalizada, entry);
         } else if (tokens.length > 1) {
           // Negations are kept as content: «No quiero» must only
           // come in when the sentence carries the «no». If they were removed as
           // stopwords, the negative form would also show up for «quiero» and the
           // model would receive a negated verb for an affirmative sentence.
-          const contenido = tokens
+          const content = tokens
             .map((t) => t.normalizada)
-            .filter((t) => !esStopwordEspanol(t) || esNegacionEspanol(t));
-          if (contenido.length > 0) {
-            this.frasesEs.push({ texto: alternativa, tokens: contenido, entrada });
+            .filter((t) => !isSpanishStopword(t) || isSpanishNegation(t));
+          if (content.length > 0) {
+            this.phrasesEs.push({ texto: alternative, tokens: content, entrada: entry });
           }
         }
       }
-      const tokensDm = tokenizarDamana(dto.damana);
+      const tokensDm = tokenizeDamana(dto.damana);
       if (tokensDm.length === 1) {
-        agregar(this.normalizadaDm, tokensDm[0].normalizada, entrada);
+        add(this.normalizedDm, tokensDm[0].normalizada, entry);
       } else if (tokensDm.length > 1) {
-        this.frasesDm.push({
+        this.phrasesDm.push({
           texto: dto.damana,
           tokens: tokensDm.map((t) => t.normalizada),
-          entrada,
+          entrada: entry,
         });
       }
     }
-    this.clavesEs = [...this.normalizadaEs.keys()].sort();
-    this.clavesDm = [...this.normalizadaDm.keys()].sort();
+    this.keysEs = [...this.normalizedEs.keys()].sort();
+    this.keysDm = [...this.normalizedDm.keys()].sort();
   }
 
   /**
@@ -176,95 +176,95 @@ export class IndiceDiccionario {
    * entries are included when all their words are in the
    * text.
    */
-  buscar(texto: string, idioma: Idioma): AcepcionEncontrada[] {
-    const tokens = tokenizarDamana(texto);
-    const presentes = new Set(tokens.map((t) => t.normalizada));
-    const resultado: AcepcionEncontrada[] = [];
-    const vistas = new Set<string>();
+  search(text: string, language: Language): FoundSense[] {
+    const tokens = tokenizeDamana(text);
+    const present = new Set(tokens.map((t) => t.normalizada));
+    const result: FoundSense[] = [];
+    const seen = new Set<string>();
 
-    const emitir: Emisor = (palabra, entradas, coincidencia) => {
-      for (const e of entradas) {
-        const clave = `${normalizar(e.espanol)}|${normalizar(e.damana)}`;
-        if (vistas.has(clave)) continue;
-        vistas.add(clave);
-        resultado.push({ palabra, coincidencia, ...e });
+    const emit: Emitter = (word, entries, match) => {
+      for (const e of entries) {
+        const key = `${normalize(e.espanol)}|${normalize(e.damana)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result.push({ palabra: word, coincidencia: match, ...e });
       }
     };
 
     for (const token of tokens) {
-      if (idioma === Idioma.espanol) {
-        this.buscarPalabraEspanol(token.original, token.normalizada, emitir);
+      if (language === Language.espanol) {
+        this.searchSpanishWord(token.original, token.normalizada, emit);
       } else {
-        this.buscarPalabraDamana(token.original, token.normalizada, emitir);
+        this.searchDamanaWord(token.original, token.normalizada, emit);
       }
     }
 
-    const frases = idioma === Idioma.espanol ? this.frasesEs : this.frasesDm;
-    for (const frase of frases) {
-      if (frase.tokens.every((t) => presentes.has(t))) {
-        emitir(frase.texto, [frase.entrada], 'frase');
+    const phrases = language === Language.espanol ? this.phrasesEs : this.phrasesDm;
+    for (const phrase of phrases) {
+      if (phrase.tokens.every((t) => present.has(t))) {
+        emit(phrase.texto, [phrase.entrada], 'frase');
       }
     }
 
-    return resultado.slice(0, MAX_ACEPCIONES);
+    return result.slice(0, MAX_SENSES);
   }
 
-  private buscarPalabraEspanol(original: string, normalizada: string, emitir: Emisor): void {
-    const exacta = this.exactaEs.get(original.toLowerCase().normalize('NFC'));
-    if (exacta) return emitir(original, exacta, 'exacta');
+  private searchSpanishWord(original: string, normalized: string, emit: Emitter): void {
+    const exact = this.exactEs.get(original.toLowerCase().normalize('NFC'));
+    if (exact) return emit(original, exact, 'exacta');
 
-    const sinTildes = this.normalizadaEs.get(normalizada);
-    if (sinTildes) return emitir(original, sinTildes, 'sin_tildes');
+    const withoutAccents = this.normalizedEs.get(normalized);
+    if (withoutAccents) return emit(original, withoutAccents, 'sin_tildes');
 
-    const sinonimos = SINONIMOS_ES[normalizada];
-    if (sinonimos) {
-      const entradas = sinonimos.flatMap(
-        (s) => this.alternativaEs.get(tokenizarDamana(s).map((t) => t.normalizada).join(' ')) ?? [],
+    const synonyms = SYNONYMS_ES[normalized];
+    if (synonyms) {
+      const entries = synonyms.flatMap(
+        (s) => this.alternativeEs.get(tokenizeDamana(s).map((t) => t.normalizada).join(' ')) ?? [],
       );
-      if (entradas.length > 0) return emitir(original, entradas, 'sinonimo');
+      if (entries.length > 0) return emit(original, entries, 'sinonimo');
     }
 
     // Short function words are not approximated: «las» → «la» would be
     // noise, and by prefix even worse.
-    if (esStopwordEspanol(normalizada) || normalizada.length < 4) return;
+    if (isSpanishStopword(normalized) || normalized.length < 4) return;
 
-    for (const singular of candidatosSingular(normalizada)) {
-      const entradas = this.normalizadaEs.get(singular);
-      if (entradas) return emitir(original, entradas, 'singular');
+    for (const singular of singularCandidates(normalized)) {
+      const entries = this.normalizedEs.get(singular);
+      if (entries) return emit(original, entries, 'singular');
     }
 
-    emitir(original, this.porPrefijo(normalizada, this.clavesEs, this.normalizadaEs), 'posible');
+    emit(original, this.byPrefix(normalized, this.keysEs, this.normalizedEs), 'posible');
   }
 
-  private buscarPalabraDamana(original: string, normalizada: string, emitir: Emisor): void {
-    const exacta = this.normalizadaDm.get(normalizada);
-    if (exacta) return emitir(original, exacta, 'exacta');
-    if (normalizada.length < 4) return;
-    emitir(original, this.porPrefijo(normalizada, this.clavesDm, this.normalizadaDm), 'posible');
+  private searchDamanaWord(original: string, normalized: string, emit: Emitter): void {
+    const exact = this.normalizedDm.get(normalized);
+    if (exact) return emit(original, exact, 'exacta');
+    if (normalized.length < 4) return;
+    emit(original, this.byPrefix(normalized, this.keysDm, this.normalizedDm), 'posible');
   }
 
-  /** Entries whose key shares the first LETRAS_PREFIJO letters. */
-  private porPrefijo(
-    normalizada: string,
-    claves: string[],
-    indice: Map<string, Entrada[]>,
-  ): Entrada[] {
-    if (normalizada.length < LETRAS_PREFIJO) return [];
-    const prefijo = normalizada.slice(0, LETRAS_PREFIJO);
-    const encontradas: Entrada[] = [];
-    for (const clave of claves) {
-      if (!clave.startsWith(prefijo)) continue;
-      for (const e of indice.get(clave) ?? []) {
-        encontradas.push(e);
-        if (encontradas.length >= MAX_POSIBLES_POR_PALABRA) return encontradas;
+  /** Entries whose key shares the first PREFIX_LETTERS letters. */
+  private byPrefix(
+    normalized: string,
+    keys: string[],
+    index: Map<string, Entry[]>,
+  ): Entry[] {
+    if (normalized.length < PREFIX_LETTERS) return [];
+    const prefix = normalized.slice(0, PREFIX_LETTERS);
+    const foundWords: Entry[] = [];
+    for (const key of keys) {
+      if (!key.startsWith(prefix)) continue;
+      for (const e of index.get(key) ?? []) {
+        foundWords.push(e);
+        if (foundWords.length >= MAX_POSSIBLE_PER_WORD) return foundWords;
       }
     }
-    return encontradas;
+    return foundWords;
   }
 }
 
-function agregar(mapa: Map<string, Entrada[]>, clave: string, entrada: Entrada): void {
-  const lista = mapa.get(clave);
-  if (lista) lista.push(entrada);
-  else mapa.set(clave, [entrada]);
+function add(map: Map<string, Entry[]>, key: string, entry: Entry): void {
+  const list = map.get(key);
+  if (list) list.push(entry);
+  else map.set(key, [entry]);
 }

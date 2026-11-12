@@ -1,141 +1,141 @@
 import {
-  detectarEntradasDudosas,
-  detectarParecidas,
-  detectarPolisemia,
-  detectarSinonimos,
-  detectarTerminaciones,
-  detectarVariantes,
-  EntradaLexica,
-  FormaVista,
-  TIPO_PARECIDAS,
+  detectDoubtfulEntries,
+  detectLookalikes,
+  detectPolysemy,
+  detectSynonyms,
+  detectEndings,
+  detectVariants,
+  LexicalEntry,
+  SeenForm,
+  LOOKALIKE_KIND,
   TokenCorpus,
 } from './dudas';
 
-const forma = (f: string, frecuencia = 0, significados: string[] = []): FormaVista => ({
+const form = (f: string, frequency = 0, meanings: string[] = []): SeenForm => ({
   forma: f,
-  frecuencia,
-  significados,
+  frecuencia: frequency,
+  significados: meanings,
 });
 
-const NATIVAS = 'nativas 2026-10';
-const entrada = (
-  espanol: string,
+const NATIVE_SPEAKERS = 'nativas 2026-10';
+const entry = (
+  spanish: string,
   damana: string,
-  notas: string | null = null,
-  fuente = 'diccionario wiwa',
-): EntradaLexica => ({ espanol, damana, categoria: null, notas, fuente });
+  notes: string | null = null,
+  source = 'diccionario wiwa',
+): LexicalEntry => ({ espanol: spanish, damana, categoria: null, notas: notes, fuente: source });
 
-describe('detectarVariantes (same word, several spellings)', () => {
-  const grupos = detectarVariantes([
-    forma('nʉnka', 275),
-    forma('nunka', 2),
-    forma('dugwa', 0, ['Cocínelo']),
-    forma('dugua', 5, ['Cocinar']),
-    forma('terruandzina', 40),
-    forma('terruanyina', 1),
-    forma('ñingui', 30),
-    forma('ningui', 0),
-    forma('naka', 211),
-    forma('mʉ', 9),
-    forma('mu', 3),
+describe('detectVariants (same word, several spellings)', () => {
+  const groups = detectVariants([
+    form('nʉnka', 275),
+    form('nunka', 2),
+    form('dugwa', 0, ['Cocínelo']),
+    form('dugua', 5, ['Cocinar']),
+    form('terruandzina', 40),
+    form('terruanyina', 1),
+    form('ñingui', 30),
+    form('ningui', 0),
+    form('naka', 211),
+    form('mʉ', 9),
+    form('mu', 3),
   ]);
 
   it('groups by alternation and sorts by usage, most frequent form first', () => {
-    expect(grupos.map((g) => g.formas.map((f) => f.forma))).toEqual([
+    expect(groups.map((g) => g.formas.map((f) => f.forma))).toEqual([
       ['nʉnka', 'nunka'],
       ['terruandzina', 'terruanyina'],
       ['dugua', 'dugwa'],
     ]);
-    expect(grupos.map((g) => g.tipo)).toEqual(['u / ʉ', 'ndzina / nyina', 'w / u']);
-    expect(grupos[0].total).toBe(277);
+    expect(groups.map((g) => g.tipo)).toEqual(['u / ʉ', 'ndzina / nyina', 'w / u']);
+    expect(groups[0].total).toBe(277);
   });
 
   it('never merges ñ with n, nor proposes words shorter than 4 letters', () => {
-    const todas = grupos.flatMap((g) => g.formas.map((f) => f.forma));
-    expect(todas).not.toContain('ñingui');
-    expect(todas).not.toContain('ningui');
-    expect(todas).not.toContain('mʉ');
+    const all = groups.flatMap((g) => g.formas.map((f) => f.forma));
+    expect(all).not.toContain('ñingui');
+    expect(all).not.toContain('ningui');
+    expect(all).not.toContain('mʉ');
   });
 });
 
-describe('detectarParecidas (one letter of difference and the same meaning)', () => {
+describe('detectLookalikes (one letter of difference and the same meaning)', () => {
   it('proposes the pair only if they share a meaning', () => {
-    const grupos = detectarParecidas([
-      forma('kunkushina', 0, ['Dios']),
-      forma('kunkujshina', 118, ['jehova', 'para dios']),
-      forma('abisha', 0, ['Calentar']),
-      forma('abishi', 0, ['Hiérvalo']),
+    const groups = detectLookalikes([
+      form('kunkushina', 0, ['Dios']),
+      form('kunkujshina', 118, ['jehova', 'para dios']),
+      form('abisha', 0, ['Calentar']),
+      form('abishi', 0, ['Hiérvalo']),
       // the first letter changes: person prefix, not spelling
-      forma('anzhʉngʉma', 0, ['su hijo']),
-      forma('ranzhʉngʉma', 0, ['Mi hijo']),
+      form('anzhʉngʉma', 0, ['su hijo']),
+      form('ranzhʉngʉma', 0, ['Mi hijo']),
     ]);
-    expect(grupos).toHaveLength(1);
-    expect(grupos[0].tipo).toBe(TIPO_PARECIDAS);
-    expect(grupos[0].formas.map((f) => f.forma)).toEqual(['kunkujshina', 'kunkushina']);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].tipo).toBe(LOOKALIKE_KIND);
+    expect(groups[0].formas.map((f) => f.forma)).toEqual(['kunkujshina', 'kunkushina']);
   });
 });
 
-describe('detectarSinonimos (one Spanish word, several in Damana)', () => {
-  const grupos = detectarSinonimos([
-    entrada('Grande', 'Aikuia'),
-    entrada('Grande', 'Alkwega'),
-    entrada('Día', 'Dzuia'),
-    entrada('Día', 'Dzwia'),
-    entrada('Igual, lo mismo', 'Anzhengwi'),
-    entrada('igual', 'zhʉntshijki', null, NATIVAS),
-    entrada('Año', 'Kʉgui'),
+describe('detectSynonyms (one Spanish word, several in Damana)', () => {
+  const groups = detectSynonyms([
+    entry('Grande', 'Aikuia'),
+    entry('Grande', 'Alkwega'),
+    entry('Día', 'Dzuia'),
+    entry('Día', 'Dzwia'),
+    entry('Igual, lo mismo', 'Anzhengwi'),
+    entry('igual', 'zhʉntshijki', null, NATIVE_SPEAKERS),
+    entry('Año', 'Kʉgui'),
   ]);
 
   it('groups by each Spanish alternative', () => {
-    expect(grupos.map((g) => [g.espanol, g.opciones.map((o) => o.damana)])).toEqual([
+    expect(groups.map((g) => [g.espanol, g.opciones.map((o) => o.damana)])).toEqual([
       ['Grande', ['Aikuia', 'Alkwega']],
       ['Igual', ['Anzhengwi', 'zhʉntshijki']],
     ]);
   });
 
   it('leaves out what is just another spelling (Dzuia / Dzwia goes on the spelling sheet)', () => {
-    expect(grupos.some((g) => g.espanol === 'Día')).toBe(false);
+    expect(groups.some((g) => g.espanol === 'Día')).toBe(false);
   });
 });
 
-describe('detectarPolisemia (one Damana form, several meanings)', () => {
-  const grupos = detectarPolisemia([
-    entrada('Familia', 'Kawa'),
-    entrada('Amigo', 'Kawa'),
-    entrada('Córtelo', 'Ako'),
-    entrada('lo cortó', 'Akó'),
-    entrada('Año', 'Kʉgui'),
-    entrada('años', 'kʉgui', null, NATIVAS),
-    entrada('Agua', 'Dzira'),
+describe('detectPolysemy (one Damana form, several meanings)', () => {
+  const groups = detectPolysemy([
+    entry('Familia', 'Kawa'),
+    entry('Amigo', 'Kawa'),
+    entry('Córtelo', 'Ako'),
+    entry('lo cortó', 'Akó'),
+    entry('Año', 'Kʉgui'),
+    entry('años', 'kʉgui', null, NATIVE_SPEAKERS),
+    entry('Agua', 'Dzira'),
   ]);
 
   it('flags the groups told apart only by the accent and puts them first', () => {
-    expect(grupos.map((g) => [g.clave, g.soloTilde])).toEqual([
+    expect(groups.map((g) => [g.clave, g.soloTilde])).toEqual([
       ['ako', true],
       ['kawa', false],
       ['kʉgui', false],
     ]);
-    expect(grupos[0].sentidos.map((s) => s.damana)).toEqual(['Ako', 'Akó']);
+    expect(groups[0].sentidos.map((s) => s.damana)).toEqual(['Ako', 'Akó']);
   });
 
   it('a word with a single meaning does not go in', () => {
-    expect(grupos.some((g) => g.clave === 'dzira')).toBe(false);
+    expect(groups.some((g) => g.clave === 'dzira')).toBe(false);
   });
 });
 
-describe('detectarEntradasDudosas', () => {
-  const dudosas = detectarEntradasDudosas([
-    entrada('pedazo', 'unguzi', 'en damana no hay palabra para pastoores pero se puede traducir como hombres', NATIVAS),
-    entrada('pastores', 'pastordzina', 'en el ejemplo en damana lo que dices NABINZHE : quiere decir es de nosotro', NATIVAS),
-    entrada('nuestros', 'nabinzhe', 'nabinzhe: es de nosotros', NATIVAS),
-    entrada('tan', 'tan', 'no hay forma para traducirlo', NATIVAS),
-    entrada('quería', 'nandunanka ,andunanka', 'decir como,yo queria o el queria', NATIVAS),
-    entrada('Verb: Hacer', 'Awa'),
-    entrada('Agua', 'Dzira', '115 Palabras'),
-    entrada('año', 'kʉgui', null, NATIVAS),
-    entrada('Hoy otra vez estamos juntos qué bonito.', 'Iwa ingui nʉnzhu nukurra, zukuega nʉnka.', 'Vocabulario para las reuniones'),
+describe('detectDoubtfulEntries', () => {
+  const doubtful = detectDoubtfulEntries([
+    entry('pedazo', 'unguzi', 'en damana no hay palabra para pastoores pero se puede traducir como hombres', NATIVE_SPEAKERS),
+    entry('pastores', 'pastordzina', 'en el ejemplo en damana lo que dices NABINZHE : quiere decir es de nosotro', NATIVE_SPEAKERS),
+    entry('nuestros', 'nabinzhe', 'nabinzhe: es de nosotros', NATIVE_SPEAKERS),
+    entry('tan', 'tan', 'no hay forma para traducirlo', NATIVE_SPEAKERS),
+    entry('quería', 'nandunanka ,andunanka', 'decir como,yo queria o el queria', NATIVE_SPEAKERS),
+    entry('Verb: Hacer', 'Awa'),
+    entry('Agua', 'Dzira', '115 Palabras'),
+    entry('año', 'kʉgui', null, NATIVE_SPEAKERS),
+    entry('Hoy otra vez estamos juntos qué bonito.', 'Iwa ingui nʉnzhu nukurra, zukuega nʉnka.', 'Vocabulario para las reuniones'),
   ]);
-  const de = (espanol: string) => dudosas.find((d) => d.entrada.espanol === espanol);
+  const de = (spanish: string) => doubtful.find((d) => d.entrada.espanol === spanish);
 
   it('detects the note shifted to another row and says which neighbour it seems to belong to', () => {
     expect(de('pedazo')!.motivos).toEqual(['sin_forma', 'nota_de_otra_palabra']);
@@ -159,11 +159,11 @@ describe('detectarEntradasDudosas', () => {
     expect(de('año')).toBeUndefined();
     // a sentence's comma is punctuation, not two forms in one cell
     expect(de('Hoy otra vez estamos juntos qué bonito.')).toBeUndefined();
-    expect(dudosas).toHaveLength(6);
+    expect(doubtful).toHaveLength(6);
   });
 });
 
-describe('detectarTerminaciones', () => {
+describe('detectEndings', () => {
   const tokens = new Map<string, TokenCorpus>([
     ['urraga', { frecuencia: 50 }],
     ['urragamba', { frecuencia: 15, ejemplo: { damana: 'urragamba nuka', espanol: 'está en la casa' } }],
@@ -176,7 +176,7 @@ describe('detectarTerminaciones', () => {
     ['terruanzhe', { frecuencia: 1 }],
     ['kunsinzhe', { frecuencia: 7 }], // with u: it is NOT the root kʉnsi
   ]);
-  const terminaciones = detectarTerminaciones(
+  const endings = detectEndings(
     [
       { raiz: 'urraga', significado: 'Casa' },
       { raiz: 'kawa', significado: 'Familia' },
@@ -193,19 +193,19 @@ describe('detectarTerminaciones', () => {
   );
 
   it('counts in how many base words each ending appears and discards the rare ones', () => {
-    expect(terminaciones.map((t) => [t.terminacion, t.raices])).toEqual([
+    expect(endings.map((t) => [t.terminacion, t.raices])).toEqual([
       ['mba', 4],
       ['nzhe', 3],
     ]);
   });
 
   it('respects ʉ ≠ u when recognizing the root', () => {
-    const nzhe = terminaciones.find((t) => t.terminacion === 'nzhe')!;
+    const nzhe = endings.find((t) => t.terminacion === 'nzhe')!;
     expect(nzhe.ejemplos.map((e) => e.raiz)).not.toContain('kʉnsi');
   });
 
   it('brings the most frequent examples with their sentence and what we already know', () => {
-    const mba = terminaciones[0];
+    const mba = endings[0];
     expect(mba.yaSabemos).toBe('en el diccionario: En');
     expect(mba.ejemplos[0]).toMatchObject({
       raiz: 'urraga',
@@ -217,7 +217,7 @@ describe('detectarTerminaciones', () => {
   });
 
   it('prefers the example whose sentence mentions the meaning of the base word', () => {
-    const [ga] = detectarTerminaciones(
+    const [ga] = detectEndings(
       [
         { raiz: 'anzhʉn', significado: 'sueño' },
         { raiz: 'ijkʉna', significado: 'Ellos' },

@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { normalizar } from '../comun/texto/normalizador';
+import { normalize } from '../comun/texto/normalizador';
 import { CorpusRepository } from './corpus.repository';
-import { FrecuenciaDto } from './dto/consulta.dto';
+import { FrequencyDto } from './dto/consulta.dto';
 
 // The capitalization comparison is done in JS and not in SQL because SQLite's
 // lower() only handles ASCII (it would fail with Ñ, Ʉ or accented vowels).
-function empiezaEnMinuscula(palabra: string): boolean {
-  const c = palabra[0] ?? '';
+function startsLowercase(word: string): boolean {
+  const c = word[0] ?? '';
   return c === c.toLowerCase() && c !== c.toUpperCase();
 }
 
 @Injectable()
-export class FrecuenciasService {
+export class FrequenciesService {
   constructor(private readonly repo: CorpusRepository) {}
 
   /**
@@ -21,31 +21,31 @@ export class FrecuenciasService {
    * entry it carries its translation and category; if it is a conjugated
    * form, its gloss.
    */
-  listar(limite: number): FrecuenciaDto[] {
-    const categorias = new Map<string, string>();
-    const traducciones = new Map<string, string>();
-    for (const entrada of this.repo.listarVocabulario()) {
-      const clave = normalizar(entrada.damana);
-      if (entrada.categoria && !categorias.has(clave)) {
-        categorias.set(clave, entrada.categoria);
+  listAll(limit: number): FrequencyDto[] {
+    const categories = new Map<string, string>();
+    const translations = new Map<string, string>();
+    for (const entry of this.repo.listVocabulary()) {
+      const key = normalize(entry.damana);
+      if (entry.categoria && !categories.has(key)) {
+        categories.set(key, entry.categoria);
       }
-      if (!traducciones.has(clave)) traducciones.set(clave, entrada.espanol);
+      if (!translations.has(key)) translations.set(key, entry.espanol);
     }
     // Conjugation glosses as a fallback when there is no vocabulary entry
-    for (const conjugacion of this.repo.listarConjugaciones()) {
-      const clave = normalizar(conjugacion.damana);
-      if (!traducciones.has(clave)) traducciones.set(clave, conjugacion.espanol);
+    for (const conjugation of this.repo.listConjugations()) {
+      const key = normalize(conjugation.damana);
+      if (!translations.has(key)) translations.set(key, conjugation.espanol);
     }
 
     return this.repo
-      .frecuenciasConOriginales()
-      .filter((f) => f.originales.some(empiezaEnMinuscula))
-      .slice(0, limite)
+      .frequenciesWithOriginals()
+      .filter((f) => f.originales.some(startsLowercase))
+      .slice(0, limit)
       .map((f) => ({
         palabra: f.palabra,
         frecuencia: f.frecuencia,
-        traduccion: traducciones.get(f.palabra) ?? null,
-        categoria: categorias.get(f.palabra) ?? null,
+        traduccion: translations.get(f.palabra) ?? null,
+        categoria: categories.get(f.palabra) ?? null,
       }));
   }
 }

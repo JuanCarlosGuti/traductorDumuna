@@ -1,112 +1,112 @@
-import { Idioma } from './consulta.enums';
+import { Language } from './consulta.enums';
 import {
-  detectarDisparadoresEspanol,
-  inferirDisparador,
-  ReglaGramatical,
-  seleccionarReglas,
+  detectSpanishTriggers,
+  inferTrigger,
+  GrammarRule,
+  selectRules,
 } from './reglas';
 
-const regla = (
+const rule = (
   id: number,
-  forma: string,
-  disparador: ReglaGramatical['disparador'],
-): ReglaGramatical => ({
+  form: string,
+  trigger: GrammarRule['disparador'],
+): GrammarRule => ({
   id,
   tipo: 'sufijo',
-  forma,
+  forma: form,
   significado: null,
   ejemploBase: null,
   ejemploRegla: null,
   traduccionEjemplo: null,
   notas: null,
-  disparador,
+  disparador: trigger,
 });
 
-describe('inferirDisparador (based on «tipo de regla» and «qué hace»)', () => {
+describe('inferTrigger (based on «tipo de regla» and «qué hace»)', () => {
   it('pluraliza → plural', () => {
-    expect(inferirDisparador('sufijo', 'pluraliza sustantivos')).toBe('plural');
+    expect(inferTrigger('sufijo', 'pluraliza sustantivos')).toBe('plural');
   });
 
   it('posesivo / "de" → posesivo', () => {
-    expect(inferirDisparador('sufijo', 'posesivo / "de"')).toBe('posesivo');
+    expect(inferTrigger('sufijo', 'posesivo / "de"')).toBe('posesivo');
   });
 
   it('negation, question, past and future, with and without accents', () => {
-    expect(inferirDisparador('partícula', 'Negación del verbo')).toBe('negacion');
-    expect(inferirDisparador('sufijo', 'marca de pregunta')).toBe('pregunta');
-    expect(inferirDisparador('sufijo', 'tiempo pasado')).toBe('pasado');
-    expect(inferirDisparador('sufijo', 'Futuro')).toBe('futuro');
+    expect(inferTrigger('partícula', 'Negación del verbo')).toBe('negacion');
+    expect(inferTrigger('sufijo', 'marca de pregunta')).toBe('pregunta');
+    expect(inferTrigger('sufijo', 'tiempo pasado')).toBe('pasado');
+    expect(inferTrigger('sufijo', 'Futuro')).toBe('futuro');
   });
 
   it('no recognizable hint → null (general rule)', () => {
-    expect(inferirDisparador('sufijo', 'énfasis')).toBeNull();
-    expect(inferirDisparador(null, undefined)).toBeNull();
+    expect(inferTrigger('sufijo', 'énfasis')).toBeNull();
+    expect(inferTrigger(null, undefined)).toBeNull();
   });
 });
 
-describe('detectarDisparadoresEspanol', () => {
+describe('detectSpanishTriggers', () => {
   it('plural by determiner and by noun ending in -s', () => {
-    expect(detectarDisparadoresEspanol('los hombres caminan')).toContain('plural');
-    expect(detectarDisparadoresEspanol('llegaron muchas personas')).toContain('plural');
+    expect(detectSpanishTriggers('los hombres caminan')).toContain('plural');
+    expect(detectSpanishTriggers('llegaron muchas personas')).toContain('plural');
   });
 
   it('possessive by «mi/su» and by «de X»', () => {
-    expect(detectarDisparadoresEspanol('mi mamá cocina en la casa')).toContain('posesivo');
-    expect(detectarDisparadoresEspanol('la casa de Dios')).toContain('posesivo');
+    expect(detectSpanishTriggers('mi mamá cocina en la casa')).toContain('posesivo');
+    expect(detectSpanishTriggers('la casa de Dios')).toContain('posesivo');
   });
 
   it('negation and question', () => {
-    expect(detectarDisparadoresEspanol('no quiero comer')).toContain('negacion');
-    expect(detectarDisparadoresEspanol('¿dónde está el agua?')).toContain('pregunta');
-    expect(detectarDisparadoresEspanol('Quién vino')).toContain('pregunta');
+    expect(detectSpanishTriggers('no quiero comer')).toContain('negacion');
+    expect(detectSpanishTriggers('¿dónde está el agua?')).toContain('pregunta');
+    expect(detectSpanishTriggers('Quién vino')).toContain('pregunta');
   });
 
   it('past by accented ending, regular and irregular', () => {
-    expect(detectarDisparadoresEspanol('ayer comí yuca')).toContain('pasado');
-    expect(detectarDisparadoresEspanol('ellos llegaron tarde')).toContain('pasado');
-    expect(detectarDisparadoresEspanol('él fue al río')).toContain('pasado');
+    expect(detectSpanishTriggers('ayer comí yuca')).toContain('pasado');
+    expect(detectSpanishTriggers('ellos llegaron tarde')).toContain('pasado');
+    expect(detectSpanishTriggers('él fue al río')).toContain('pasado');
   });
 
   it('future by adverb, ending and the «va a» periphrasis', () => {
-    expect(detectarDisparadoresEspanol('mañana iré al pueblo')).toContain('futuro');
-    expect(detectarDisparadoresEspanol('comeremos pescado')).toContain('futuro');
-    expect(detectarDisparadoresEspanol('vamos a aprender')).toContain('futuro');
+    expect(detectSpanishTriggers('mañana iré al pueblo')).toContain('futuro');
+    expect(detectSpanishTriggers('comeremos pescado')).toContain('futuro');
+    expect(detectSpanishTriggers('vamos a aprender')).toContain('futuro');
   });
 
   it('a neutral sentence triggers nothing', () => {
-    expect(detectarDisparadoresEspanol('el agua es una')).toEqual([]);
+    expect(detectSpanishTriggers('el agua es una')).toEqual([]);
   });
 });
 
-describe('seleccionarReglas', () => {
-  const reglas = [
-    regla(1, '-ndzina', 'plural'),
-    regla(2, '-nzhe', 'posesivo'),
-    regla(3, 'nun', 'negacion'),
-    regla(4, '-ki', null), // general
+describe('selectRules', () => {
+  const rules = [
+    rule(1, '-ndzina', 'plural'),
+    rule(2, '-nzhe', 'posesivo'),
+    rule(3, 'nun', 'negacion'),
+    rule(4, '-ki', null), // general
   ];
 
   it('in Spanish it selects by triggers and always adds the general ones', () => {
-    const r = seleccionarReglas('mi mamá cocina', Idioma.espanol, reglas);
+    const r = selectRules('mi mamá cocina', Language.espanol, rules);
     expect(r.disparadores).toEqual(['posesivo']);
     expect(r.reglas.map((x) => x.id)).toEqual([2, 4]);
   });
 
   it('in Damana it is triggered by suffix: terruandzina → plural (-ndzina)', () => {
-    const r = seleccionarReglas('terruandzina dzinaia', Idioma.damana, reglas);
+    const r = selectRules('terruandzina dzinaia', Language.damana, rules);
     expect(r.reglas.map((x) => x.id)).toEqual([1, 4]);
     expect(r.disparadores).toEqual(['plural']);
   });
 
   it('in Damana the suffix requires something before it and respects ʉ ≠ u', () => {
-    const conU = [regla(5, '-ʉnka', 'futuro')];
-    expect(seleccionarReglas('awʉnka', Idioma.damana, conU).reglas).toHaveLength(1);
-    expect(seleccionarReglas('awunka', Idioma.damana, conU).reglas).toHaveLength(0);
-    expect(seleccionarReglas('ʉnka', Idioma.damana, conU).reglas).toHaveLength(0);
+    const withU = [rule(5, '-ʉnka', 'futuro')];
+    expect(selectRules('awʉnka', Language.damana, withU).reglas).toHaveLength(1);
+    expect(selectRules('awunka', Language.damana, withU).reglas).toHaveLength(0);
+    expect(selectRules('ʉnka', Language.damana, withU).reglas).toHaveLength(0);
   });
 
   it('with no features only the general ones remain', () => {
-    const r = seleccionarReglas('el agua es una', Idioma.espanol, reglas);
+    const r = selectRules('el agua es una', Language.espanol, rules);
     expect(r.reglas.map((x) => x.id)).toEqual([4]);
   });
 });

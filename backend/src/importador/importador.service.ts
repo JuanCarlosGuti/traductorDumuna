@@ -3,28 +3,28 @@ import type { Database } from 'better-sqlite3';
 import { parse } from 'csv-parse/sync';
 import * as fs from 'fs';
 import * as path from 'path';
-import { corregirOrtografiaDamana } from '../comun/texto/ortografia';
-import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { DominioCorpus } from '../consulta/consulta.enums';
-import { inferirDisparador } from '../consulta/reglas';
-import { CONEXION_DB } from '../database/database.constants';
-import { PendientesRepository } from '../pendientes/pendientes.repository';
+import { fixDamanaSpelling } from '../comun/texto/ortografia';
+import { tokenizeDamana } from '../comun/texto/tokenizador';
+import { CorpusDomain } from '../consulta/consulta.enums';
+import { inferTrigger } from '../consulta/reglas';
+import { DB_CONNECTION } from '../database/database.constants';
+import { PendingRepository } from '../pendientes/pendientes.repository';
 import {
-  FilaElicitacion,
-  interpretarFila,
-  PlanElicitacion,
-  planificarElicitacion,
+  ElicitationRow,
+  parseRow,
+  ElicitationPlan,
+  planElicitation,
 } from './elicitacion';
-import { CoberturaVocabulario } from './cobertura-vocabulario';
-import { claveEncabezado, columna, HojaLeida, leerLibro } from './leer-excel';
-import { escribirPruebas } from './pruebas-csv';
+import { VocabularyCoverage } from './cobertura-vocabulario';
+import { headerKey, column, ReadSheet, readWorkbook } from './leer-excel';
+import { writeTests } from './pruebas-csv';
 
-export const ARCHIVO_VOCABULARIO = 'corpus_vocabulario_v3.csv';
-export const ARCHIVO_REGLAS = 'reglas_damana.xlsx';
+export const VOCABULARY_FILE = 'corpus_vocabulario_v3.csv';
+export const RULES_FILE = 'reglas_damana.xlsx';
 /** formato_elicitacion.xlsx, formato_elicitacion_lote1.xlsx, …_pendientes_2026-10-03.xlsx */
-export const PATRON_ELICITACION = /^formato_elicitacion.*\.xlsx$/i;
+export const ELICITATION_PATTERN = /^formato_elicitacion.*\.xlsx$/i;
 
-export interface EstadisticasElicitacion {
+export interface ElicitationStats {
   archivos: number;
   filas: number;
   vocabulario: number;
@@ -39,21 +39,21 @@ export interface EstadisticasElicitacion {
   idsRepetidos: number;
 }
 
-export interface EstadisticasImportacion {
+export interface ImportStats {
   oraciones: number;
   frases: number;
   vocabulario: number;
   conjugaciones: number;
   reglas: number;
   nombresPropios: number;
-  elicitacion: EstadisticasElicitacion;
+  elicitacion: ElicitationStats;
   /** Rows left in pruebas_traduccion.csv after merging. */
   pruebasEnArchivo: number;
   totalTokens: number;
   topPalabras: { palabra: string; frecuencia: number }[];
 }
 
-interface FilaOracion {
+interface SentenceRow {
   id: string;
   damana: string;
   espanol: string;
@@ -61,14 +61,14 @@ interface FilaOracion {
   fuente: string;
 }
 
-interface FilaFrase {
+interface PhraseRow {
   fuente: string;
   damana: string;
   espanol: string;
   notas: string;
 }
 
-interface FilaVocabulario {
+interface VocabularyRow {
   espanol: string;
   damana: string;
   categoria: string;
@@ -76,7 +76,7 @@ interface FilaVocabulario {
   fuente: string;
 }
 
-interface FilaConjugacion {
+interface ConjugationRow {
   damana: string;
   espanol: string;
   lema: string;
@@ -84,7 +84,7 @@ interface FilaConjugacion {
   notas: string;
 }
 
-interface FilaRegla {
+interface RuleRow {
   tipo: string;
   forma: string;
   significado: string;
@@ -95,7 +95,7 @@ interface FilaRegla {
   disparador: string | null;
 }
 
-interface FilaNombrePropio {
+interface ProperNameRow {
   damana: string;
   espanol: string;
   seEscribeIgual: boolean;
@@ -104,19 +104,19 @@ interface FilaNombrePropio {
 }
 
 /** The biblical booklet (lfb) is the only «biblical» corpus; the rest is everyday. */
-export function dominioDeOracion(fuente: string | undefined): DominioCorpus {
-  return (fuente ?? '').trim().toLowerCase().startsWith('lfb')
-    ? DominioCorpus.biblico
-    : DominioCorpus.cotidiano;
+export function sentenceDomain(source: string | undefined): CorpusDomain {
+  return (source ?? '').trim().toLowerCase().startsWith('lfb')
+    ? CorpusDomain.biblico
+    : CorpusDomain.cotidiano;
 }
 
 @Injectable()
-export class ImportadorService {
-  private readonly logger = new Logger(ImportadorService.name);
+export class ImporterService {
+  private readonly logger = new Logger(ImporterService.name);
 
   constructor(
-    @Inject(CONEXION_DB) private readonly db: Database,
-    private readonly pendientes: PendientesRepository,
+    @Inject(DB_CONNECTION) private readonly db: Database,
+    private readonly pendingItems: PendingRepository,
   ) {}
 
   /**
@@ -129,97 +129,97 @@ export class ImportadorService {
    * complete are closed —. One in every 10 complete elicitation rows is reserved
    * for pruebas_traduccion.csv and does not go into retrieval.
    */
-  async importarTodo(dirDatos: string): Promise<EstadisticasImportacion> {
-    const oraciones = this.leerCsv<FilaOracion>(dirDatos, 'corpus_oraciones.csv');
-    const frases = this.leerCsv<FilaFrase>(dirDatos, 'corpus_frases_v2.csv');
-    const vocabulario = this.leerCsv<FilaVocabulario>(dirDatos, ARCHIVO_VOCABULARIO);
-    const conjugaciones = this.leerCsv<FilaConjugacion>(dirDatos, 'corpus_conjugaciones.csv');
-    const { reglas, nombres } = await this.leerReglas(dirDatos);
-    const elicitacion = await this.leerElicitacion(dirDatos);
-    const plan = planificarElicitacion(elicitacion.filas);
-    const ahora = new Date().toISOString();
+  async importAll(dataDir: string): Promise<ImportStats> {
+    const sentences = this.readCsv<SentenceRow>(dataDir, 'corpus_oraciones.csv');
+    const phrases = this.readCsv<PhraseRow>(dataDir, 'corpus_frases_v2.csv');
+    const vocabulary = this.readCsv<VocabularyRow>(dataDir, VOCABULARY_FILE);
+    const conjugations = this.readCsv<ConjugationRow>(dataDir, 'corpus_conjugaciones.csv');
+    const { reglas: rules, nombres: names } = await this.readRules(dataDir);
+    const elicitation = await this.readElicitation(dataDir);
+    const plan = planElicitation(elicitation.filas);
+    const now = new Date().toISOString();
     // What the vocabulary already knows is not requested from the speakers (they
     // charge per word): an unfilled row whose word already exists is not
     // recorded as pending, and open pending items that the vocabulary
     // covers are closed.
-    const cobertura = new CoberturaVocabulario([...vocabulario, ...plan.vocabulario]);
-    const cubiertasPorVocabulario = plan.pendientes.filter((p) => cobertura.cubreEspanol(p.palabra)).length;
-    let cerradasPorVocabulario = 0;
+    const coverage = new VocabularyCoverage([...vocabulary, ...plan.vocabulario]);
+    const coveredByVocabulary = plan.pendientes.filter((p) => coverage.coversSpanish(p.palabra)).length;
+    let closedByVocabulary = 0;
 
-    const insertarTodo = this.db.transaction(() => {
+    const insertAll = this.db.transaction(() => {
       this.db.exec(
         'DELETE FROM tokens_damana; DELETE FROM oraciones; DELETE FROM frases; ' +
           'DELETE FROM vocabulario; DELETE FROM conjugaciones; ' +
           'DELETE FROM reglas; DELETE FROM nombres_propios;',
       );
 
-      // Damana columns go through corregirOrtografiaDamana (ü→ʉ, see
+      // Damana columns go through fixDamanaSpelling (ü→ʉ, see
       // comun/texto/ortografia.ts); the source CSVs are left intact.
-      const insOracion = this.db.prepare(
+      const insSentence = this.db.prepare(
         `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente, dominio)
          VALUES (?, ?, ?, ?, ?, ?)`,
       );
-      for (const fila of oraciones) {
-        const damana = corregirOrtografiaDamana(fila.damana);
-        const info = insOracion.run(
-          fila.id,
+      for (const row of sentences) {
+        const damana = fixDamanaSpelling(row.damana);
+        const info = insSentence.run(
+          row.id,
           damana,
-          fila.espanol,
-          fila.estado,
-          fila.fuente,
-          dominioDeOracion(fila.fuente),
+          row.espanol,
+          row.estado,
+          row.fuente,
+          sentenceDomain(row.fuente),
         );
-        this.tokenizar(damana, 'oraciones', info.lastInsertRowid as number);
+        this.tokenize(damana, 'oraciones', info.lastInsertRowid as number);
       }
 
-      const insFrase = this.db.prepare(
+      const insPhrase = this.db.prepare(
         'INSERT INTO frases (fuente, damana, espanol, notas, dominio) VALUES (?, ?, ?, ?, ?)',
       );
-      for (const fila of frases) {
-        const damana = corregirOrtografiaDamana(fila.damana);
-        const info = insFrase.run(
-          fila.fuente,
+      for (const row of phrases) {
+        const damana = fixDamanaSpelling(row.damana);
+        const info = insPhrase.run(
+          row.fuente,
           damana,
-          fila.espanol,
-          fila.notas,
-          DominioCorpus.cotidiano,
+          row.espanol,
+          row.notas,
+          CorpusDomain.cotidiano,
         );
-        this.tokenizar(damana, 'frases', info.lastInsertRowid as number);
+        this.tokenize(damana, 'frases', info.lastInsertRowid as number);
       }
 
-      const insVocabulario = this.db.prepare(
+      const insVocabulary = this.db.prepare(
         `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
          VALUES (?, ?, ?, ?, ?)`,
       );
-      for (const fila of vocabulario) {
-        const damana = corregirOrtografiaDamana(fila.damana);
-        const info = insVocabulario.run(
-          fila.espanol,
+      for (const row of vocabulary) {
+        const damana = fixDamanaSpelling(row.damana);
+        const info = insVocabulary.run(
+          row.espanol,
           damana,
-          fila.categoria,
-          fila.notas,
-          fila.fuente,
+          row.categoria,
+          row.notas,
+          row.fuente,
         );
-        this.tokenizar(damana, 'vocabulario', info.lastInsertRowid as number);
+        this.tokenize(damana, 'vocabulario', info.lastInsertRowid as number);
       }
 
-      const insConjugacion = this.db.prepare(
+      const insConjugation = this.db.prepare(
         `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
          VALUES (?, ?, ?, ?, ?)`,
       );
-      for (const fila of conjugaciones) {
-        const damana = corregirOrtografiaDamana(fila.damana);
-        const info = insConjugacion.run(damana, fila.espanol, fila.lema, fila.fuente, fila.notas);
-        this.tokenizar(damana, 'conjugaciones', info.lastInsertRowid as number);
+      for (const row of conjugations) {
+        const damana = fixDamanaSpelling(row.damana);
+        const info = insConjugation.run(damana, row.espanol, row.lema, row.fuente, row.notas);
+        this.tokenize(damana, 'conjugaciones', info.lastInsertRowid as number);
       }
 
-      const insRegla = this.db.prepare(
+      const insRule = this.db.prepare(
         `INSERT INTO reglas (tipo, forma, significado, ejemplo_base, ejemplo_regla,
                              traduccion_ejemplo, notas, disparador)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       );
-      for (const r of reglas) {
-        insRegla.run(
+      for (const r of rules) {
+        insRule.run(
           r.tipo || null,
           r.forma,
           r.significado || null,
@@ -231,56 +231,56 @@ export class ImportadorService {
         );
       }
 
-      const insNombre = this.db.prepare(
+      const insName = this.db.prepare(
         `INSERT INTO nombres_propios (damana, espanol, se_escribe_igual, otras_grafias, notas)
          VALUES (?, ?, ?, ?, ?)`,
       );
-      for (const n of nombres) {
-        insNombre.run(n.damana, n.espanol, n.seEscribeIgual ? 1 : 0, n.otrasGrafias || null, n.notas || null);
+      for (const n of names) {
+        insName.run(n.damana, n.espanol, n.seEscribeIgual ? 1 : 0, n.otrasGrafias || null, n.notas || null);
       }
 
       // Elicitation: vocabulary and everyday sentences (tests do NOT
       // go into the database: they live only in pruebas_traduccion.csv).
       for (const v of plan.vocabulario) {
-        const info = insVocabulario.run(v.espanol, v.damana, v.categoria, v.notas || null, v.fuente);
-        this.tokenizar(v.damana, 'vocabulario', info.lastInsertRowid as number);
+        const info = insVocabulary.run(v.espanol, v.damana, v.categoria, v.notas || null, v.fuente);
+        this.tokenize(v.damana, 'vocabulario', info.lastInsertRowid as number);
       }
       for (const o of plan.oraciones) {
-        const info = insOracion.run(
+        const info = insSentence.run(
           o.idExterno,
           o.damana,
           o.espanol,
           'aprobado',
           o.fuente,
-          DominioCorpus.cotidiano,
+          CorpusDomain.cotidiano,
         );
-        this.tokenizar(o.damana, 'oraciones', info.lastInsertRowid as number);
+        this.tokenize(o.damana, 'oraciones', info.lastInsertRowid as number);
       }
       for (const p of plan.pendientes) {
-        if (cobertura.cubreEspanol(p.palabra)) continue;
-        this.pendientes.registrarDeElicitacion(p.palabra, p.contexto, ahora);
+        if (coverage.coversSpanish(p.palabra)) continue;
+        this.pendingItems.recordFromElicitation(p.palabra, p.contexto, now);
       }
-      for (const palabra of plan.resueltas) {
-        this.pendientes.marcarResuelta(palabra, ahora);
+      for (const word of plan.resueltas) {
+        this.pendingItems.markResolved(word, now);
       }
-      for (const p of this.pendientes.listarAbiertas()) {
-        if (cobertura.cubre(p.palabra, p.idioma) && this.pendientes.marcarResuelta(p.palabra, ahora)) {
-          cerradasPorVocabulario += 1;
+      for (const p of this.pendingItems.listOpen()) {
+        if (coverage.covers(p.palabra, p.idioma) && this.pendingItems.markResolved(p.palabra, now)) {
+          closedByVocabulary += 1;
         }
       }
     });
-    insertarTodo();
+    insertAll();
 
-    const pruebas = escribirPruebas(dirDatos, plan.pruebas);
-    return this.estadisticas(reglas.length, nombres.length, elicitacion, plan, pruebas.total, {
-      cubiertasPorVocabulario,
-      cerradasPorVocabulario,
+    const testCases = writeTests(dataDir, plan.pruebas);
+    return this.statistics(rules.length, names.length, elicitation, plan, testCases.total, {
+      cubiertasPorVocabulario: coveredByVocabulary,
+      cerradasPorVocabulario: closedByVocabulary,
     });
   }
 
-  private leerCsv<T>(dirDatos: string, nombre: string): T[] {
-    const contenido = fs.readFileSync(path.join(dirDatos, nombre));
-    return parse(contenido, {
+  private readCsv<T>(dataDir: string, name: string): T[] {
+    const content = fs.readFileSync(path.join(dataDir, name));
+    return parse(content, {
       columns: true,
       bom: true,
       skip_empty_lines: true,
@@ -291,46 +291,46 @@ export class ImportadorService {
    * reglas_damana.xlsx: «reglas» sheet and «nombres propios» sheet. It is optional
    * (a test corpus may not include it): if missing, a warning is shown and it carries on.
    */
-  private async leerReglas(
-    dirDatos: string,
-  ): Promise<{ reglas: FilaRegla[]; nombres: FilaNombrePropio[] }> {
-    const ruta = path.join(dirDatos, ARCHIVO_REGLAS);
-    if (!fs.existsSync(ruta)) {
-      this.logger.warn(`No se encontró ${ARCHIVO_REGLAS}: se importa sin reglas ni nombres propios.`);
+  private async readRules(
+    dataDir: string,
+  ): Promise<{ reglas: RuleRow[]; nombres: ProperNameRow[] }> {
+    const filePath = path.join(dataDir, RULES_FILE);
+    if (!fs.existsSync(filePath)) {
+      this.logger.warn(`No se encontró ${RULES_FILE}: se importa sin reglas ni nombres propios.`);
       return { reglas: [], nombres: [] };
     }
-    const hojas = await leerLibro(ruta);
-    const hojaReglas = hojas.find((h) => claveEncabezado(h.nombre).includes('regla'));
-    const hojaNombres = hojas.find((h) => claveEncabezado(h.nombre).includes('nombre'));
+    const sheets = await readWorkbook(filePath);
+    const rulesSheet = sheets.find((h) => headerKey(h.nombre).includes('regla'));
+    const namesSheet = sheets.find((h) => headerKey(h.nombre).includes('nombre'));
 
-    const reglas: FilaRegla[] = (hojaReglas?.filas ?? [])
+    const rules: RuleRow[] = (rulesSheet?.filas ?? [])
       .map((f) => {
-        const tipo = columna(f, 'tipo');
-        const significado = columna(f, 'significado', 'que hace');
+        const kind = column(f, 'tipo');
+        const meaning = column(f, 'significado', 'que hace');
         return {
-          tipo,
-          forma: columna(f, 'forma'),
-          significado,
-          ejemploBase: columna(f, 'palabra base', 'base'),
-          ejemploRegla: columna(f, 'con la regla'),
-          traduccionEjemplo: columna(f, 'traduccion'),
-          notas: columna(f, 'notas'),
-          disparador: inferirDisparador(tipo, significado),
+          tipo: kind,
+          forma: column(f, 'forma'),
+          significado: meaning,
+          ejemploBase: column(f, 'palabra base', 'base'),
+          ejemploRegla: column(f, 'con la regla'),
+          traduccionEjemplo: column(f, 'traduccion'),
+          notas: column(f, 'notas'),
+          disparador: inferTrigger(kind, meaning),
         };
       })
       .filter((r) => r.forma.length > 0);
 
-    const nombres: FilaNombrePropio[] = (hojaNombres?.filas ?? [])
+    const names: ProperNameRow[] = (namesSheet?.filas ?? [])
       .map((f) => ({
-        damana: corregirOrtografiaDamana(columna(f, 'damana', 'como aparece')),
-        espanol: columna(f, 'espanol', 'nombre en'),
-        seEscribeIgual: !/^no/i.test(columna(f, 'igual').trim()),
-        otrasGrafias: columna(f, 'grafias'),
-        notas: columna(f, 'notas'),
+        damana: fixDamanaSpelling(column(f, 'damana', 'como aparece')),
+        espanol: column(f, 'espanol', 'nombre en'),
+        seEscribeIgual: !/^no/i.test(column(f, 'igual').trim()),
+        otrasGrafias: column(f, 'grafias'),
+        notas: column(f, 'notas'),
       }))
       .filter((n) => n.damana.length > 0 && n.espanol.length > 0);
 
-    return { reglas, nombres };
+    return { reglas: rules, nombres: names };
   }
 
   /**
@@ -338,51 +338,51 @@ export class ImportadorService {
    * order. The sheet that has the palabra_es column is read (templates
    * also include an instructions sheet).
    */
-  private async leerElicitacion(
-    dirDatos: string,
-  ): Promise<{ archivos: string[]; filas: FilaElicitacion[] }> {
-    const archivos = fs
-      .readdirSync(dirDatos)
-      .filter((n) => PATRON_ELICITACION.test(n) && !n.startsWith('~$'))
+  private async readElicitation(
+    dataDir: string,
+  ): Promise<{ archivos: string[]; filas: ElicitationRow[] }> {
+    const files = fs
+      .readdirSync(dataDir)
+      .filter((n) => ELICITATION_PATTERN.test(n) && !n.startsWith('~$'))
       .sort((a, b) => a.localeCompare(b, 'es'));
-    const filas: FilaElicitacion[] = [];
-    for (const archivo of archivos) {
-      const hojas = await leerLibro(path.join(dirDatos, archivo));
-      const hoja = hojas.find((h) => tieneColumnas(h, 'palabra_es'));
-      if (!hoja) {
-        this.logger.warn(`${archivo}: ninguna hoja tiene la columna palabra_es; se omite.`);
+    const rows: ElicitationRow[] = [];
+    for (const file of files) {
+      const sheets = await readWorkbook(path.join(dataDir, file));
+      const sheet = sheets.find((h) => hasColumns(h, 'palabra_es'));
+      if (!sheet) {
+        this.logger.warn(`${file}: ninguna hoja tiene la columna palabra_es; se omite.`);
         continue;
       }
-      for (const cruda of hoja.filas) {
-        const fila = interpretarFila(cruda, archivo);
-        if (fila) filas.push(fila);
+      for (const raw of sheet.filas) {
+        const row = parseRow(raw, file);
+        if (row) rows.push(row);
       }
     }
-    return { archivos, filas };
+    return { archivos: files, filas: rows };
   }
 
-  private tokenizar(texto: string, tablaOrigen: string, idOrigen: number): void {
+  private tokenize(text: string, sourceTable: string, sourceId: number): void {
     const insToken = this.db.prepare(
       `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
        VALUES (?, ?, ?, ?, ?)`,
     );
-    for (const token of tokenizarDamana(texto)) {
-      insToken.run(token.normalizada, token.original, tablaOrigen, idOrigen, token.posicion);
+    for (const token of tokenizeDamana(text)) {
+      insToken.run(token.normalizada, token.original, sourceTable, sourceId, token.posicion);
     }
   }
 
-  private estadisticas(
-    reglas: number,
-    nombresPropios: number,
-    elicitacion: { archivos: string[]; filas: FilaElicitacion[] },
-    plan: PlanElicitacion,
-    pruebasEnArchivo: number,
-    cobertura: { cubiertasPorVocabulario: number; cerradasPorVocabulario: number },
-  ): EstadisticasImportacion {
-    const contar = (tabla: string): number =>
-      (this.db.prepare(`SELECT COUNT(*) AS n FROM ${tabla}`).get() as { n: number }).n;
+  private statistics(
+    rules: number,
+    properNames: number,
+    elicitation: { archivos: string[]; filas: ElicitationRow[] },
+    plan: ElicitationPlan,
+    testsInFile: number,
+    coverage: { cubiertasPorVocabulario: number; cerradasPorVocabulario: number },
+  ): ImportStats {
+    const count = (table: string): number =>
+      (this.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
 
-    const topPalabras = this.db
+    const topWords = this.db
       .prepare(
         `SELECT palabra_normalizada AS palabra, COUNT(*) AS frecuencia
          FROM tokens_damana
@@ -393,32 +393,32 @@ export class ImportadorService {
       .all() as { palabra: string; frecuencia: number }[];
 
     return {
-      oraciones: contar('oraciones'),
-      frases: contar('frases'),
-      vocabulario: contar('vocabulario'),
-      conjugaciones: contar('conjugaciones'),
-      reglas,
-      nombresPropios,
+      oraciones: count('oraciones'),
+      frases: count('frases'),
+      vocabulario: count('vocabulario'),
+      conjugaciones: count('conjugaciones'),
+      reglas: rules,
+      nombresPropios: properNames,
       elicitacion: {
-        archivos: elicitacion.archivos.length,
-        filas: elicitacion.filas.length,
+        archivos: elicitation.archivos.length,
+        filas: elicitation.filas.length,
         vocabulario: plan.vocabulario.length,
         oraciones: plan.oraciones.length,
         pruebas: plan.pruebas.length,
-        pendientes: plan.pendientes.length - cobertura.cubiertasPorVocabulario,
+        pendientes: plan.pendientes.length - coverage.cubiertasPorVocabulario,
         resueltas: plan.resueltas.length,
-        cubiertasPorVocabulario: cobertura.cubiertasPorVocabulario,
-        cerradasPorVocabulario: cobertura.cerradasPorVocabulario,
+        cubiertasPorVocabulario: coverage.cubiertasPorVocabulario,
+        cerradasPorVocabulario: coverage.cerradasPorVocabulario,
         idsRepetidos: plan.idsRepetidos,
       },
-      pruebasEnArchivo,
-      totalTokens: contar('tokens_damana'),
-      topPalabras,
+      pruebasEnArchivo: testsInFile,
+      totalTokens: count('tokens_damana'),
+      topPalabras: topWords,
     };
   }
 }
 
-function tieneColumnas(hoja: HojaLeida, ...columnas: string[]): boolean {
-  const claves = new Set(hoja.encabezados.map(claveEncabezado));
-  return columnas.every((c) => claves.has(c));
+function hasColumns(sheet: ReadSheet, ...columns: string[]): boolean {
+  const keys = new Set(sheet.encabezados.map(headerKey));
+  return columns.every((c) => keys.has(c));
 }

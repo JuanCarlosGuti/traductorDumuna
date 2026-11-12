@@ -2,46 +2,46 @@ import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ConsultaModule } from '../consulta/consulta.module';
+import { QueryModule } from '../consulta/consulta.module';
 import { DatabaseModule } from '../database/database.module';
-import { leerPruebas } from '../importador/pruebas-csv';
-import { resolverDirDatos, rutaDbPorDefecto } from '../importador/rutas-datos';
-import { DireccionTraduccion } from '../traduccion/dto/traduccion.dto';
-import { TraduccionModule } from '../traduccion/traduccion.module';
-import { TraduccionService } from '../traduccion/traduccion.service';
+import { readTests } from '../importador/pruebas-csv';
+import { resolveDataDir, defaultDbPath } from '../importador/rutas-datos';
+import { TranslationDirection } from '../traduccion/dto/traduccion.dto';
+import { TranslationModule } from '../traduccion/traduccion.module';
+import { TranslationService } from '../traduccion/traduccion.service';
 import {
-  construirInforme,
-  evaluarPrueba,
-  nombreBaseInforme,
-  pruebaFallida,
-  PruebaEvaluada,
-  renderizarMarkdown,
+  buildReport,
+  evaluateTest,
+  reportBaseName,
+  failedTest,
+  EvaluatedTest,
+  renderMarkdown,
 } from './evaluador';
 
 // Own CLI module: it does not drag in HTTP controllers or static files.
 @Module({
   imports: [
-    DatabaseModule.forRoot({ rutaDb: rutaDbPorDefecto() }),
-    ConsultaModule,
-    TraduccionModule,
+    DatabaseModule.forRoot({ rutaDb: defaultDbPath() }),
+    QueryModule,
+    TranslationModule,
   ],
 })
-class EvaluarCliModule {}
+class EvaluateCliModule {}
 
 /** The /evaluaciones folder lives next to /datos, at the repo root. */
-export function dirEvaluaciones(dirDatos: string): string {
-  return path.resolve(dirDatos, '..', 'evaluaciones');
+export function evaluationsDir(dataDir: string): string {
+  return path.resolve(dataDir, '..', 'evaluaciones');
 }
 
 /** --pausa <ms>: wait between translations (free Groq allows ~4 per minute). */
-function leerPausa(argv: string[]): number {
+function readPause(argv: string[]): number {
   const i = argv.indexOf('--pausa');
   if (i === -1) return 0;
   const n = Number(argv[i + 1]);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-function leerLimite(argv: string[]): number | undefined {
+function readLimit(argv: string[]): number | undefined {
   const i = argv.indexOf('--limite');
   if (i === -1) return undefined;
   const n = Number(argv[i + 1]);
@@ -49,27 +49,27 @@ function leerLimite(argv: string[]): number | undefined {
 }
 
 async function main(): Promise<void> {
-  const dirDatos = resolverDirDatos();
-  const todas = leerPruebas(dirDatos);
-  const limite = leerLimite(process.argv);
-  const pausa = leerPausa(process.argv);
-  const pruebas = limite ? todas.slice(0, limite) : todas;
+  const dataDir = resolveDataDir();
+  const all = readTests(dataDir);
+  const limit = readLimit(process.argv);
+  const pause = readPause(process.argv);
+  const testCases = limit ? all.slice(0, limit) : all;
 
-  if (pruebas.length === 0) {
+  if (testCases.length === 0) {
     console.log(
-      `No hay pruebas en ${path.join(dirDatos, 'pruebas_traduccion.csv')}.\n` +
+      `No hay pruebas en ${path.join(dataDir, 'pruebas_traduccion.csv')}.\n` +
         'Se llena solo al importar lotes de elicitación con ejemplos completos ' +
         '(1 de cada 10 filas) o añadiendo filas a mano: espanol,damana_esperado,ambito.',
     );
     return;
   }
 
-  const app = await NestFactory.createApplicationContext(EvaluarCliModule, {
+  const app = await NestFactory.createApplicationContext(EvaluateCliModule, {
     logger: ['error', 'warn'],
   });
-  const traductor = app.get(TraduccionService);
-  const config = traductor.configuracion();
-  if (!traductor.disponible()) {
+  const translator = app.get(TranslationService);
+  const config = translator.configuration();
+  if (!translator.available()) {
     console.error(
       'No hay motor de traducción configurado (TRADUCTOR_BASE_URL + TRADUCTOR_MODELO o ANTHROPIC_API_KEY).',
     );
@@ -78,45 +78,45 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `Evaluando ${pruebas.length} pruebas con ${config.proveedor} · ${config.modelo}` +
-      (pausa ? ` (pausa de ${pausa} ms entre llamadas)` : '') +
+    `Evaluando ${testCases.length} pruebas con ${config.proveedor} · ${config.modelo}` +
+      (pause ? ` (pausa de ${pause} ms entre llamadas)` : '') +
       '…',
   );
-  const resultados: PruebaEvaluada[] = [];
-  for (const [i, prueba] of pruebas.entries()) {
-    if (i > 0 && pausa > 0) await new Promise((r) => setTimeout(r, pausa));
+  const results: EvaluatedTest[] = [];
+  for (const [i, testCase] of testCases.entries()) {
+    if (i > 0 && pause > 0) await new Promise((r) => setTimeout(r, pause));
     try {
-      const respuesta = await traductor.traducir(
-        { texto: prueba.espanol, direccion: DireccionTraduccion.espanol_a_damana },
+      const response = await translator.translate(
+        { texto: testCase.espanol, direccion: TranslationDirection.espanol_a_damana },
         { registrar: false },
       );
-      const evaluada = evaluarPrueba(prueba, respuesta);
-      resultados.push(evaluada);
+      const evaluated = evaluateTest(testCase, response);
+      results.push(evaluated);
       console.log(
-        `${String(i + 1).padStart(3)}. ${evaluada.exacta ? '✓' : ' '} chrF ${evaluada.chrf.toFixed(2)}  ${prueba.espanol}`,
+        `${String(i + 1).padStart(3)}. ${evaluated.exacta ? '✓' : ' '} chrF ${evaluated.chrf.toFixed(2)}  ${testCase.espanol}`,
       );
     } catch (error) {
-      const mensaje = error instanceof Error ? error.message : String(error);
-      resultados.push(pruebaFallida(prueba, mensaje));
-      console.log(`${String(i + 1).padStart(3)}. ✗ ERROR ${mensaje}  ${prueba.espanol}`);
+      const message = error instanceof Error ? error.message : String(error);
+      results.push(failedTest(testCase, message));
+      console.log(`${String(i + 1).padStart(3)}. ✗ ERROR ${message}  ${testCase.espanol}`);
     }
   }
 
-  const fecha = new Date();
-  const informe = construirInforme(resultados, {
-    fecha,
+  const date = new Date();
+  const report = buildReport(results, {
+    fecha: date,
     proveedor: config.proveedor,
     modelo: config.modelo,
   });
-  const carpeta = dirEvaluaciones(dirDatos);
-  fs.mkdirSync(carpeta, { recursive: true });
-  const base = path.join(carpeta, nombreBaseInforme(fecha, config.modelo));
-  fs.writeFileSync(`${base}.json`, JSON.stringify(informe, null, 2), 'utf8');
-  fs.writeFileSync(`${base}.md`, renderizarMarkdown(informe), 'utf8');
+  const folder = evaluationsDir(dataDir);
+  fs.mkdirSync(folder, { recursive: true });
+  const base = path.join(folder, reportBaseName(date, config.modelo));
+  fs.writeFileSync(`${base}.json`, JSON.stringify(report, null, 2), 'utf8');
+  fs.writeFileSync(`${base}.md`, renderMarkdown(report), 'utf8');
 
   console.log('\n=== Resultado por ámbito ===');
   console.table(
-    [...informe.porAmbito, informe.total].map((r) => ({
+    [...report.porAmbito, report.total].map((r) => ({
       ambito: r.ambito,
       pruebas: r.pruebas,
       'exactas %': r.porcentajeExactas.toFixed(1),

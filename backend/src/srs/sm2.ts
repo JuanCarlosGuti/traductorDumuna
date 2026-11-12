@@ -1,27 +1,27 @@
-export enum Calificacion {
+export enum Grade {
   otra_vez = 'otra_vez',
   dificil = 'dificil',
   bien = 'bien',
   facil = 'facil',
 }
 
-export interface EstadoSm2 {
+export interface Sm2State {
   repeticiones: number;
   factorFacilidad: number;
   intervaloDias: number;
 }
 
-export const ESTADO_SM2_INICIAL: EstadoSm2 = {
+export const INITIAL_SM2_STATE: Sm2State = {
   repeticiones: 0,
   factorFacilidad: 2.5,
   intervaloDias: 0,
 };
 
-const CALIDAD: Record<Calificacion, number> = {
-  [Calificacion.otra_vez]: 0,
-  [Calificacion.dificil]: 3,
-  [Calificacion.bien]: 4,
-  [Calificacion.facil]: 5,
+const QUALITY: Record<Grade, number> = {
+  [Grade.otra_vez]: 0,
+  [Grade.dificil]: 3,
+  [Grade.bien]: 4,
+  [Grade.facil]: 5,
 };
 
 /**
@@ -31,23 +31,23 @@ const CALIDAD: Record<Calificacion, number> = {
  * interval (the card is due immediately). Intervals: 1 day, 6 days,
  * and then interval × factor.
  */
-export function aplicarSm2(estado: EstadoSm2, calificacion: Calificacion): EstadoSm2 {
-  const q = CALIDAD[calificacion];
-  const factorFacilidad = Math.max(
+export function applySm2(status: Sm2State, grade: Grade): Sm2State {
+  const q = QUALITY[grade];
+  const easeFactor = Math.max(
     1.3,
-    estado.factorFacilidad + 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02),
+    status.factorFacilidad + 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02),
   );
 
   if (q < 3) {
-    return { repeticiones: 0, factorFacilidad, intervaloDias: 0 };
+    return { repeticiones: 0, factorFacilidad: easeFactor, intervaloDias: 0 };
   }
 
-  const repeticiones = estado.repeticiones + 1;
-  const intervaloDias =
-    repeticiones === 1
+  const repetitions = status.repeticiones + 1;
+  const intervalDays =
+    repetitions === 1
       ? 1
-      : repeticiones === 2
+      : repetitions === 2
         ? 6
-        : Math.round(estado.intervaloDias * factorFacilidad);
-  return { repeticiones, factorFacilidad, intervaloDias };
+        : Math.round(status.intervaloDias * easeFactor);
+  return { repeticiones: repetitions, factorFacilidad: easeFactor, intervaloDias: intervalDays };
 }

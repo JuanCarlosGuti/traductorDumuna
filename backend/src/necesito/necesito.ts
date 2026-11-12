@@ -3,75 +3,75 @@ import { NestFactory } from '@nestjs/core';
 import * as ExcelJS from 'exceljs';
 import * as path from 'path';
 import { DatabaseModule } from '../database/database.module';
-import { resolverDirDatos, rutaDbPorDefecto } from '../importador/rutas-datos';
-import { NecesitoModule } from './necesito.module';
-import { NecesitoService } from './necesito.service';
+import { resolveDataDir, defaultDbPath } from '../importador/rutas-datos';
+import { MissingWordsModule } from './necesito.module';
+import { MissingWordsService } from './necesito.service';
 
 /** The speaker fills in the empty column of each file. */
-export const ARCHIVO_ESPANOL = 'por_traducir_espanol.xlsx';
-export const ARCHIVO_DAMANA = 'por_traducir_damana.xlsx';
+export const SPANISH_FILE = 'por_traducir_espanol.xlsx';
+export const DAMANA_FILE = 'por_traducir_damana.xlsx';
 
 // Own CLI module: it does not drag in HTTP controllers.
 @Module({
   imports: [
-    DatabaseModule.forRoot({ rutaDb: rutaDbPorDefecto() }),
-    NecesitoModule,
+    DatabaseModule.forRoot({ rutaDb: defaultDbPath() }),
+    MissingWordsModule,
   ],
 })
-class NecesitoCliModule {}
+class MissingWordsCliModule {}
 
-interface ColumnaHoja {
+interface SheetColumn {
   header: string;
   key: string;
   width: number;
 }
 
-async function escribirHoja(
-  ruta: string,
-  nombreHoja: string,
-  columnas: ColumnaHoja[],
-  filas: object[],
+async function writeSheet(
+  filePath: string,
+  sheetName: string,
+  columns: SheetColumn[],
+  rows: object[],
 ): Promise<void> {
-  const libro = new ExcelJS.Workbook();
-  const hoja = libro.addWorksheet(nombreHoja);
-  hoja.columns = columnas;
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(sheetName);
+  sheet.columns = columns;
 
-  const encabezado = hoja.getRow(1);
-  encabezado.font = { bold: true };
-  encabezado.fill = {
+  const heading = sheet.getRow(1);
+  heading.font = { bold: true };
+  heading.fill = {
     type: 'pattern',
     pattern: 'solid',
     fgColor: { argb: 'FFDCE8F0' },
   };
-  filas.forEach((f) => hoja.addRow(f));
+  rows.forEach((f) => sheet.addRow(f));
 
   // Example sentences are long: they are wrapped and top-aligned.
-  hoja.eachRow((fila, numero) => {
-    if (numero === 1) return;
-    fila.alignment = { vertical: 'top', wrapText: true };
+  sheet.eachRow((row, num) => {
+    if (num === 1) return;
+    row.alignment = { vertical: 'top', wrapText: true };
   });
-  hoja.getRow(1).alignment = { vertical: 'middle', wrapText: false };
-  hoja.views = [{ state: 'frozen', ySplit: 1 }];
-  hoja.autoFilter = {
+  sheet.getRow(1).alignment = { vertical: 'middle', wrapText: false };
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+  sheet.autoFilter = {
     from: { row: 1, column: 1 },
-    to: { row: filas.length + 1, column: columnas.length },
+    to: { row: rows.length + 1, column: columns.length },
   };
 
-  await libro.xlsx.writeFile(ruta);
+  await workbook.xlsx.writeFile(filePath);
 }
 
 async function main(): Promise<void> {
-  const app = await NestFactory.createApplicationContext(NecesitoCliModule, {
+  const app = await NestFactory.createApplicationContext(MissingWordsCliModule, {
     logger: ['error', 'warn'],
   });
-  const servicio = app.get(NecesitoService);
-  const dirDatos = resolverDirDatos();
-  const hoy = new Date().toISOString().slice(0, 10);
+  const service = app.get(MissingWordsService);
+  const dataDir = resolveDataDir();
+  const today = new Date().toISOString().slice(0, 10);
 
   // 1) Spanish -> Damana
-  const espanol = servicio.calcular(hoy);
-  await escribirHoja(
-    path.join(dirDatos, ARCHIVO_ESPANOL),
+  const spanish = service.compute(today);
+  await writeSheet(
+    path.join(dataDir, SPANISH_FILE),
     'espanol por traducir',
     [
       { header: 'palabra en español', key: 'espanol', width: 22 },
@@ -81,13 +81,13 @@ async function main(): Promise<void> {
       { header: 'veces_visto', key: 'vecesVisto', width: 12 },
       { header: 'prioridad', key: 'prioridad', width: 10 },
     ],
-    espanol,
+    spanish,
   );
 
   // 2) Damana -> Spanish
-  const damana = servicio.calcularDamana();
-  await escribirHoja(
-    path.join(dirDatos, ARCHIVO_DAMANA),
+  const damana = service.computeDamana();
+  await writeSheet(
+    path.join(dataDir, DAMANA_FILE),
     'damana por traducir',
     [
       { header: 'palabra en damana', key: 'damana', width: 22 },
@@ -99,12 +99,12 @@ async function main(): Promise<void> {
     damana,
   );
 
-  const prioridad1 = espanol.filter((f) => f.prioridad === 1).length;
+  const priority1 = spanish.filter((f) => f.prioridad === 1).length;
   console.log('\n=== Listas de trabajo generadas ===');
-  console.log(`${ARCHIVO_ESPANOL}: ${espanol.length} palabras españolas sin equivalente damana`);
-  console.log(`   (${prioridad1} de traducciones tuyas con poco apoyo, el resto del corpus)`);
-  console.log(`${ARCHIVO_DAMANA}:  ${damana.length} palabras damana sin traducción`);
-  console.log(`\nCarpeta: ${dirDatos}`);
+  console.log(`${SPANISH_FILE}: ${spanish.length} palabras españolas sin equivalente damana`);
+  console.log(`   (${priority1} de traducciones tuyas con poco apoyo, el resto del corpus)`);
+  console.log(`${DAMANA_FILE}:  ${damana.length} palabras damana sin traducción`);
+  console.log(`\nCarpeta: ${dataDir}`);
   console.log('\nRellena la columna vacía de cada archivo y luego ejecuta:');
   console.log('   npm run necesito:aplicar');
 

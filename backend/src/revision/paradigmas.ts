@@ -1,17 +1,17 @@
 import * as ExcelJS from 'exceljs';
-import { AMARILLO, COLUMNAS_ELICITACION } from '../pendientes/pendientes.service';
+import { YELLOW, ELICITATION_COLUMNS } from '../pendientes/pendientes.service';
 
-export type VarianteParadigma = '' | 'pasado' | 'futuro' | 'negativo' | 'plural' | 'pregunta';
+export type ParadigmVariant = '' | 'pasado' | 'futuro' | 'negativo' | 'plural' | 'pregunta';
 
-export interface FilaParadigma {
+export interface ParadigmRow {
   id: string;
   ejemploEs: string;
-  variante: VarianteParadigma;
+  variante: ParadigmVariant;
   /** Which cell of the paradigm it is: «comer · yo · presente». */
   etiqueta: string;
 }
 
-type Fila = [oracion: string, variante: VarianteParadigma, etiqueta: string];
+type Row = [oracion: string, variante: ParadigmVariant, etiqueta: string];
 
 /**
  * Sentences that are almost equal on purpose: they change ONE thing at a time (the
@@ -23,28 +23,28 @@ type Fila = [oracion: string, variante: VarianteParadigma, etiqueta: string];
  * would change the ids of a batch the speakers may already have filled in.
  * New items ALWAYS go at the end.
  */
-function verbo(nombre: string, formas: [string, string, string, string, string, string, string, string, string, string, string, string, string, string]): Fila[] {
-  const [yo, tu, el, nos, uds, ellos, yoPas, yoFut, yoNeg, tuPreg, elPas, elFut, elNeg, elPreg] = formas;
+function verb(name: string, forms: [string, string, string, string, string, string, string, string, string, string, string, string, string, string]): Row[] {
+  const [yo, tu, el, nos, uds, ellos, yoPas, yoFut, yoNeg, tuPreg, elPas, elFut, elNeg, elPreg] = forms;
   return [
-    [yo, '', `${nombre} · yo · presente`],
-    [tu, '', `${nombre} · tú · presente`],
-    [el, '', `${nombre} · él · presente`],
-    [nos, 'plural', `${nombre} · nosotros · presente`],
-    [uds, 'plural', `${nombre} · ustedes · presente`],
-    [ellos, 'plural', `${nombre} · ellos · presente`],
-    [yoPas, 'pasado', `${nombre} · yo · pasado`],
-    [yoFut, 'futuro', `${nombre} · yo · futuro`],
-    [yoNeg, 'negativo', `${nombre} · yo · negación`],
-    [tuPreg, 'pregunta', `${nombre} · tú · pregunta`],
-    [elPas, 'pasado', `${nombre} · él · pasado`],
-    [elFut, 'futuro', `${nombre} · él · futuro`],
-    [elNeg, 'negativo', `${nombre} · él · negación`],
-    [elPreg, 'pregunta', `${nombre} · él · pregunta`],
+    [yo, '', `${name} · yo · presente`],
+    [tu, '', `${name} · tú · presente`],
+    [el, '', `${name} · él · presente`],
+    [nos, 'plural', `${name} · nosotros · presente`],
+    [uds, 'plural', `${name} · ustedes · presente`],
+    [ellos, 'plural', `${name} · ellos · presente`],
+    [yoPas, 'pasado', `${name} · yo · pasado`],
+    [yoFut, 'futuro', `${name} · yo · futuro`],
+    [yoNeg, 'negativo', `${name} · yo · negación`],
+    [tuPreg, 'pregunta', `${name} · tú · pregunta`],
+    [elPas, 'pasado', `${name} · él · pasado`],
+    [elFut, 'futuro', `${name} · él · futuro`],
+    [elNeg, 'negativo', `${name} · él · negación`],
+    [elPreg, 'pregunta', `${name} · él · pregunta`],
   ];
 }
 
-const FILAS: Fila[] = [
-  ...verbo('comer', [
+const ROWS: Row[] = [
+  ...verb('comer', [
     'Yo como yuca.', 'Tú comes yuca.', 'Él come yuca.', 'Nosotros comemos yuca.',
     'Ustedes comen yuca.', 'Ellos comen yuca.', 'Ayer yo comí yuca.',
     'Mañana yo voy a comer yuca.', 'Yo no como yuca.', '¿Tú comes yuca?',
@@ -52,13 +52,13 @@ const FILAS: Fila[] = [
   ]),
   ['Ayer yo no comí yuca.', 'negativo', 'comer · yo · pasado con negación'],
   ['¿Ayer comiste yuca?', 'pregunta', 'comer · tú · pasado con pregunta'],
-  ...verbo('ir', [
+  ...verb('ir', [
     'Yo voy al río.', 'Tú vas al río.', 'Él va al río.', 'Nosotros vamos al río.',
     'Ustedes van al río.', 'Ellos van al río.', 'Ayer yo fui al río.',
     'Mañana yo voy a ir al río.', 'Yo no voy al río.', '¿Tú vas al río?',
     'Ayer él fue al río.', 'Mañana él va a ir al río.', 'Él no va al río.', '¿Él va al río?',
   ]),
-  ...verbo('ver', [
+  ...verb('ver', [
     'Yo veo el perro.', 'Tú ves el perro.', 'Él ve el perro.', 'Nosotros vemos el perro.',
     'Ustedes ven el perro.', 'Ellos ven el perro.', 'Ayer yo vi el perro.',
     'Mañana yo voy a ver el perro.', 'Yo no veo el perro.', '¿Tú ves el perro?',
@@ -146,14 +146,14 @@ const FILAS: Fila[] = [
   ['Él dice que viene mañana.', 'futuro', 'dos verbos · decir que'],
 ];
 
-export const PARADIGMAS: FilaParadigma[] = FILAS.map(([ejemploEs, variante, etiqueta], i) => ({
+export const PARADIGMS: ParadigmRow[] = ROWS.map(([ejemploEs, variante, etiqueta], i) => ({
   id: `g${String(i + 1).padStart(3, '0')}`,
   ejemploEs,
   variante,
   etiqueta,
 }));
 
-export const ARCHIVO_PARADIGMAS = 'formato_elicitacion_lote2_gramatica.xlsx';
+export const PARADIGMS_FILE = 'formato_elicitacion_lote2_gramatica.xlsx';
 
 /**
  * The grammar batch in the SAME elicitation format, so that the
@@ -161,11 +161,11 @@ export const ARCHIVO_PARADIGMAS = 'formato_elicitacion_lote2_gramatica.xlsx';
  * sentence goes in as an everyday example (and 1 in 10 is kept as a test).
  * It does not ask for a single word: only ejemplo_dm is filled in.
  */
-export function construirLibroParadigmas(): ExcelJS.Workbook {
-  const libro = new ExcelJS.Workbook();
+export function buildParadigmsWorkbook(): ExcelJS.Workbook {
+  const workbook = new ExcelJS.Workbook();
 
-  const instrucciones = libro.addWorksheet('instrucciones');
-  instrucciones.getColumn(1).width = 110;
+  const instructions = workbook.addWorksheet('instrucciones');
+  instructions.getColumn(1).width = 110;
   [
     'LOTE 2 DE ELICITACIÓN — GRAMÁTICA (para quien tenga experiencia traduciendo)',
     '',
@@ -174,14 +174,14 @@ export function construirLibroParadigmas(): ExcelJS.Workbook {
     'Si dos oraciones se dicen igual en damana, escríbanlas igual y díganlo en notas. Si una no se puede decir así, escriban cómo se diría y explíquenlo.',
     'La ʉ (u partida) pueden escribirla como ü o como u+ ; nosotros la convertimos.',
     'MUY IMPORTANTE: no borren, no muevan ni inserten filas. Si algo no lo saben, déjenlo vacío.',
-  ].forEach((linea) => instrucciones.addRow([linea]));
-  instrucciones.getRow(1).font = { bold: true };
-  instrucciones.eachRow((fila) => {
-    fila.alignment = { wrapText: true, vertical: 'top' };
+  ].forEach((line) => instructions.addRow([line]));
+  instructions.getRow(1).font = { bold: true };
+  instructions.eachRow((row) => {
+    row.alignment = { wrapText: true, vertical: 'top' };
   });
 
-  const hoja = libro.addWorksheet('elicitacion');
-  const anchos: Record<(typeof COLUMNAS_ELICITACION)[number], number> = {
+  const sheet = workbook.addWorksheet('elicitacion');
+  const widths: Record<(typeof ELICITATION_COLUMNS)[number], number> = {
     id: 8,
     ambito: 12,
     palabra_es: 12,
@@ -191,11 +191,11 @@ export function construirLibroParadigmas(): ExcelJS.Workbook {
     variante: 11,
     notas: 40,
   };
-  hoja.columns = COLUMNAS_ELICITACION.map((c) => ({ header: c, key: c, width: anchos[c] }));
-  hoja.getRow(1).font = { bold: true };
-  hoja.views = [{ state: 'frozen', ySplit: 1 }];
-  for (const p of PARADIGMAS) {
-    const fila = hoja.addRow({
+  sheet.columns = ELICITATION_COLUMNS.map((c) => ({ header: c, key: c, width: widths[c] }));
+  sheet.getRow(1).font = { bold: true };
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+  for (const p of PARADIGMS) {
+    const row = sheet.addRow({
       id: p.id,
       ambito: 'gramatica',
       palabra_es: '',
@@ -205,12 +205,12 @@ export function construirLibroParadigmas(): ExcelJS.Workbook {
       variante: p.variante,
       notas: p.etiqueta,
     });
-    fila.alignment = { vertical: 'top', wrapText: true };
-    fila.getCell('ejemplo_dm').fill = {
+    row.alignment = { vertical: 'top', wrapText: true };
+    row.getCell('ejemplo_dm').fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: AMARILLO },
+      fgColor: { argb: YELLOW },
     };
   }
-  return libro;
+  return workbook;
 }

@@ -1,15 +1,15 @@
-import { normalizar } from '../comun/texto/normalizador';
-import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { PruebaTraduccion } from '../importador/elicitacion';
+import { normalize } from '../comun/texto/normalizador';
+import { tokenizeDamana } from '../comun/texto/tokenizador';
+import { TranslationTest } from '../importador/elicitacion';
 import { chrF } from './chrf';
 
-export interface RespuestaParaEvaluar {
+export interface ResponseToEvaluate {
   traduccion: string;
   palabrasSinEquivalente: string[];
   confianza: number;
 }
 
-export interface PruebaEvaluada {
+export interface EvaluatedTest {
   espanol: string;
   esperado: string;
   obtenido: string;
@@ -23,7 +23,7 @@ export interface PruebaEvaluada {
   error: string | null;
 }
 
-export interface ResumenAmbito {
+export interface ScopeSummary {
   ambito: string;
   pruebas: number;
   exactas: number;
@@ -33,13 +33,13 @@ export interface ResumenAmbito {
   errores: number;
 }
 
-export interface Informe {
+export interface Report {
   fecha: string;
   proveedor: string | null;
   modelo: string | null;
-  total: ResumenAmbito;
-  porAmbito: ResumenAmbito[];
-  pruebas: PruebaEvaluada[];
+  total: ScopeSummary;
+  porAmbito: ScopeSummary[];
+  pruebas: EvaluatedTest[];
 }
 
 /**
@@ -47,40 +47,40 @@ export interface Informe {
  * (ʉ and ñ intact), no punctuation and with spaces collapsed. So
  * «Nʉnka shkua.» and «nʉnka shkua» count as equal, but «nunka» does not.
  */
-export function textoComparable(texto: string): string {
-  return normalizar(texto)
+export function comparableText(text: string): string {
+  return normalize(text)
     .replace(/[^\p{L}ʉ'\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-export function esCoincidenciaExacta(obtenido: string, esperado: string): boolean {
-  return textoComparable(obtenido) === textoComparable(esperado);
+export function isExactMatch(obtained: string, expected: string): boolean {
+  return comparableText(obtained) === comparableText(expected);
 }
 
-export function evaluarPrueba(prueba: PruebaTraduccion, respuesta: RespuestaParaEvaluar): PruebaEvaluada {
-  const palabrasEntrada = tokenizarDamana(prueba.espanol).length || 1;
+export function evaluateTest(testCase: TranslationTest, response: ResponseToEvaluate): EvaluatedTest {
+  const inputWords = tokenizeDamana(testCase.espanol).length || 1;
   return {
-    espanol: prueba.espanol,
-    esperado: prueba.damanaEsperado,
-    obtenido: respuesta.traduccion,
-    ambito: prueba.ambito,
-    exacta: esCoincidenciaExacta(respuesta.traduccion, prueba.damanaEsperado),
-    chrf: chrF(respuesta.traduccion, prueba.damanaEsperado),
-    sinEquivalente: respuesta.palabrasSinEquivalente,
-    proporcionSinEquivalente: Math.min(1, respuesta.palabrasSinEquivalente.length / palabrasEntrada),
-    confianza: respuesta.confianza,
+    espanol: testCase.espanol,
+    esperado: testCase.damanaEsperado,
+    obtenido: response.traduccion,
+    ambito: testCase.ambito,
+    exacta: isExactMatch(response.traduccion, testCase.damanaEsperado),
+    chrf: chrF(response.traduccion, testCase.damanaEsperado),
+    sinEquivalente: response.palabrasSinEquivalente,
+    proporcionSinEquivalente: Math.min(1, response.palabrasSinEquivalente.length / inputWords),
+    confianza: response.confianza,
     error: null,
   };
 }
 
 /** A test that could not be translated counts as failed, it is not skipped. */
-export function pruebaFallida(prueba: PruebaTraduccion, error: string): PruebaEvaluada {
+export function failedTest(testCase: TranslationTest, error: string): EvaluatedTest {
   return {
-    espanol: prueba.espanol,
-    esperado: prueba.damanaEsperado,
+    espanol: testCase.espanol,
+    esperado: testCase.damanaEsperado,
     obtenido: '',
-    ambito: prueba.ambito,
+    ambito: testCase.ambito,
     exacta: false,
     chrf: 0,
     sinEquivalente: [],
@@ -90,66 +90,66 @@ export function pruebaFallida(prueba: PruebaTraduccion, error: string): PruebaEv
   };
 }
 
-const media = (valores: number[]): number =>
-  valores.length ? valores.reduce((s, v) => s + v, 0) / valores.length : 0;
+const mean = (values: number[]): number =>
+  values.length ? values.reduce((s, v) => s + v, 0) / values.length : 0;
 
-export function resumir(pruebas: PruebaEvaluada[], ambito: string): ResumenAmbito {
-  const exactas = pruebas.filter((p) => p.exacta).length;
+export function summarize(testCases: EvaluatedTest[], scope: string): ScopeSummary {
+  const exactOnes = testCases.filter((p) => p.exacta).length;
   return {
-    ambito,
-    pruebas: pruebas.length,
-    exactas,
-    porcentajeExactas: pruebas.length ? (100 * exactas) / pruebas.length : 0,
-    chrfMedio: media(pruebas.map((p) => p.chrf)),
-    porcentajeSinEquivalente: 100 * media(pruebas.map((p) => p.proporcionSinEquivalente)),
-    errores: pruebas.filter((p) => p.error !== null).length,
+    ambito: scope,
+    pruebas: testCases.length,
+    exactas: exactOnes,
+    porcentajeExactas: testCases.length ? (100 * exactOnes) / testCases.length : 0,
+    chrfMedio: mean(testCases.map((p) => p.chrf)),
+    porcentajeSinEquivalente: 100 * mean(testCases.map((p) => p.proporcionSinEquivalente)),
+    errores: testCases.filter((p) => p.error !== null).length,
   };
 }
 
-export function construirInforme(
-  pruebas: PruebaEvaluada[],
+export function buildReport(
+  testCases: EvaluatedTest[],
   meta: { fecha: Date; proveedor: string | null; modelo: string | null },
-): Informe {
-  const ambitos = [...new Set(pruebas.map((p) => p.ambito))].sort((a, b) => a.localeCompare(b, 'es'));
+): Report {
+  const scopes = [...new Set(testCases.map((p) => p.ambito))].sort((a, b) => a.localeCompare(b, 'es'));
   return {
     fecha: meta.fecha.toISOString(),
     proveedor: meta.proveedor,
     modelo: meta.modelo,
-    total: resumir(pruebas, 'TOTAL'),
-    porAmbito: ambitos.map((a) => resumir(pruebas.filter((p) => p.ambito === a), a)),
-    pruebas,
+    total: summarize(testCases, 'TOTAL'),
+    porAmbito: scopes.map((a) => summarize(testCases.filter((p) => p.ambito === a), a)),
+    pruebas: testCases,
   };
 }
 
 const pct = (v: number): string => `${v.toFixed(1)} %`;
 
-export function renderizarMarkdown(informe: Informe): string {
-  const filas = [...informe.porAmbito, informe.total]
+export function renderMarkdown(report: Report): string {
+  const rows = [...report.porAmbito, report.total]
     .map(
       (r) =>
         `| ${r.ambito} | ${r.pruebas} | ${r.exactas} (${pct(r.porcentajeExactas)}) | ${r.chrfMedio.toFixed(3)} | ${pct(r.porcentajeSinEquivalente)} | ${r.errores} |`,
     )
     .join('\n');
-  const detalle = informe.pruebas
+  const detail = report.pruebas
     .map((p) => {
-      const estado = p.error ? `ERROR: ${p.error}` : p.exacta ? 'exacta' : `chrF ${p.chrf.toFixed(3)}`;
-      const faltan = p.sinEquivalente.length ? ` · sin equivalente: ${p.sinEquivalente.join(', ')}` : '';
-      return `- **${p.espanol}** (${p.ambito})\n  - esperado: ${p.esperado}\n  - obtenido: ${p.obtenido || '—'}\n  - ${estado}${faltan}`;
+      const status = p.error ? `ERROR: ${p.error}` : p.exacta ? 'exacta' : `chrF ${p.chrf.toFixed(3)}`;
+      const missing = p.sinEquivalente.length ? ` · sin equivalente: ${p.sinEquivalente.join(', ')}` : '';
+      return `- **${p.espanol}** (${p.ambito})\n  - esperado: ${p.esperado}\n  - obtenido: ${p.obtenido || '—'}\n  - ${status}${missing}`;
     })
     .join('\n');
   return (
-    `# Evaluación del traductor — ${informe.fecha.slice(0, 16).replace('T', ' ')}\n\n` +
-    `Motor: ${informe.proveedor ?? '—'} · modelo: ${informe.modelo ?? '—'} · pruebas: ${informe.total.pruebas}\n\n` +
+    `# Evaluación del traductor — ${report.fecha.slice(0, 16).replace('T', ' ')}\n\n` +
+    `Motor: ${report.proveedor ?? '—'} · modelo: ${report.modelo ?? '—'} · pruebas: ${report.total.pruebas}\n\n` +
     '| ámbito | pruebas | exactas | chrF medio | sin equivalente | errores |\n' +
     '|---|---:|---:|---:|---:|---:|\n' +
-    `${filas}\n\n## Detalle\n\n${detalle}\n`
+    `${rows}\n\n## Detalle\n\n${detail}\n`
   );
 }
 
 /** 2026-10-03_1430_openai-gpt-oss-120b */
-export function nombreBaseInforme(fecha: Date, modelo: string | null): string {
-  const iso = fecha.toISOString();
-  const marca = `${iso.slice(0, 10)}_${iso.slice(11, 13)}${iso.slice(14, 16)}`;
-  const limpio = (modelo ?? 'sin-modelo').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return `${marca}_${limpio}`;
+export function reportBaseName(date: Date, model: string | null): string {
+  const iso = date.toISOString();
+  const mark = `${iso.slice(0, 10)}_${iso.slice(11, 13)}${iso.slice(14, 16)}`;
+  const cleaned = (model ?? 'sin-modelo').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return `${mark}_${cleaned}`;
 }

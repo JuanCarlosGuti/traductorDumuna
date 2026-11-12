@@ -1,10 +1,10 @@
 // Code points built numerically so that behaviour
 // does not depend on the form (composed or decomposed) in which the editor
 // saves this file.
-const TILDE_COMBINANTE = String.fromCharCode(0x0303); // combining ◌̃
-const N_DESCOMPUESTA = 'n' + TILDE_COMBINANTE; // ñ in NFD form
+const COMBINING_TILDE = String.fromCharCode(0x0303); // combining ◌̃
+const DECOMPOSED_N = 'n' + COMBINING_TILDE; // ñ in NFD form
 const ENYE = String.fromCharCode(0x00f1); // precomposed ñ
-const MARCAS_COMBINANTES = new RegExp(
+const COMBINING_MARKS = new RegExp(
   '[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']',
   'g',
 );
@@ -17,11 +17,11 @@ const MARCAS_COMBINANTES = new RegExp(
  * - ñ is preserved: NFD decomposes it into n + U+0303 (combining tilde),
  *   so it is recomposed before the marks are removed. ñ ≠ n.
  */
-export function normalizar(s: string): string {
+export function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .split(N_DESCOMPUESTA)
+    .split(DECOMPOSED_N)
     .join(ENYE)
-    .replace(MARCAS_COMBINANTES, '');
+    .replace(COMBINING_MARKS, '');
 }

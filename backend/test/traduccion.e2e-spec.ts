@@ -1,12 +1,12 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { configurarApp } from '../src/configurar-app';
-import { ConsultaModule } from '../src/consulta/consulta.module';
+import { configureApp } from '../src/configurar-app';
+import { QueryModule } from '../src/consulta/consulta.module';
 import { DatabaseModule } from '../src/database/database.module';
-import { CLIENTE_ANTHROPIC } from '../src/traduccion/anthropic.provider';
-import { CONFIG_TRADUCTOR } from '../src/traduccion/config-traductor.provider';
-import { TraduccionModule } from '../src/traduccion/traduccion.module';
+import { ANTHROPIC_CLIENT } from '../src/traduccion/anthropic.provider';
+import { TRANSLATOR_CONFIG } from '../src/traduccion/config-traductor.provider';
+import { TranslationModule } from '../src/traduccion/traduccion.module';
 
 // E2E with no engine configured: the translator must degrade gracefully
 // (503 + instructions), never break the app. Validating does work without an engine.
@@ -17,17 +17,17 @@ describe('Translator (e2e, no engine configured)', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         DatabaseModule.forRoot({ rutaDb: ':memory:' }),
-        ConsultaModule,
-        TraduccionModule,
+        QueryModule,
+        TranslationModule,
       ],
     })
-      .overrideProvider(CLIENTE_ANTHROPIC)
+      .overrideProvider(ANTHROPIC_CLIENT)
       .useValue(null)
-      .overrideProvider(CONFIG_TRADUCTOR)
+      .overrideProvider(TRANSLATOR_CONFIG)
       .useValue({ proveedor: null, modelo: '' })
       .compile();
     app = moduleRef.createNestApplication();
-    configurarApp(app);
+    configureApp(app);
     await app.init();
   });
 

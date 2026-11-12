@@ -1,11 +1,11 @@
-import { normalizar } from './normalizador';
+import { normalize } from './normalizador';
 
-const U_BARRADA = String.fromCharCode(0x0289); // ʉ
+const BARRED_U = String.fromCharCode(0x0289); // ʉ
 
 /** A spelling alternation seen in the Damana sources. */
-export interface ReglaEscritura {
+export interface SpellingRule {
   nombre: string;
-  aplicar: (texto: string) => string;
+  aplicar: (text: string) => string;
 }
 
 /**
@@ -16,8 +16,8 @@ export interface ReglaEscritura {
  *
  * Order matters: «ndz» → «ny» goes before «y» → «i».
  */
-export const REGLAS_ESCRITURA: ReglaEscritura[] = [
-  { nombre: 'u / ʉ', aplicar: (s) => s.split(U_BARRADA).join('u') },
+export const SPELLING_RULES: SpellingRule[] = [
+  { nombre: 'u / ʉ', aplicar: (s) => s.split(BARRED_U).join('u') },
   { nombre: 'ndzina / nyina', aplicar: (s) => s.replace(/ndz/g, 'ny') },
   { nombre: 'w / u', aplicar: (s) => s.replace(/w/g, 'u') },
   { nombre: 'y / i', aplicar: (s) => s.replace(/y/g, 'i') },
@@ -33,29 +33,29 @@ export const REGLAS_ESCRITURA: ReglaEscritura[] = [
  * it must not be used to search, index or fix data, only to build
  * the list of doubts. The ñ is kept: ñingui and ningui are not merged.
  */
-export function esqueletoOrtografico(texto: string): string {
-  return REGLAS_ESCRITURA.reduce((s, regla) => regla.aplicar(s), normalizar(texto));
+export function spellingSkeleton(text: string): string {
+  return SPELLING_RULES.reduce((s, rule) => rule.aplicar(s), normalize(text));
 }
 
 /** Which alternations explain why these forms are written differently. */
-export function reglasQueDistinguen(formas: string[]): string[] {
-  const base = formas.map((f) => normalizar(f));
-  const distintas = new Set(base).size;
-  return REGLAS_ESCRITURA.filter(
-    (regla) => new Set(base.map((f) => regla.aplicar(f))).size < distintas,
-  ).map((regla) => regla.nombre);
+export function distinguishingRules(forms: string[]): string[] {
+  const base = forms.map((f) => normalize(f));
+  const distinct = new Set(base).size;
+  return SPELLING_RULES.filter(
+    (rule) => new Set(base.map((f) => rule.aplicar(f))).size < distinct,
+  ).map((rule) => rule.nombre);
 }
 
 /** Do they differ by a single letter (changed, extra or missing)? */
-export function aDistanciaUno(a: string, b: string): boolean {
+export function atDistanceOne(a: string, b: string): boolean {
   if (a === b || Math.abs(a.length - b.length) > 1) return false;
-  let inicio = 0;
-  while (inicio < a.length && inicio < b.length && a[inicio] === b[inicio]) inicio++;
-  let finA = a.length - 1;
-  let finB = b.length - 1;
-  while (finA >= inicio && finB >= inicio && a[finA] === b[finB]) {
-    finA--;
-    finB--;
+  let start = 0;
+  while (start < a.length && start < b.length && a[start] === b[start]) start++;
+  let endA = a.length - 1;
+  let endB = b.length - 1;
+  while (endA >= start && endB >= start && a[endA] === b[endB]) {
+    endA--;
+    endB--;
   }
-  return Math.max(finA - inicio + 1, finB - inicio + 1) <= 1;
+  return Math.max(endA - start + 1, endB - start + 1) <= 1;
 }

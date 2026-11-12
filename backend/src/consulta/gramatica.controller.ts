@@ -6,27 +6,27 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { LemaDto, TablaConjugacionDto } from './dto/consulta.dto';
-import { GramaticaService } from './gramatica.service';
+import { LemmaDto, ConjugationTableDto } from './dto/consulta.dto';
+import { GrammarService } from './gramatica.service';
 
 @ApiTags('gramatica')
 @Controller('gramatica')
-export class GramaticaController {
-  constructor(private readonly gramatica: GramaticaService) {}
+export class GrammarController {
+  constructor(private readonly grammar: GrammarService) {}
 
   @Get('lemas')
   @ApiOperation({ summary: 'Lemas verbales con conjugaciones en el corpus' })
-  @ApiOkResponse({ type: [LemaDto] })
-  lemas(): LemaDto[] {
-    return this.gramatica.lemas();
+  @ApiOkResponse({ type: [LemmaDto] })
+  lemmas(): LemmaDto[] {
+    return this.grammar.lemmas();
   }
 
   @Get('lemas/:lema')
   @ApiOperation({ summary: 'Tabla de conjugación de un lema (forma damana, glosa, notas)' })
   @ApiParam({ name: 'lema', example: 'tener' })
-  @ApiOkResponse({ type: TablaConjugacionDto })
+  @ApiOkResponse({ type: ConjugationTableDto })
   @ApiNotFoundResponse({ description: 'Lema sin conjugaciones en el corpus' })
-  tabla(@Param('lema') lema: string): TablaConjugacionDto {
-    return this.gramatica.tablaDe(lema);
+  table(@Param('lema') lemma: string): ConjugationTableDto {
+    return this.grammar.tableOf(lemma);
   }
 }

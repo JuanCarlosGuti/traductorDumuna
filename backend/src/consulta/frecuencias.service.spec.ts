@@ -1,15 +1,15 @@
 import Database from 'better-sqlite3';
-import { ejecutarMigraciones } from '../database/migraciones';
+import { runMigrations } from '../database/migraciones';
 import { CorpusRepository } from './corpus.repository';
-import { FrecuenciasService } from './frecuencias.service';
+import { FrequenciesService } from './frecuencias.service';
 
-describe('FrecuenciasService', () => {
+describe('FrequenciesService', () => {
   let db: Database.Database;
-  let servicio: FrecuenciasService;
+  let service: FrequenciesService;
 
   beforeEach(() => {
     db = new Database(':memory:');
-    ejecutarMigraciones(db);
+    runMigrations(db);
     // Vocabulary entry with a category for kʉnʉnka
     db.prepare(
       `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
@@ -33,28 +33,28 @@ describe('FrecuenciasService', () => {
     ins.run('ñandu', 'Ñandú', 7);
     // kʉnʉnka: in the vocabulary with category Verbos
     ins.run('kʉnʉnka', 'kʉnʉnka', 8);
-    servicio = new FrecuenciasService(new CorpusRepository(db));
+    service = new FrequenciesService(new CorpusRepository(db));
   });
 
   afterEach(() => db.close());
 
   it('excludes probable proper names (initial capital only)', () => {
-    const palabras = servicio.listar(500).map((f) => f.palabra);
-    expect(palabras).not.toContain('jehova');
-    expect(palabras).not.toContain('ñandu'); // capital Ñ counts too
-    expect(palabras).toContain('nʉnka');
-    expect(palabras).toContain('shkua');
+    const words = service.listAll(500).map((f) => f.palabra);
+    expect(words).not.toContain('jehova');
+    expect(words).not.toContain('ñandu'); // capital Ñ counts too
+    expect(words).toContain('nʉnka');
+    expect(words).toContain('shkua');
   });
 
   it('sorts by descending frequency', () => {
-    const filas = servicio.listar(500);
-    expect(filas[0]).toEqual({
+    const rows = service.listAll(500);
+    expect(rows[0]).toEqual({
       palabra: 'nʉnka',
       frecuencia: 2,
       traduccion: null,
       categoria: null,
     });
-    expect(filas[1]).toEqual({
+    expect(rows[1]).toEqual({
       palabra: 'shkua',
       frecuencia: 2,
       traduccion: null,
@@ -63,8 +63,8 @@ describe('FrecuenciasService', () => {
   });
 
   it('brings translation and category from the vocabulary when the Damana matches (case with ʉ)', () => {
-    const fila = servicio.listar(500).find((f) => f.palabra === 'kʉnʉnka');
-    expect(fila).toEqual({
+    const row = service.listAll(500).find((f) => f.palabra === 'kʉnʉnka');
+    expect(row).toEqual({
       palabra: 'kʉnʉnka',
       frecuencia: 1,
       traduccion: 'tiene',
@@ -81,11 +81,11 @@ describe('FrecuenciasService', () => {
       `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
        VALUES ('ñingunka', 'ñingunka', 'conjugaciones', 1, 0)`,
     ).run();
-    const fila = servicio.listar(500).find((f) => f.palabra === 'ñingunka');
-    expect(fila).toMatchObject({ traduccion: 'él volvió', categoria: null });
+    const row = service.listAll(500).find((f) => f.palabra === 'ñingunka');
+    expect(row).toMatchObject({ traduccion: 'él volvió', categoria: null });
   });
 
   it('respects the limit', () => {
-    expect(servicio.listar(1)).toHaveLength(1);
+    expect(service.listAll(1)).toHaveLength(1);
   });
 });

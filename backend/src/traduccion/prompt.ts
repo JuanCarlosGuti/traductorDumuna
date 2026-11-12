@@ -1,18 +1,18 @@
-import { DominioCorpus } from '../consulta/consulta.enums';
-import { Disparador } from '../consulta/reglas';
-import { ContextoRecuperado, FragmentoRecuperado } from '../consulta/retrieval.service';
-import { DireccionTraduccion } from './dto/traduccion.dto';
+import { CorpusDomain } from '../consulta/consulta.enums';
+import { Trigger } from '../consulta/reglas';
+import { RetrievedContext, RetrievedFragment } from '../consulta/retrieval.service';
+import { TranslationDirection } from './dto/traduccion.dto';
 
 /** Names of the keys of each gloss pair depending on the direction. */
-export function clavesGlosa(direccion: DireccionTraduccion): { origen: string; destino: string } {
-  return direccion === DireccionTraduccion.espanol_a_damana
+export function glossKeys(direction: TranslationDirection): { origen: string; destino: string } {
+  return direction === TranslationDirection.espanol_a_damana
     ? { origen: 'palabra_es', destino: 'segmento_dm' }
     : { origen: 'palabra_dm', destino: 'segmento_es' };
 }
 
 /** JSON Schema of the response: used by Anthropic's structured output. */
-export function esquemaRespuesta(direccion: DireccionTraduccion): Record<string, unknown> {
-  const { origen, destino } = clavesGlosa(direccion);
+export function responseSchema(direction: TranslationDirection): Record<string, unknown> {
+  const { origen: origin, destino: target } = glossKeys(direction);
   return {
     type: 'object',
     properties: {
@@ -21,8 +21,8 @@ export function esquemaRespuesta(direccion: DireccionTraduccion): Record<string,
         type: 'array',
         items: {
           type: 'object',
-          properties: { [origen]: { type: 'string' }, [destino]: { type: 'string' } },
-          required: [origen, destino],
+          properties: { [origin]: { type: 'string' }, [target]: { type: 'string' } },
+          required: [origin, target],
           additionalProperties: false,
         },
       },
@@ -43,8 +43,8 @@ export function esquemaRespuesta(direccion: DireccionTraduccion): Record<string,
   };
 }
 
-export function armarPromptSistema(direccion: DireccionTraduccion): string {
-  const { origen, destino } = clavesGlosa(direccion);
+export function buildSystemPrompt(direction: TranslationDirection): string {
+  const { origen: origin, destino: target } = glossKeys(direction);
   return (
     'Eres un traductor experto entre el damana (dʉmʉna), lengua del pueblo Wiwa ' +
     'de la Sierra Nevada de Santa Marta (Colombia), y el español. En damana la ' +
@@ -80,7 +80,7 @@ export function armarPromptSistema(direccion: DireccionTraduccion): string {
     'Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto adicional ni ' +
     'bloques de código, con exactamente estas claves:\n' +
     '{"traduccion": "<la traducción>", ' +
-    `"glosa": [{"${origen}": "<palabra o grupo del original>", "${destino}": "<segmento de la traducción que le corresponde>"}, ...], ` +
+    `"glosa": [{"${origin}": "<palabra o grupo del original>", "${target}": "<segmento de la traducción que le corresponde>"}, ...], ` +
     '"palabras_sin_equivalente": ["<palabra sin equivalente>", ...], ' +
     '"reglas_aplicadas": ["<regla usada, p. ej. -ndzina (plural)>", ...], ' +
     '"confianza": <número entre 0 y 1>, ' +
@@ -93,7 +93,7 @@ export function armarPromptSistema(direccion: DireccionTraduccion): string {
  * has no rule yet. It is told plainly that it is missing — the speakers
  * will confirm it — instead of letting the model guess whether it exists or not.
  */
-const PISTA_SIN_REGLA: Record<Disparador, string> = {
+const NO_RULE_HINT: Record<Trigger, string> = {
   negacion:
     'Guíate por las formas negativas del diccionario y de los ejemplos ' +
     '(entradas como «No quiero → Nandunun»); «no» no se traduce aparte ni va entre corchetes.',
@@ -105,88 +105,88 @@ const PISTA_SIN_REGLA: Record<Disparador, string> = {
 };
 
 /** Features detected in the sentence with no corpus rule covering them. */
-export function disparadoresSinRegla(contexto: ContextoRecuperado): Disparador[] {
-  return contexto.disparadores.filter((d) => !contexto.reglas.some((r) => r.disparador === d));
+export function triggersWithoutRule(context: RetrievedContext): Trigger[] {
+  return context.disparadores.filter((d) => !context.reglas.some((r) => r.disparador === d));
 }
 
-function seccion(titulo: string, cuerpo: string): string {
-  return `=== ${titulo} ===\n${cuerpo}\n`;
+function section(title: string, bodyData: string): string {
+  return `=== ${title} ===\n${bodyData}\n`;
 }
 
-function listarEjemplos(ejemplos: FragmentoRecuperado[], vacio: string): string {
-  if (ejemplos.length === 0) return `(${vacio})`;
-  return ejemplos
+function listExamples(examples: RetrievedFragment[], empty: string): string {
+  if (examples.length === 0) return `(${empty})`;
+  return examples
     .map((e, i) => {
       // A warning is added when the example arrived through verbal kinship: it serves as
       // a sample of the verb in use, but it is in another grammatical person.
-      const nota = e.porLema ? ` — usa otra conjugación del verbo «${e.porLema}»` : '';
-      return `${i + 1}. [${e.referencia}${nota}]\n   español: ${e.espanol}\n   damana: ${e.damana}`;
+      const noteText = e.porLema ? ` — usa otra conjugación del verbo «${e.porLema}»` : '';
+      return `${i + 1}. [${e.referencia}${noteText}]\n   español: ${e.espanol}\n   damana: ${e.damana}`;
     })
     .join('\n');
 }
 
-export function armarPromptUsuario(
-  texto: string,
-  direccion: DireccionTraduccion,
-  contexto: ContextoRecuperado,
+export function buildUserPrompt(
+  text: string,
+  direction: TranslationDirection,
+  context: RetrievedContext,
 ): string {
-  const lineasReglas = contexto.reglas.map((r) => {
-    const ejemplo =
+  const ruleLines = context.reglas.map((r) => {
+    const example =
       r.ejemploBase && r.ejemploRegla
         ? ` Ej.: ${r.ejemploBase} → ${r.ejemploRegla}${r.traduccionEjemplo ? ` = ${r.traduccionEjemplo}` : ''}.`
         : '';
-    const marca = r.disparador ? ` [${r.disparador}]` : '';
-    return `- ${r.forma} — ${r.significado ?? ''}${ejemplo}${marca}`;
+    const mark = r.disparador ? ` [${r.disparador}]` : '';
+    return `- ${r.forma} — ${r.significado ?? ''}${example}${mark}`;
   });
-  const rasgos =
-    contexto.disparadores.length > 0
-      ? `Rasgos detectados en la frase: ${contexto.disparadores.join(', ')}.`
+  const features =
+    context.disparadores.length > 0
+      ? `Rasgos detectados en la frase: ${context.disparadores.join(', ')}.`
       : 'Rasgos detectados en la frase: ninguno.';
-  const sinRegla = disparadoresSinRegla(contexto).map(
+  const withoutRule = triggersWithoutRule(context).map(
     (d) =>
       `- ${d}: rasgo detectado, pero el corpus no tiene regla registrada ` +
-      `(pendiente de confirmar con las hablantes). ${PISTA_SIN_REGLA[d]}`,
+      `(pendiente de confirmar con las hablantes). ${NO_RULE_HINT[d]}`,
   );
-  const cuerpoReglas =
-    lineasReglas.length || sinRegla.length ? [...lineasReglas, ...sinRegla] : ['(ninguna regla aplicable)'];
-  const reglas = [rasgos, ...cuerpoReglas].join('\n');
+  const rulesBody =
+    ruleLines.length || withoutRule.length ? [...ruleLines, ...withoutRule] : ['(ninguna regla aplicable)'];
+  const rules = [features, ...rulesBody].join('\n');
 
-  const lineasDiccionario = contexto.diccionario.map((a) => {
-    const categoria = a.categoria ? `; ${a.categoria}` : '';
-    return direccion === DireccionTraduccion.espanol_a_damana
-      ? `- ${a.palabra} → ${a.damana} (${a.espanol}) [${a.coincidencia}${categoria}]`
-      : `- ${a.palabra} → ${a.espanol} (${a.damana}) [${a.coincidencia}${categoria}]`;
+  const dictionaryLines = context.diccionario.map((a) => {
+    const category = a.categoria ? `; ${a.categoria}` : '';
+    return direction === TranslationDirection.espanol_a_damana
+      ? `- ${a.palabra} → ${a.damana} (${a.espanol}) [${a.coincidencia}${category}]`
+      : `- ${a.palabra} → ${a.espanol} (${a.damana}) [${a.coincidencia}${category}]`;
   });
-  const nombres = contexto.nombresPropios.map((n) =>
-    direccion === DireccionTraduccion.espanol_a_damana
+  const names = context.nombresPropios.map((n) =>
+    direction === TranslationDirection.espanol_a_damana
       ? `- ${n.enTexto} → ${n.damana} (nombre propio)`
       : `- ${n.enTexto} → ${n.espanol} (nombre propio)`,
   );
-  const diccionario = [
-    ...(lineasDiccionario.length ? lineasDiccionario : ['(ninguna palabra de la frase está en el diccionario)']),
-    ...(nombres.length ? ['Nombres propios:', ...nombres] : []),
+  const dictionary = [
+    ...(dictionaryLines.length ? dictionaryLines : ['(ninguna palabra de la frase está en el diccionario)']),
+    ...(names.length ? ['Nombres propios:', ...names] : []),
   ].join('\n');
 
-  const porDominio = (d: DominioCorpus) => contexto.ejemplos.filter((e) => e.dominio === d);
-  const sentido =
-    direccion === DireccionTraduccion.espanol_a_damana ? 'del español al damana' : 'del damana al español';
+  const byDomain = (d: CorpusDomain) => context.ejemplos.filter((e) => e.dominio === d);
+  const sense =
+    direction === TranslationDirection.espanol_a_damana ? 'del español al damana' : 'del damana al español';
 
   return (
-    seccion('REGLAS GRAMATICALES', reglas) +
+    section('REGLAS GRAMATICALES', rules) +
     '\n' +
-    seccion('DICCIONARIO DE ESTA FRASE', diccionario) +
+    section('DICCIONARIO DE ESTA FRASE', dictionary) +
     '\n' +
-    seccion('EJEMPLOS COTIDIANOS', listarEjemplos(porDominio(DominioCorpus.cotidiano), 'sin ejemplos cotidianos parecidos')) +
+    section('EJEMPLOS COTIDIANOS', listExamples(byDomain(CorpusDomain.cotidiano), 'sin ejemplos cotidianos parecidos')) +
     '\n' +
-    seccion('EJEMPLOS DE GRAMÁTICA', listarEjemplos(porDominio(DominioCorpus.gramatica), 'sin formas conjugadas parecidas')) +
+    section('EJEMPLOS DE GRAMÁTICA', listExamples(byDomain(CorpusDomain.gramatica), 'sin formas conjugadas parecidas')) +
     '\n' +
-    seccion('EJEMPLOS DEL CORPUS BÍBLICO', listarEjemplos(porDominio(DominioCorpus.biblico), 'sin ejemplos bíblicos parecidos')) +
+    section('EJEMPLOS DEL CORPUS BÍBLICO', listExamples(byDomain(CorpusDomain.biblico), 'sin ejemplos bíblicos parecidos')) +
     '\n' +
-    seccion('FRASE A TRADUCIR', `Dirección: ${sentido}.\n${texto}`)
+    section('FRASE A TRADUCIR', `Dirección: ${sense}.\n${text}`)
   );
 }
 
-export interface RespuestaModelo {
+export interface ModelResponse {
   traduccion: string;
   glosa: { origen: string; destino: string }[];
   palabrasSinEquivalente: string[];
@@ -195,13 +195,13 @@ export interface RespuestaModelo {
   explicacionBreve: string;
 }
 
-const texto = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
-const lista = (v: unknown): string[] =>
+const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+const list = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean) : [];
 
 /** Words the model left in square brackets in the translation. */
-export function palabrasEntreCorchetes(traduccion: string): string[] {
-  return [...traduccion.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1].trim()).filter(Boolean);
+export function bracketedWords(translation: string): string[] {
+  return [...translation.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1].trim()).filter(Boolean);
 }
 
 /**
@@ -210,29 +210,29 @@ export function palabrasEntreCorchetes(traduccion: string): string[] {
  * (clamped to 0-1) and the words in square brackets added to the list of
  * words without an equivalent even if the model forgot to list them.
  */
-export function normalizarRespuestaModelo(json: Record<string, unknown>): RespuestaModelo {
-  const traduccion = texto(json.traduccion);
-  const glosa = Array.isArray(json.glosa)
+export function normalizeModelResponse(json: Record<string, unknown>): ModelResponse {
+  const translation = text(json.traduccion);
+  const gloss = Array.isArray(json.glosa)
     ? json.glosa
         .filter((p): p is Record<string, unknown> => typeof p === 'object' && p !== null)
         .map((p) => ({
-          origen: texto(p.palabra_es ?? p.palabra_dm ?? p.origen ?? p.palabra),
-          destino: texto(p.segmento_dm ?? p.segmento_es ?? p.destino ?? p.segmento),
+          origen: text(p.palabra_es ?? p.palabra_dm ?? p.origen ?? p.palabra),
+          destino: text(p.segmento_dm ?? p.segmento_es ?? p.destino ?? p.segmento),
         }))
         .filter((p) => p.origen || p.destino)
     : [];
-  const sinEquivalente = new Set(lista(json.palabras_sin_equivalente).map((p) => p.replace(/^\[|\]$/g, '')));
-  for (const p of palabrasEntreCorchetes(traduccion)) sinEquivalente.add(p);
+  const withoutEquivalent = new Set(list(json.palabras_sin_equivalente).map((p) => p.replace(/^\[|\]$/g, '')));
+  for (const p of bracketedWords(translation)) withoutEquivalent.add(p);
 
-  const confianzaCruda = Number(json.confianza);
-  const confianza = Number.isFinite(confianzaCruda) ? Math.min(1, Math.max(0, confianzaCruda)) : 0;
+  const rawConfidence = Number(json.confianza);
+  const confidence = Number.isFinite(rawConfidence) ? Math.min(1, Math.max(0, rawConfidence)) : 0;
 
   return {
-    traduccion,
-    glosa,
-    palabrasSinEquivalente: [...sinEquivalente],
-    reglasAplicadas: lista(json.reglas_aplicadas),
-    confianza,
-    explicacionBreve: texto(json.explicacion_breve),
+    traduccion: translation,
+    glosa: gloss,
+    palabrasSinEquivalente: [...withoutEquivalent],
+    reglasAplicadas: list(json.reglas_aplicadas),
+    confianza: confidence,
+    explicacionBreve: text(json.explicacion_breve),
   };
 }

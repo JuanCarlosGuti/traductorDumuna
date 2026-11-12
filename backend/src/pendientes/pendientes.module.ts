@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { PendientesController } from './pendientes.controller';
-import { PendientesRepository } from './pendientes.repository';
-import { PendientesService } from './pendientes.service';
+import { PendingController } from './pendientes.controller';
+import { PendingRepository } from './pendientes.repository';
+import { PendingService } from './pendientes.service';
 
 @Module({
-  controllers: [PendientesController],
-  providers: [PendientesRepository, PendientesService],
-  exports: [PendientesRepository],
+  controllers: [PendingController],
+  providers: [PendingRepository, PendingService],
+  exports: [PendingRepository],
 })
-export class PendientesModule {}
+export class PendingModule {}

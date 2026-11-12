@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConsultaModule } from '../consulta/consulta.module';
+import { QueryModule } from '../consulta/consulta.module';
 import { SrsController } from './srs.controller';
 import { SrsService } from './srs.service';
 
 @Module({
-  imports: [ConsultaModule],
+  imports: [QueryModule],
   controllers: [SrsController],
   providers: [SrsService],
 })

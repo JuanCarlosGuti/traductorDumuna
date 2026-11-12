@@ -1,8 +1,8 @@
-import { normalizar } from '../comun/texto/normalizador';
-import { normalizarDamanaEscrito } from '../comun/texto/ortografia';
+import { normalize } from '../comun/texto/normalizador';
+import { normalizeWrittenDamana } from '../comun/texto/ortografia';
 
 /** Row of the elicitation format («elicitacion» sheet), already cleaned. */
-export interface FilaElicitacion {
+export interface ElicitationRow {
   id: string;
   ambito: string;
   palabraEs: string;
@@ -15,7 +15,7 @@ export interface FilaElicitacion {
   archivo: string;
 }
 
-export interface VocabularioElicitado {
+export interface ElicitedVocabulary {
   espanol: string;
   damana: string;
   categoria: string;
@@ -23,39 +23,39 @@ export interface VocabularioElicitado {
   fuente: string;
 }
 
-export interface OracionElicitada {
+export interface ElicitedSentence {
   idExterno: string;
   damana: string;
   espanol: string;
   fuente: string;
 }
 
-export interface PruebaTraduccion {
+export interface TranslationTest {
   espanol: string;
   damanaEsperado: string;
   ambito: string;
 }
 
-export interface PendienteElicitacion {
+export interface ElicitationPendingItem {
   palabra: string;
   contexto: string;
 }
 
-export interface PlanElicitacion {
-  vocabulario: VocabularioElicitado[];
-  oraciones: OracionElicitada[];
-  pruebas: PruebaTraduccion[];
-  pendientes: PendienteElicitacion[];
+export interface ElicitationPlan {
+  vocabulario: ElicitedVocabulary[];
+  oraciones: ElicitedSentence[];
+  pruebas: TranslationTest[];
+  pendientes: ElicitationPendingItem[];
   /** Words that arrived complete: they close their pending item if there was one. */
   resueltas: string[];
   /** ids repeated across files: the last occurrence was kept. */
   idsRepetidos: number;
 }
 
-export const FUENTE_ELICITACION = 'elicitacion';
+export const ELICITATION_SOURCE = 'elicitacion';
 
-/** One in every PROPORCION_PRUEBA complete rows is reserved for evaluation. */
-export const PROPORCION_PRUEBA = 10;
+/** One in every TEST_PROPORTION complete rows is reserved for evaluation. */
+export const TEST_PROPORTION = 10;
 
 /**
  * 32-bit FNV-1a hash: stable across runs and platforms. It is used
@@ -64,37 +64,37 @@ export const PROPORCION_PRUEBA = 10;
  * reservation moved, yesterday's test would be a retrieval example today and
  * the evaluation would stop being comparable across versions.
  */
-export function hashEstable(texto: string): number {
+export function stableHash(text: string): number {
   let h = 0x811c9dc5;
-  for (let i = 0; i < texto.length; i++) {
-    h ^= texto.charCodeAt(i);
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
     h = Math.imul(h, 0x01000193) >>> 0;
   }
   return h >>> 0;
 }
 
-export function esFilaDePrueba(id: string): boolean {
-  return hashEstable(id.trim()) % PROPORCION_PRUEBA === 0;
+export function isTestRow(id: string): boolean {
+  return stableHash(id.trim()) % TEST_PROPORTION === 0;
 }
 
-/** Converts a raw row (normalized headers) into a FilaElicitacion. */
-export function interpretarFila(
-  cruda: Record<string, string>,
-  archivo: string,
-): FilaElicitacion | null {
-  const id = (cruda['id'] ?? '').trim();
-  const palabraEs = (cruda['palabra_es'] ?? '').trim();
-  if (!id && !palabraEs) return null;
+/** Converts a raw row (normalized headers) into a ElicitationRow. */
+export function parseRow(
+  raw: Record<string, string>,
+  file: string,
+): ElicitationRow | null {
+  const id = (raw['id'] ?? '').trim();
+  const wordEs = (raw['palabra_es'] ?? '').trim();
+  if (!id && !wordEs) return null;
   return {
     id,
-    ambito: (cruda['ambito'] ?? '').trim().toLowerCase() || 'otro',
-    palabraEs,
-    palabraDm: normalizarDamanaEscrito((cruda['palabra_dm'] ?? '').trim()),
-    ejemploEs: (cruda['ejemplo_es'] ?? '').trim(),
-    ejemploDm: normalizarDamanaEscrito((cruda['ejemplo_dm'] ?? '').trim()),
-    variante: (cruda['variante'] ?? '').trim().toLowerCase(),
-    notas: (cruda['notas'] ?? '').trim(),
-    archivo,
+    ambito: (raw['ambito'] ?? '').trim().toLowerCase() || 'otro',
+    palabraEs: wordEs,
+    palabraDm: normalizeWrittenDamana((raw['palabra_dm'] ?? '').trim()),
+    ejemploEs: (raw['ejemplo_es'] ?? '').trim(),
+    ejemploDm: normalizeWrittenDamana((raw['ejemplo_dm'] ?? '').trim()),
+    variante: (raw['variante'] ?? '').trim().toLowerCase(),
+    notas: (raw['notas'] ?? '').trim(),
+    archivo: file,
   };
 }
 
@@ -103,18 +103,18 @@ export function interpretarFila(
  * appears in more than one file the last one in alphabetical file
  * order wins, which is the most recent by naming convention.
  */
-export function fundirPorId(filas: FilaElicitacion[]): {
-  filas: FilaElicitacion[];
+export function mergeById(rows: ElicitationRow[]): {
+  filas: ElicitationRow[];
   repetidos: number;
 } {
-  const porId = new Map<string, FilaElicitacion>();
-  let repetidos = 0;
-  for (const fila of filas) {
-    const clave = fila.id || `sin-id:${normalizar(fila.palabraEs)}`;
-    if (porId.has(clave)) repetidos++;
-    porId.set(clave, fila);
+  const byId = new Map<string, ElicitationRow>();
+  let repeated = 0;
+  for (const row of rows) {
+    const key = row.id || `sin-id:${normalize(row.palabraEs)}`;
+    if (byId.has(key)) repeated++;
+    byId.set(key, row);
   }
-  return { filas: [...porId.values()], repetidos };
+  return { filas: [...byId.values()], repetidos: repeated };
 }
 
 /**
@@ -123,53 +123,53 @@ export function fundirPorId(filas: FilaElicitacion[]): {
  * (ejemplo_es → ejemplo_dm). Whatever is missing is not discarded: it stays as
  * pending for the speakers to fill in.
  */
-export function planificarElicitacion(filasCrudas: FilaElicitacion[]): PlanElicitacion {
-  const { filas, repetidos } = fundirPorId(filasCrudas);
-  const plan: PlanElicitacion = {
+export function planElicitation(rawRows: ElicitationRow[]): ElicitationPlan {
+  const { filas: rows, repetidos: repeated } = mergeById(rawRows);
+  const plan: ElicitationPlan = {
     vocabulario: [],
     oraciones: [],
     pruebas: [],
     pendientes: [],
     resueltas: [],
-    idsRepetidos: repetidos,
+    idsRepetidos: repeated,
   };
 
-  for (const fila of filas) {
-    const notas = [fila.variante ? `variante: ${fila.variante}` : '', fila.notas]
+  for (const row of rows) {
+    const notes = [row.variante ? `variante: ${row.variante}` : '', row.notas]
       .filter(Boolean)
       .join(' · ');
-    const completa = fila.palabraDm.length > 0 && fila.ejemploDm.length > 0;
+    const complete = row.palabraDm.length > 0 && row.ejemploDm.length > 0;
 
-    if (fila.palabraEs && fila.palabraDm) {
+    if (row.palabraEs && row.palabraDm) {
       plan.vocabulario.push({
-        espanol: fila.palabraEs,
-        damana: fila.palabraDm,
-        categoria: fila.ambito,
-        notas,
-        fuente: FUENTE_ELICITACION,
+        espanol: row.palabraEs,
+        damana: row.palabraDm,
+        categoria: row.ambito,
+        notas: notes,
+        fuente: ELICITATION_SOURCE,
       });
     }
 
-    if (fila.ejemploEs && fila.ejemploDm) {
-      if (esFilaDePrueba(fila.id)) {
+    if (row.ejemploEs && row.ejemploDm) {
+      if (isTestRow(row.id)) {
         plan.pruebas.push({
-          espanol: fila.ejemploEs,
-          damanaEsperado: fila.ejemploDm,
-          ambito: fila.ambito,
+          espanol: row.ejemploEs,
+          damanaEsperado: row.ejemploDm,
+          ambito: row.ambito,
         });
       } else {
         plan.oraciones.push({
-          idExterno: `elic_${fila.id || normalizar(fila.palabraEs)}`,
-          damana: fila.ejemploDm,
-          espanol: fila.ejemploEs,
-          fuente: FUENTE_ELICITACION,
+          idExterno: `elic_${row.id || normalize(row.palabraEs)}`,
+          damana: row.ejemploDm,
+          espanol: row.ejemploEs,
+          fuente: ELICITATION_SOURCE,
         });
       }
     }
 
-    if (fila.palabraEs) {
-      if (completa) plan.resueltas.push(fila.palabraEs);
-      else plan.pendientes.push({ palabra: fila.palabraEs, contexto: fila.ejemploEs });
+    if (row.palabraEs) {
+      if (complete) plan.resueltas.push(row.palabraEs);
+      else plan.pendientes.push({ palabra: row.palabraEs, contexto: row.ejemploEs });
     }
   }
   return plan;

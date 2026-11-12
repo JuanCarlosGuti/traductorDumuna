@@ -4,23 +4,23 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { CorpusRepository } from '../consulta/corpus.repository';
-import { ejecutarMigraciones } from '../database/migraciones';
-import { esFilaDePrueba, interpretarFila, planificarElicitacion } from '../importador/elicitacion';
-import { leerLibro } from '../importador/leer-excel';
-import { AMARILLO, COLUMNAS_ELICITACION } from '../pendientes/pendientes.service';
-import { DudasService } from './dudas.service';
-import { construirLibroDudas, HOJAS_DUDAS } from './libro-dudas';
-import { construirLibroParadigmas, PARADIGMAS } from './paradigmas';
+import { runMigrations } from '../database/migraciones';
+import { isTestRow, parseRow, planElicitation } from '../importador/elicitacion';
+import { readWorkbook } from '../importador/leer-excel';
+import { YELLOW, ELICITATION_COLUMNS } from '../pendientes/pendientes.service';
+import { DoubtsService } from './dudas.service';
+import { buildDoubtsWorkbook, DOUBT_SHEETS } from './libro-dudas';
+import { buildParadigmsWorkbook, PARADIGMS } from './paradigmas';
 
-const argb = (celda: ExcelJS.Cell) => (celda.fill as ExcelJS.FillPattern | undefined)?.fgColor?.argb;
+const argb = (cell: ExcelJS.Cell) => (cell.fill as ExcelJS.FillPattern | undefined)?.fgColor?.argb;
 
-describe('DudasService + doubts workbook', () => {
+describe('DoubtsService + doubts workbook', () => {
   let db: Database.Database;
-  let servicio: DudasService;
+  let service: DoubtsService;
 
   beforeEach(() => {
     db = new Database(':memory:');
-    ejecutarMigraciones(db);
+    runMigrations(db);
     const vocab = db.prepare(
       'INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente) VALUES (?, ?, ?, ?, ?)',
     );
@@ -32,25 +32,25 @@ describe('DudasService + doubts workbook', () => {
     vocab.run('Córtelo', 'Ako', 'Verbos', null, 'diccionario wiwa');
     vocab.run('lo cortó', 'Akó', 'Verbos', null, 'diccionario wiwa');
     vocab.run('tan', 'tan', 'Palabra frecuente', 'no hay forma para traducirlo', 'nativas 2026-10');
-    const oracion = db.prepare(
+    const sentence = db.prepare(
       `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente, dominio)
        VALUES (?, ?, ?, ?, 'lfb', 'biblico')`,
     );
-    oracion.run('o1', 'Urragamba nʉnka ingui', 'Está en la casa otra vez', 'aprobado');
-    oracion.run('o2', 'nʉnka aikuia', 'es grande', 'aprobado');
-    oracion.run('o3', 'nunka ingui urragamba ñingui', 'no es otra vez en la casa algo', 'revisar');
+    sentence.run('o1', 'Urragamba nʉnka ingui', 'Está en la casa otra vez', 'aprobado');
+    sentence.run('o2', 'nʉnka aikuia', 'es grande', 'aprobado');
+    sentence.run('o3', 'nunka ingui urragamba ñingui', 'no es otra vez en la casa algo', 'revisar');
     db.prepare(
       `INSERT INTO reglas (tipo, forma, significado, disparador) VALUES ('sufijo', '-nzhe', 'posesivo', 'posesivo')`,
     ).run();
-    servicio = new DudasService(new CorpusRepository(db));
+    service = new DoubtsService(new CorpusRepository(db));
   });
 
   afterEach(() => db.close());
 
   it('gathers in one report the doubts about spelling, synonyms, meanings and entries', () => {
-    const informe = servicio.generar();
+    const report = service.generate();
 
-    const nunka = informe.escritura.find((g) => g.formas.some((f) => f.forma === 'nunka'))!;
+    const nunka = report.escritura.find((g) => g.formas.some((f) => f.forma === 'nunka'))!;
     expect(nunka.formas.map((f) => [f.forma, f.frecuencia])).toEqual([
       ['nʉnka', 2],
       ['nunka', 1],
@@ -58,89 +58,89 @@ describe('DudasService + doubts workbook', () => {
     // the example comes from a short approved sentence, never from a «revisar» one
     expect(nunka.formas[0].ejemplo).toEqual({ damana: 'nʉnka aikuia', espanol: 'es grande' });
 
-    const dia = informe.escritura.find((g) => g.formas.some((f) => f.forma === 'dzwia'))!;
-    expect(dia.tipo).toBe('w / u');
-    expect(dia.formas[0].significados).toEqual(['Día']);
+    const day = report.escritura.find((g) => g.formas.some((f) => f.forma === 'dzwia'))!;
+    expect(day.tipo).toBe('w / u');
+    expect(day.formas[0].significados).toEqual(['Día']);
 
-    expect(informe.sinonimos.map((g) => g.espanol)).toEqual(['Grande']);
-    expect(informe.sinonimos[0].opciones.map((o) => [o.damana, o.frecuencia])).toEqual([
+    expect(report.sinonimos.map((g) => g.espanol)).toEqual(['Grande']);
+    expect(report.sinonimos[0].opciones.map((o) => [o.damana, o.frecuencia])).toEqual([
       ['Aikuia', 1],
       ['Alkwega', 0],
     ]);
-    expect(informe.polisemia).toEqual([expect.objectContaining({ clave: 'ako', soloTilde: true })]);
-    expect(informe.dudosas.map((d) => d.entrada.espanol)).toEqual(['tan']);
+    expect(report.polisemia).toEqual([expect.objectContaining({ clave: 'ako', soloTilde: true })]);
+    expect(report.dudosas.map((d) => d.entrada.espanol)).toEqual(['tan']);
   });
 
   it('does not modify any corpus data', () => {
-    const antes = db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get();
-    servicio.generar();
-    expect(db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get()).toEqual(antes);
+    const before = db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get();
+    service.generate();
+    expect(db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get()).toEqual(before);
     expect(db.prepare("SELECT damana FROM vocabulario WHERE espanol = 'tan'").get()).toEqual({ damana: 'tan' });
   });
 
   it('the workbook has one sheet per kind of doubt, with the answer cells in yellow', async () => {
-    const libro = construirLibroDudas(servicio.generar(), new Date('2026-10-05T12:00:00.000Z'));
-    expect(libro.worksheets.map((h) => h.name)).toEqual(Object.values(HOJAS_DUDAS));
+    const workbook = buildDoubtsWorkbook(service.generate(), new Date('2026-10-05T12:00:00.000Z'));
+    expect(workbook.worksheets.map((h) => h.name)).toEqual(Object.values(DOUBT_SHEETS));
 
-    const escritura = libro.getWorksheet(HOJAS_DUDAS.escritura)!;
-    const filaNunka = escritura
-      .getRows(2, escritura.rowCount - 1)!
+    const spelling = workbook.getWorksheet(DOUBT_SHEETS.escritura)!;
+    const nunkaRow = spelling
+      .getRows(2, spelling.rowCount - 1)!
       .find((f) => f.getCell(3).value === 'nʉnka')!;
-    expect(filaNunka.getCell(5).value).toBe('nunka'); // ʉ and u, side by side
-    expect(filaNunka.getCell(4).value).toBe(2);
-    expect(argb(filaNunka.getCell(14))).toBe(AMARILLO); // which is the correct form?
-    expect(argb(filaNunka.getCell(3))).toBeUndefined();
+    expect(nunkaRow.getCell(5).value).toBe('nunka'); // ʉ and u, side by side
+    expect(nunkaRow.getCell(4).value).toBe(2);
+    expect(argb(nunkaRow.getCell(14))).toBe(YELLOW); // which is the correct form?
+    expect(argb(nunkaRow.getCell(3))).toBeUndefined();
 
-    const polisemia = libro.getWorksheet(HOJAS_DUDAS.polisemia)!;
-    expect(polisemia.getRow(2).getCell(5).value).toBe('solo cambia la tilde');
+    const polysemy = workbook.getWorksheet(DOUBT_SHEETS.polisemia)!;
+    expect(polysemy.getRow(2).getCell(5).value).toBe('solo cambia la tilde');
 
     // survives being saved and reopened
-    const copia = new ExcelJS.Workbook();
-    await copia.xlsx.load((await libro.xlsx.writeBuffer()) as ExcelJS.Buffer);
-    expect(copia.worksheets).toHaveLength(6);
-    expect(copia.getWorksheet(HOJAS_DUDAS.instrucciones)!.getRow(1).getCell(1).value).toContain('2026-10-05');
+    const copy = new ExcelJS.Workbook();
+    await copy.xlsx.load((await workbook.xlsx.writeBuffer()) as ExcelJS.Buffer);
+    expect(copy.worksheets).toHaveLength(6);
+    expect(copy.getWorksheet(DOUBT_SHEETS.instrucciones)!.getRow(1).getCell(1).value).toContain('2026-10-05');
   });
 });
 
 describe('grammar batch (paradigms)', () => {
   it('has unique and stable ids, with variants of the elicitation format', () => {
-    expect(PARADIGMAS.length).toBeGreaterThanOrEqual(100);
-    expect(new Set(PARADIGMAS.map((p) => p.id)).size).toBe(PARADIGMAS.length);
-    expect(PARADIGMAS[0]).toMatchObject({ id: 'g001', ejemploEs: 'Yo como yuca.' });
-    const variantes = new Set(PARADIGMAS.map((p) => p.variante));
-    for (const v of variantes) {
+    expect(PARADIGMS.length).toBeGreaterThanOrEqual(100);
+    expect(new Set(PARADIGMS.map((p) => p.id)).size).toBe(PARADIGMS.length);
+    expect(PARADIGMS[0]).toMatchObject({ id: 'g001', ejemploEs: 'Yo como yuca.' });
+    const variants = new Set(PARADIGMS.map((p) => p.variante));
+    for (const v of variants) {
       expect(['', 'pasado', 'futuro', 'negativo', 'plural', 'pregunta']).toContain(v);
     }
     // covers the six features that trigger rules
-    expect(variantes.size).toBe(6);
+    expect(variants.size).toBe(6);
   });
 
   it('the workbook is read with the same reader as the importer and only asks for ejemplo_dm', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'paradigmas-'));
     try {
-      const ruta = path.join(dir, 'formato_elicitacion_lote2_gramatica.xlsx');
-      const libro = construirLibroParadigmas();
-      const hoja = libro.getWorksheet('elicitacion')!;
-      expect((hoja.getRow(1).values as string[]).slice(1)).toEqual([...COLUMNAS_ELICITACION]);
-      expect(argb(hoja.getRow(2).getCell(6))).toBe(AMARILLO); // ejemplo_dm
-      expect(argb(hoja.getRow(2).getCell(4))).toBeUndefined(); // palabra_dm is not requested
-      await libro.xlsx.writeFile(ruta);
+      const filePath = path.join(dir, 'formato_elicitacion_lote2_gramatica.xlsx');
+      const workbook = buildParadigmsWorkbook();
+      const sheet = workbook.getWorksheet('elicitacion')!;
+      expect((sheet.getRow(1).values as string[]).slice(1)).toEqual([...ELICITATION_COLUMNS]);
+      expect(argb(sheet.getRow(2).getCell(6))).toBe(YELLOW); // ejemplo_dm
+      expect(argb(sheet.getRow(2).getCell(4))).toBeUndefined(); // palabra_dm is not requested
+      await workbook.xlsx.writeFile(filePath);
 
-      const leida = (await leerLibro(ruta)).find((h) => h.nombre === 'elicitacion')!;
-      expect(leida.filas).toHaveLength(PARADIGMAS.length);
-      expect(leida.filas[0]).toMatchObject({ id: 'g001', ambito: 'gramatica', ejemplo_es: 'Yo como yuca.' });
+      const parsed = (await readWorkbook(filePath)).find((h) => h.nombre === 'elicitacion')!;
+      expect(parsed.filas).toHaveLength(PARADIGMS.length);
+      expect(parsed.filas[0]).toMatchObject({ id: 'g001', ambito: 'gramatica', ejemplo_es: 'Yo como yuca.' });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 
   it('a filled row produces an everyday sentence and no word or pending item (with ʉ from u+)', () => {
-    const normal = PARADIGMAS.find((p) => !esFilaDePrueba(p.id))!;
-    const fila = interpretarFila(
+    const normal = PARADIGMS.find((p) => !isTestRow(p.id))!;
+    const row = parseRow(
       { id: normal.id, ambito: 'gramatica', palabra_es: '', palabra_dm: '', ejemplo_es: normal.ejemploEs, ejemplo_dm: 'ra irrugwa zhu+nka', variante: normal.variante, notas: normal.etiqueta },
       'formato_elicitacion_lote2_gramatica.xlsx',
     )!;
-    const plan = planificarElicitacion([fila]);
+    const plan = planElicitation([row]);
     expect(plan.oraciones).toEqual([
       { idExterno: `elic_${normal.id}`, damana: 'ra irrugwa zhʉnka', espanol: normal.ejemploEs, fuente: 'elicitacion' },
     ]);
@@ -149,10 +149,10 @@ describe('grammar batch (paradigms)', () => {
   });
 
   it('unfilled it leaves nothing: neither sentences nor pending items', () => {
-    const filas = PARADIGMAS.map(
-      (p) => interpretarFila({ id: p.id, ambito: 'gramatica', palabra_es: '', ejemplo_es: p.ejemploEs }, 'x')!,
+    const rows = PARADIGMS.map(
+      (p) => parseRow({ id: p.id, ambito: 'gramatica', palabra_es: '', ejemplo_es: p.ejemploEs }, 'x')!,
     );
-    const plan = planificarElicitacion(filas);
+    const plan = planElicitation(rows);
     expect(plan.oraciones).toEqual([]);
     expect(plan.pendientes).toEqual([]);
     expect(plan.pruebas).toEqual([]);

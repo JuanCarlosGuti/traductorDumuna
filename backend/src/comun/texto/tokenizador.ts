@@ -1,4 +1,4 @@
-import { normalizar } from './normalizador';
+import { normalize } from './normalizador';
 
 export interface TokenDamana {
   original: string;
@@ -13,14 +13,14 @@ export interface TokenDamana {
  * kept if they are internal to the word (they are trimmed at the edges).
  * Signs (¿? , .), digits and line breaks act as separators.
  */
-export function tokenizarDamana(texto: string): TokenDamana[] {
-  return texto
+export function tokenizeDamana(text: string): TokenDamana[] {
+  return text
     .split(/[^\p{L}ʉ']+/u)
     .map((t) => t.replace(/^'+|'+$/g, ''))
     .filter((t) => t.length > 0)
-    .map((original, posicion) => ({
+    .map((original, position) => ({
       original,
-      normalizada: normalizar(original),
-      posicion,
+      normalizada: normalize(original),
+      posicion: position,
     }));
 }

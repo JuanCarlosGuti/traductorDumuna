@@ -1,23 +1,23 @@
 import { Module } from '@nestjs/common';
-import { BusquedaService } from './busqueda.service';
-import { ConsultaController } from './consulta.controller';
+import { SearchService } from './busqueda.service';
+import { QueryController } from './consulta.controller';
 import { CorpusRepository } from './corpus.repository';
-import { FrecuenciasService } from './frecuencias.service';
-import { GramaticaController } from './gramatica.controller';
-import { GramaticaService } from './gramatica.service';
-import { PalabraService } from './palabra.service';
+import { FrequenciesService } from './frecuencias.service';
+import { GrammarController } from './gramatica.controller';
+import { GrammarService } from './gramatica.service';
+import { WordService } from './palabra.service';
 import { RetrievalService } from './retrieval.service';
 
 @Module({
-  controllers: [ConsultaController, GramaticaController],
+  controllers: [QueryController, GrammarController],
   providers: [
     CorpusRepository,
-    BusquedaService,
-    PalabraService,
-    FrecuenciasService,
-    GramaticaService,
+    SearchService,
+    WordService,
+    FrequenciesService,
+    GrammarService,
     RetrievalService,
   ],
-  exports: [CorpusRepository, PalabraService, FrecuenciasService, RetrievalService],
+  exports: [CorpusRepository, WordService, FrequenciesService, RetrievalService],
 })
-export class ConsultaModule {}
+export class QueryModule {}

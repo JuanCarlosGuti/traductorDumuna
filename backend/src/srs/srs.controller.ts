@@ -6,9 +6,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import {
-  EstadoSrsDto,
-  ProgresoActualizadoDto,
-  RespuestaSrsDto,
+  SrsStatusDto,
+  UpdatedProgressDto,
+  SrsAnswerDto,
 } from './dto/srs.dto';
 import { SrsService } from './srs.service';
 
@@ -23,9 +23,9 @@ export class SrsController {
     description:
       'Mazo = vocabulario completo + las 300 palabras damana más frecuentes. Devuelve primero las tarjetas vencidas, luego las nuevas; tarjeta null si no queda nada.',
   })
-  @ApiOkResponse({ type: EstadoSrsDto })
-  siguiente(): EstadoSrsDto {
-    return this.srs.siguiente();
+  @ApiOkResponse({ type: SrsStatusDto })
+  nextCard(): SrsStatusDto {
+    return this.srs.nextCard();
   }
 
   @Post('respuesta')
@@ -34,9 +34,9 @@ export class SrsController {
     description:
       'Actualiza el progreso con SM-2 simplificado: otra_vez reinicia (vence ya), dificil/bien/facil programan la próxima revisión.',
   })
-  @ApiOkResponse({ type: ProgresoActualizadoDto })
+  @ApiOkResponse({ type: UpdatedProgressDto })
   @ApiNotFoundResponse({ description: 'La palabra no está en el mazo' })
-  responder(@Body() dto: RespuestaSrsDto): ProgresoActualizadoDto {
-    return this.srs.responder(dto.palabra, dto.calificacion);
+  answer(@Body() dto: SrsAnswerDto): UpdatedProgressDto {
+    return this.srs.answer(dto.palabra, dto.calificacion);
   }
 }

@@ -12,10 +12,10 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CONFIG_AUTH, ConfigAuth } from './auth.config';
-import { PeticionConSesion } from './auth.guard';
+import { RequestWithSession } from './auth.guard';
 import { AuthService } from './auth.service';
-import { Publico } from './publico.decorator';
-import { EstadoAuthDto, LoginDto, SesionDto, UsuarioDto } from './dto/auth.dto';
+import { Public } from './publico.decorator';
+import { AuthStatusDto, LoginDto, SessionDto, UserDto } from './dto/auth.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -25,37 +25,37 @@ export class AuthController {
     @Inject(CONFIG_AUTH) private readonly config: ConfigAuth,
   ) {}
 
-  @Publico()
+  @Public()
   @Get('estado')
   @ApiOperation({
     summary: '¿Exige sesión este servidor? Permite a la app saltarse el login en local.',
   })
-  estado(): EstadoAuthDto {
+  status(): AuthStatusDto {
     return { activa: this.config.activa };
   }
 
-  @Publico()
+  @Public()
   @Post('login')
   // 200 instead of POST's default 201: no resource is being created.
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Entrega un token de sesión a cambio de las credenciales' })
-  login(@Body() dto: LoginDto, @Req() peticion: PeticionConSesion): SesionDto {
-    const ip = peticion.ip ?? 'desconocida';
-    if (this.auth.bloqueado(ip)) {
+  login(@Body() dto: LoginDto, @Req() request: RequestWithSession): SessionDto {
+    const ip = request.ip ?? 'desconocida';
+    if (this.auth.blocked(ip)) {
       throw new HttpException(
         'Demasiados intentos fallidos; espera unos minutos.',
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
-    if (!this.auth.verificar(dto.usuario, dto.password)) {
-      this.auth.registrarFallo(ip);
+    if (!this.auth.verify(dto.usuario, dto.password)) {
+      this.auth.recordFailure(ip);
       // Same message for user and password: telling them apart would confirm
       // to whoever is probing which of the two was right.
       throw new UnauthorizedException('Usuario o contraseña incorrectos');
     }
-    this.auth.olvidarFallos(ip);
+    this.auth.forgetFailures(ip);
     return {
-      token: this.auth.emitirToken(dto.usuario),
+      token: this.auth.issueToken(dto.usuario),
       usuario: dto.usuario,
       duracionDias: this.config.duracionDias,
     };
@@ -64,7 +64,7 @@ export class AuthController {
   @Get('sesion')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Comprueba que el token sigue siendo válido' })
-  sesion(@Req() peticion: PeticionConSesion): UsuarioDto {
-    return { usuario: peticion.usuario ?? this.config.usuario };
+  session(@Req() request: RequestWithSession): UserDto {
+    return { usuario: request.usuario ?? this.config.usuario };
   }
 }

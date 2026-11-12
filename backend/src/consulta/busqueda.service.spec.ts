@@ -1,17 +1,17 @@
 import Database from 'better-sqlite3';
-import { ejecutarMigraciones } from '../database/migraciones';
-import { BusquedaService } from './busqueda.service';
-import { FuenteCorpus, Idioma } from './consulta.enums';
+import { runMigrations } from '../database/migraciones';
+import { SearchService } from './busqueda.service';
+import { CorpusSource, Language } from './consulta.enums';
 import { CorpusRepository } from './corpus.repository';
 import { RetrievalService } from './retrieval.service';
 
-describe('BusquedaService', () => {
+describe('SearchService', () => {
   let db: Database.Database;
-  let servicio: BusquedaService;
+  let service: SearchService;
 
   beforeEach(() => {
     db = new Database(':memory:');
-    ejecutarMigraciones(db);
+    runMigrations(db);
     db.prepare(
       `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
        VALUES ('o1', 'Jehovága nʉnka kʉñingui gontka', 'Jehová hizo el agua', 'aprobado', 'lfb')`,
@@ -33,19 +33,19 @@ describe('BusquedaService', () => {
        VALUES ('nʉnkanka', 'él fue', 'ser', 'doc', NULL)`,
     ).run();
     const repo = new CorpusRepository(db);
-    servicio = new BusquedaService(repo, new RetrievalService(repo));
+    service = new SearchService(repo, new RetrievalService(repo));
   });
 
   afterEach(() => db.close());
 
   it('finds in Damana across the four sources, with <mark> and ʉ intact', () => {
-    const r = servicio.buscar({ q: 'nʉnka', idioma: Idioma.damana, limite: 100 });
+    const r = service.search({ q: 'nʉnka', idioma: Language.damana, limite: 100 });
     expect(r.modo).toBe('concordancia');
     expect(r.total).toBe(3); // sentence 1, phrase, vocabulary (nʉnkanka does NOT match nʉnka)
     expect(r.resultados.map((c) => c.fuente)).toEqual([
-      FuenteCorpus.oraciones,
-      FuenteCorpus.frases,
-      FuenteCorpus.vocabulario,
+      CorpusSource.oraciones,
+      CorpusSource.frases,
+      CorpusSource.vocabulario,
     ]);
     for (const c of r.resultados) {
       expect(c.fragmento).toContain('<mark>nʉnka</mark>');
@@ -53,31 +53,31 @@ describe('BusquedaService', () => {
   });
 
   it('conjugations are searchable with the reference «conjugación N (lema)»', () => {
-    const r = servicio.buscar({ q: 'nʉnkanka', idioma: Idioma.damana, limite: 10 });
+    const r = service.search({ q: 'nʉnkanka', idioma: Language.damana, limite: 10 });
     expect(r.total).toBe(1);
-    expect(r.resultados[0].fuente).toBe(FuenteCorpus.conjugaciones);
+    expect(r.resultados[0].fuente).toBe(CorpusSource.conjugaciones);
     expect(r.resultados[0].referencia).toBe('conjugación 1 (ser)');
     expect(r.resultados[0].textoParalelo).toBe('él fue');
   });
 
   it('does not confuse ʉ with u or ñ with n', () => {
-    expect(servicio.buscar({ q: 'nunka', idioma: Idioma.damana, limite: 10 }).total).toBe(0);
-    expect(servicio.buscar({ q: 'ningui', idioma: Idioma.damana, limite: 10 }).total).toBe(0);
-    expect(servicio.buscar({ q: 'ñingui', idioma: Idioma.damana, limite: 10 }).total).toBe(1);
+    expect(service.search({ q: 'nunka', idioma: Language.damana, limite: 10 }).total).toBe(0);
+    expect(service.search({ q: 'ningui', idioma: Language.damana, limite: 10 }).total).toBe(0);
+    expect(service.search({ q: 'ñingui', idioma: Language.damana, limite: 10 }).total).toBe(1);
   });
 
   it('searches in Spanish without accents and returns the Damana as parallel', () => {
-    const r = servicio.buscar({ q: 'jehova', idioma: Idioma.espanol, limite: 10 });
+    const r = service.search({ q: 'jehova', idioma: Language.espanol, limite: 10 });
     expect(r.total).toBe(1);
     expect(r.resultados[0].fragmento).toContain('<mark>Jehová</mark>');
     expect(r.resultados[0].textoParalelo).toContain('Jehovága');
   });
 
   it('filters by source', () => {
-    const r = servicio.buscar({
+    const r = service.search({
       q: 'nʉnka',
-      idioma: Idioma.damana,
-      fuente: FuenteCorpus.frases,
+      idioma: Language.damana,
+      fuente: CorpusSource.frases,
       limite: 10,
     });
     expect(r.total).toBe(1);
@@ -85,38 +85,38 @@ describe('BusquedaService', () => {
   });
 
   it('a sentence reference marks the revisar state', () => {
-    const r = servicio.buscar({ q: 'ñingui', idioma: Idioma.damana, limite: 10 });
+    const r = service.search({ q: 'ñingui', idioma: Language.damana, limite: 10 });
     expect(r.resultados[0].referencia).toBe('oración 2 (revisar)');
   });
 
   it('respects the limit but reports the real total', () => {
-    const r = servicio.buscar({ q: 'nʉnka', idioma: Idioma.damana, limite: 2 });
+    const r = service.search({ q: 'nʉnka', idioma: Language.damana, limite: 2 });
     expect(r.total).toBe(3);
     expect(r.resultados).toHaveLength(2);
   });
 
   describe('similarity mode (multi-word queries)', () => {
     it('a Damana phrase returns similar sentences with score and highlighted words', () => {
-      const r = servicio.buscar({
+      const r = service.search({
         q: 'nʉnka kʉñingui',
-        idioma: Idioma.damana,
+        idioma: Language.damana,
         limite: 10,
       });
       expect(r.modo).toBe('similitud');
       expect(r.total).toBeGreaterThan(0);
-      const primero = r.resultados[0];
-      expect(primero.referencia).toBe('oración 1');
-      expect(primero.puntaje).toBeGreaterThan(0);
+      const firstItem = r.resultados[0];
+      expect(firstItem.referencia).toBe('oración 1');
+      expect(firstItem.puntaje).toBeGreaterThan(0);
       // both words of the query are highlighted
-      expect(primero.fragmento).toContain('<mark>nʉnka</mark>');
-      expect(primero.fragmento).toContain('<mark>kʉñingui</mark>');
-      expect(primero.textoParalelo).toBe('Jehová hizo el agua');
+      expect(firstItem.fragmento).toContain('<mark>nʉnka</mark>');
+      expect(firstItem.fragmento).toContain('<mark>kʉñingui</mark>');
+      expect(firstItem.textoParalelo).toBe('Jehová hizo el agua');
     });
 
     it('a Spanish phrase finds by similarity (accent-insensitive)', () => {
-      const r = servicio.buscar({
+      const r = service.search({
         q: 'jehova hizo agua',
-        idioma: Idioma.espanol,
+        idioma: Language.espanol,
         limite: 10,
       });
       expect(r.modo).toBe('similitud');
@@ -127,22 +127,22 @@ describe('BusquedaService', () => {
     });
 
     it('filters by source in similarity mode too', () => {
-      const r = servicio.buscar({
+      const r = service.search({
         q: 'nʉnka nanu',
-        idioma: Idioma.damana,
-        fuente: FuenteCorpus.frases,
+        idioma: Language.damana,
+        fuente: CorpusSource.frases,
         limite: 10,
       });
       expect(r.modo).toBe('similitud');
       for (const c of r.resultados) {
-        expect(c.fuente).toBe(FuenteCorpus.frases);
+        expect(c.fuente).toBe(CorpusSource.frases);
       }
     });
 
     it('a phrase with no corpus words returns empty without breaking', () => {
-      const r = servicio.buscar({
+      const r = service.search({
         q: 'zzz www qqq',
-        idioma: Idioma.damana,
+        idioma: Language.damana,
         limite: 10,
       });
       expect(r.modo).toBe('similitud');

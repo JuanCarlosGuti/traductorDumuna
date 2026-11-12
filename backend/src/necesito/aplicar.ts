@@ -2,61 +2,61 @@ import * as ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parse } from 'csv-parse/sync';
-import { normalizar } from '../comun/texto/normalizador';
-import { corregirOrtografiaDamana } from '../comun/texto/ortografia';
-import { resolverDirDatos } from '../importador/rutas-datos';
-import { ARCHIVO_DAMANA, ARCHIVO_ESPANOL } from './necesito';
+import { normalize } from '../comun/texto/normalizador';
+import { fixDamanaSpelling } from '../comun/texto/ortografia';
+import { resolveDataDir } from '../importador/rutas-datos';
+import { DAMANA_FILE, SPANISH_FILE } from './necesito';
 
 const CSV_VOCABULARIO = 'corpus_vocabulario_v3.csv';
-const FUENTE_NUEVA = 'lista automatica';
+const NEW_SOURCE = 'lista automatica';
 const BOM = String.fromCharCode(0xfeff);
 
-export interface FilaLlenada {
+export interface FilledRow {
   espanol: string;
   damana: string;
 }
 
-export interface ResultadoAplicar {
-  agregadas: FilaLlenada[];
-  duplicadas: FilaLlenada[];
+export interface ApplyResult {
+  agregadas: FilledRow[];
+  duplicadas: FilledRow[];
   sinLlenar: number;
 }
 
 /** Comparison key: the full pair, with ʉ ≠ u and ñ ≠ n. */
-function clave(espanol: string, damana: string): string {
-  return `${normalizar(espanol.trim())}|${normalizar(damana.trim())}`;
+function key(spanish: string, damana: string): string {
+  return `${normalize(spanish.trim())}|${normalize(damana.trim())}`;
 }
 
 /**
  * Decides which Excel rows are new for the glossary. It modifies nothing:
  * returning the plan lets it be tested and shown before writing.
  */
-export function planificar(
-  llenadas: FilaLlenada[],
-  vocabularioActual: { espanol: string; damana: string }[],
-): Omit<ResultadoAplicar, 'sinLlenar'> {
-  const existentes = new Set(vocabularioActual.map((v) => clave(v.espanol, v.damana)));
-  const agregadas: FilaLlenada[] = [];
-  const duplicadas: FilaLlenada[] = [];
+export function planChanges(
+  filled: FilledRow[],
+  currentVocabulary: { espanol: string; damana: string }[],
+): Omit<ApplyResult, 'sinLlenar'> {
+  const existing = new Set(currentVocabulary.map((v) => key(v.espanol, v.damana)));
+  const added: FilledRow[] = [];
+  const duplicated: FilledRow[] = [];
 
-  for (const fila of llenadas) {
-    const espanol = fila.espanol.trim();
+  for (const row of filled) {
+    const spanish = row.espanol.trim();
     // Same spelling fix the importer applies (ü → ʉ).
-    const damana = corregirOrtografiaDamana(fila.damana.trim());
-    const k = clave(espanol, damana);
-    if (existentes.has(k)) {
-      duplicadas.push({ espanol, damana });
+    const damana = fixDamanaSpelling(row.damana.trim());
+    const k = key(spanish, damana);
+    if (existing.has(k)) {
+      duplicated.push({ espanol: spanish, damana });
       continue;
     }
-    existentes.add(k); // avoids duplicates within the Excel itself
-    agregadas.push({ espanol, damana });
+    existing.add(k); // avoids duplicates within the Excel itself
+    added.push({ espanol: spanish, damana });
   }
-  return { agregadas, duplicadas };
+  return { agregadas: added, duplicadas: duplicated };
 }
 
 /** Escapes a field for CSV only when needed. */
-function campo(valor: string): string {
-  return /[",\n\r]/.test(valor) ? `"${valor.replace(/"/g, '""')}"` : valor;
+function field(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
 /**
@@ -64,20 +64,20 @@ function campo(valor: string): string {
  * terminator: the project's CSVs come with CRLF and mixing in LF leaves records
  * stuck together that csv-parse can no longer read.
  */
-export function construirLineas(
-  agregadas: FilaLlenada[],
-  contenidoActual: string,
+export function buildLines(
+  added: FilledRow[],
+  currentContent: string,
 ): string {
-  if (agregadas.length === 0) return '';
-  const eol = contenidoActual.includes('\r\n') ? '\r\n' : '\n';
-  const faltaSaltoFinal =
-    contenidoActual.length > 0 && !/\r?\n$/.test(contenidoActual);
-  const filas = agregadas
+  if (added.length === 0) return '';
+  const eol = currentContent.includes('\r\n') ? '\r\n' : '\n';
+  const missingFinalNewline =
+    currentContent.length > 0 && !/\r?\n$/.test(currentContent);
+  const rows = added
     .map((f) =>
-      [campo(f.espanol), campo(f.damana), '', '', campo(FUENTE_NUEVA)].join(','),
+      [field(f.espanol), field(f.damana), '', '', field(NEW_SOURCE)].join(','),
     )
     .join(eol);
-  return `${faltaSaltoFinal ? eol : ''}${filas}${eol}`;
+  return `${missingFinalNewline ? eol : ''}${rows}${eol}`;
 }
 
 /**
@@ -85,78 +85,78 @@ export function construirLineas(
  * (one is filled in by the speaker); `columnaEspanol` says which of them is the
  * Spanish, because the order is reversed between the two files.
  */
-async function leerExcel(
-  ruta: string,
-  columnaEspanol: 1 | 2,
-): Promise<{ llenadas: FilaLlenada[]; sinLlenar: number }> {
-  const llenadas: FilaLlenada[] = [];
-  let sinLlenar = 0;
-  if (!fs.existsSync(ruta)) return { llenadas, sinLlenar };
+async function readExcel(
+  filePath: string,
+  spanishColumn: 1 | 2,
+): Promise<{ llenadas: FilledRow[]; sinLlenar: number }> {
+  const filled: FilledRow[] = [];
+  let unfilled = 0;
+  if (!fs.existsSync(filePath)) return { llenadas: filled, sinLlenar: unfilled };
 
-  const libro = new ExcelJS.Workbook();
-  await libro.xlsx.readFile(ruta);
-  const hoja = libro.worksheets[0];
-  const columnaDamana = columnaEspanol === 1 ? 2 : 1;
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(filePath);
+  const sheet = workbook.worksheets[0];
+  const damanaColumn = spanishColumn === 1 ? 2 : 1;
 
-  hoja.eachRow((fila, numero) => {
-    if (numero === 1) return; // header
-    const espanol = String(fila.getCell(columnaEspanol).value ?? '').trim();
-    const damana = String(fila.getCell(columnaDamana).value ?? '').trim();
-    if (!espanol && !damana) return;
-    if (!espanol || !damana) {
-      sinLlenar++;
+  sheet.eachRow((row, num) => {
+    if (num === 1) return; // header
+    const spanish = String(row.getCell(spanishColumn).value ?? '').trim();
+    const damana = String(row.getCell(damanaColumn).value ?? '').trim();
+    if (!spanish && !damana) return;
+    if (!spanish || !damana) {
+      unfilled++;
       return;
     }
-    llenadas.push({ espanol, damana });
+    filled.push({ espanol: spanish, damana });
   });
-  return { llenadas, sinLlenar };
+  return { llenadas: filled, sinLlenar: unfilled };
 }
 
 async function main(): Promise<void> {
-  const dirDatos = resolverDirDatos();
-  const rutaCsv = path.join(dirDatos, CSV_VOCABULARIO);
-  const rutaEspanol = path.join(dirDatos, ARCHIVO_ESPANOL);
-  const rutaDamana = path.join(dirDatos, ARCHIVO_DAMANA);
+  const dataDir = resolveDataDir();
+  const csvPath = path.join(dataDir, CSV_VOCABULARIO);
+  const spanishPath = path.join(dataDir, SPANISH_FILE);
+  const damanaPath = path.join(dataDir, DAMANA_FILE);
 
-  if (!fs.existsSync(rutaEspanol) && !fs.existsSync(rutaDamana)) {
+  if (!fs.existsSync(spanishPath) && !fs.existsSync(damanaPath)) {
     console.error(
-      `No se encontró ni ${ARCHIVO_ESPANOL} ni ${ARCHIVO_DAMANA} en ${dirDatos}.\n` +
+      `No se encontró ni ${SPANISH_FILE} ni ${DAMANA_FILE} en ${dataDir}.\n` +
         'Ejecuta antes: npm run necesito',
     );
     process.exit(1);
   }
 
   // In the Spanish→Damana file the Spanish goes first; in the other, second.
-  const desdeEspanol = await leerExcel(rutaEspanol, 1);
-  const desdeDamana = await leerExcel(rutaDamana, 2);
-  const llenadas = [...desdeEspanol.llenadas, ...desdeDamana.llenadas];
-  const sinLlenar = desdeEspanol.sinLlenar + desdeDamana.sinLlenar;
+  const fromSpanish = await readExcel(spanishPath, 1);
+  const fromDamana = await readExcel(damanaPath, 2);
+  const filled = [...fromSpanish.llenadas, ...fromDamana.llenadas];
+  const unfilled = fromSpanish.sinLlenar + fromDamana.sinLlenar;
 
-  const vocabulario = parse(fs.readFileSync(rutaCsv), {
+  const vocabulary = parse(fs.readFileSync(csvPath), {
     columns: true,
     bom: true,
     skip_empty_lines: true,
   }) as { espanol: string; damana: string }[];
 
-  const { agregadas, duplicadas } = planificar(llenadas, vocabulario);
+  const { agregadas: added, duplicadas: duplicated } = planChanges(filled, vocabulary);
 
-  if (agregadas.length > 0) {
+  if (added.length > 0) {
     // It is APPENDED at the end; existing rows are never rewritten or deleted.
-    const actual = fs.readFileSync(rutaCsv, 'utf8');
-    fs.appendFileSync(rutaCsv, construirLineas(agregadas, actual), 'utf8');
+    const current = fs.readFileSync(csvPath, 'utf8');
+    fs.appendFileSync(csvPath, buildLines(added, current), 'utf8');
   }
 
   console.log(`\n=== ${CSV_VOCABULARIO} actualizado ===`);
   console.log(
-    `Pares completos: ${llenadas.length}  ` +
-      `(${desdeEspanol.llenadas.length} de ${ARCHIVO_ESPANOL}, ` +
-      `${desdeDamana.llenadas.length} de ${ARCHIVO_DAMANA}; sin llenar: ${sinLlenar})`,
+    `Pares completos: ${filled.length}  ` +
+      `(${fromSpanish.llenadas.length} de ${SPANISH_FILE}, ` +
+      `${fromDamana.llenadas.length} de ${DAMANA_FILE}; sin llenar: ${unfilled})`,
   );
-  console.log(`  agregadas al glosario:  ${agregadas.length}`);
-  console.log(`  omitidas por duplicadas: ${duplicadas.length}`);
-  agregadas.slice(0, 10).forEach((f) => console.log(`    + ${f.espanol} = ${f.damana}`));
-  duplicadas.slice(0, 5).forEach((f) => console.log(`    · ya estaba: ${f.espanol} = ${f.damana}`));
-  if (agregadas.length > 0) {
+  console.log(`  agregadas al glosario:  ${added.length}`);
+  console.log(`  omitidas por duplicadas: ${duplicated.length}`);
+  added.slice(0, 10).forEach((f) => console.log(`    + ${f.espanol} = ${f.damana}`));
+  duplicated.slice(0, 5).forEach((f) => console.log(`    · ya estaba: ${f.espanol} = ${f.damana}`));
+  if (added.length > 0) {
     console.log('\nAhora ejecuta: npm run importar   (para que la app las use)');
   }
 }

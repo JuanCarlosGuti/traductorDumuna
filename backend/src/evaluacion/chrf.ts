@@ -8,27 +8,27 @@
  * full stop must not subtract. ʉ and ñ count as characters of their own: «nunka» and
  * «nʉnka» differ by one character, which is what we want to measure.
  */
-export const ORDEN_MAXIMO = 6;
+export const MAX_ORDER = 6;
 export const BETA = 2;
 
-export function prepararTexto(texto: string): string {
-  return texto
+export function prepareText(text: string): string {
+  return text
     .normalize('NFC')
     .toLowerCase()
     .replace(/[^\p{L}\p{N}']/gu, '');
 }
 
 /** Character n-gram count of an already prepared text. */
-export function ngramas(texto: string, n: number): Map<string, number> {
-  const conteo = new Map<string, number>();
-  for (let i = 0; i + n <= texto.length; i++) {
-    const g = texto.slice(i, i + n);
-    conteo.set(g, (conteo.get(g) ?? 0) + 1);
+export function ngrams(text: string, n: number): Map<string, number> {
+  const tally = new Map<string, number>();
+  for (let i = 0; i + n <= text.length; i++) {
+    const g = text.slice(i, i + n);
+    tally.set(g, (tally.get(g) ?? 0) + 1);
   }
-  return conteo;
+  return tally;
 }
 
-function coincidencias(a: Map<string, number>, b: Map<string, number>): number {
+function matches(a: Map<string, number>, b: Map<string, number>): number {
   let total = 0;
   for (const [g, na] of a) {
     const nb = b.get(g);
@@ -37,7 +37,7 @@ function coincidencias(a: Map<string, number>, b: Map<string, number>): number {
   return total;
 }
 
-function sumar(m: Map<string, number>): number {
+function addUp(m: Map<string, number>): number {
   let s = 0;
   for (const v of m.values()) s += v;
   return s;
@@ -51,34 +51,34 @@ function sumar(m: Map<string, number>): number {
  * 6-grams.
  */
 export function chrF(
-  hipotesis: string,
-  referencia: string,
-  ordenMaximo = ORDEN_MAXIMO,
+  hypothesis: string,
+  reference: string,
+  maxOrder = MAX_ORDER,
   beta = BETA,
 ): number {
-  const h = prepararTexto(hipotesis);
-  const r = prepararTexto(referencia);
+  const h = prepareText(hypothesis);
+  const r = prepareText(reference);
   if (h.length === 0 && r.length === 0) return 1;
   if (h.length === 0 || r.length === 0) return 0;
 
-  let sumaPrecision = 0;
-  let sumaCobertura = 0;
-  let ordenes = 0;
-  for (let n = 1; n <= ordenMaximo; n++) {
-    const gh = ngramas(h, n);
-    const gr = ngramas(r, n);
-    const totalH = sumar(gh);
-    const totalR = sumar(gr);
+  let precisionSum = 0;
+  let recallSum = 0;
+  let orders = 0;
+  for (let n = 1; n <= maxOrder; n++) {
+    const gh = ngrams(h, n);
+    const gr = ngrams(r, n);
+    const totalH = addUp(gh);
+    const totalR = addUp(gr);
     if (totalH === 0 || totalR === 0) continue;
-    const comunes = coincidencias(gh, gr);
-    sumaPrecision += comunes / totalH;
-    sumaCobertura += comunes / totalR;
-    ordenes++;
+    const common = matches(gh, gr);
+    precisionSum += common / totalH;
+    recallSum += common / totalR;
+    orders++;
   }
-  if (ordenes === 0) return 0;
-  const precision = sumaPrecision / ordenes;
-  const cobertura = sumaCobertura / ordenes;
-  if (precision + cobertura === 0) return 0;
+  if (orders === 0) return 0;
+  const precision = precisionSum / orders;
+  const coverage = recallSum / orders;
+  if (precision + coverage === 0) return 0;
   const b2 = beta * beta;
-  return ((1 + b2) * precision * cobertura) / (b2 * precision + cobertura);
+  return ((1 + b2) * precision * coverage) / (b2 * precision + coverage);
 }

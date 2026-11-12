@@ -4,11 +4,11 @@ import { createHash, timingSafeEqual } from 'crypto';
 import { CONFIG_AUTH, ConfigAuth } from './auth.config';
 
 /** Failed attempts tolerated per IP before blocking. */
-export const MAX_INTENTOS = 8;
+export const MAX_ATTEMPTS = 8;
 /** How long the block lasts once the attempts are used up. */
-export const BLOQUEO_MS = 10 * 60 * 1000;
+export const BLOCK_MS = 10 * 60 * 1000;
 
-interface Intentos {
+interface Attempts {
   fallos: number;
   ultimo: number;
 }
@@ -19,7 +19,7 @@ interface Intentos {
  * the password be guessed character by character. The SHA-256 digests are
  * compared because timingSafeEqual requires both sides to have the same length.
  */
-function igualSeguro(a: string, b: string): boolean {
+function safeEqual(a: string, b: string): boolean {
   const ha = createHash('sha256').update(a, 'utf8').digest();
   const hb = createHash('sha256').update(b, 'utf8').digest();
   return timingSafeEqual(ha, hb);
@@ -27,7 +27,7 @@ function igualSeguro(a: string, b: string): boolean {
 
 @Injectable()
 export class AuthService {
-  private readonly intentosPorIp = new Map<string, Intentos>();
+  private readonly attemptsByIp = new Map<string, Attempts>();
 
   constructor(
     @Inject(CONFIG_AUTH) private readonly config: ConfigAuth,
@@ -39,54 +39,54 @@ export class AuthService {
    * wrong user skipped the password check, the response
    * time would reveal when the user was right.
    */
-  verificar(usuario: string, password: string): boolean {
-    const usuarioOk = igualSeguro(usuario, this.config.usuario);
-    const passwordOk = igualSeguro(password, this.config.password);
-    return usuarioOk && passwordOk;
+  verify(user: string, password: string): boolean {
+    const userOk = safeEqual(user, this.config.usuario);
+    const passwordOk = safeEqual(password, this.config.password);
+    return userOk && passwordOk;
   }
 
-  emitirToken(usuario: string): string {
-    return this.jwt.sign({ sub: usuario });
+  issueToken(user: string): string {
+    return this.jwt.sign({ sub: user });
   }
 
   /** The user in the token, or null if it has been tampered with or has expired. */
-  usuarioDelToken(token: string): string | null {
+  userFromToken(token: string): string | null {
     try {
-      const carga = this.jwt.verify<{ sub?: string }>(token);
-      return typeof carga.sub === 'string' ? carga.sub : null;
+      const load = this.jwt.verify<{ sub?: string }>(token);
+      return typeof load.sub === 'string' ? load.sub : null;
     } catch {
       return null;
     }
   }
 
-  bloqueado(ip: string, ahora: number = Date.now()): boolean {
-    const intentos = this.intentosPorIp.get(ip);
-    if (!intentos) return false;
-    if (ahora - intentos.ultimo > BLOQUEO_MS) {
-      this.intentosPorIp.delete(ip);
+  blocked(ip: string, now: number = Date.now()): boolean {
+    const attempts = this.attemptsByIp.get(ip);
+    if (!attempts) return false;
+    if (now - attempts.ultimo > BLOCK_MS) {
+      this.attemptsByIp.delete(ip);
       return false;
     }
-    return intentos.fallos >= MAX_INTENTOS;
+    return attempts.fallos >= MAX_ATTEMPTS;
   }
 
-  registrarFallo(ip: string, ahora: number = Date.now()): void {
-    this.purgar(ahora);
-    const intentos = this.intentosPorIp.get(ip);
-    const vigente = intentos && ahora - intentos.ultimo <= BLOQUEO_MS;
-    this.intentosPorIp.set(ip, {
-      fallos: vigente ? intentos.fallos + 1 : 1,
-      ultimo: ahora,
+  recordFailure(ip: string, now: number = Date.now()): void {
+    this.purge(now);
+    const attempts = this.attemptsByIp.get(ip);
+    const valid = attempts && now - attempts.ultimo <= BLOCK_MS;
+    this.attemptsByIp.set(ip, {
+      fallos: valid ? attempts.fallos + 1 : 1,
+      ultimo: now,
     });
   }
 
-  olvidarFallos(ip: string): void {
-    this.intentosPorIp.delete(ip);
+  forgetFailures(ip: string): void {
+    this.attemptsByIp.delete(ip);
   }
 
   /** Keeps the map from growing without bound with IPs that no longer matter. */
-  private purgar(ahora: number): void {
-    for (const [ip, intentos] of this.intentosPorIp) {
-      if (ahora - intentos.ultimo > BLOQUEO_MS) this.intentosPorIp.delete(ip);
+  private purge(now: number): void {
+    for (const [ip, attempts] of this.attemptsByIp) {
+      if (now - attempts.ultimo > BLOCK_MS) this.attemptsByIp.delete(ip);
     }
   }
 }

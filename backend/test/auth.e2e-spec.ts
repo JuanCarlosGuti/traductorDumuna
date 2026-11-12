@@ -6,27 +6,27 @@ import * as path from 'path';
 import request from 'supertest';
 import { AuthModule } from '../src/auth/auth.module';
 import { ConfigAuth } from '../src/auth/auth.config';
-import { MAX_INTENTOS } from '../src/auth/auth.service';
-import { configurarApp } from '../src/configurar-app';
-import { ConsultaModule } from '../src/consulta/consulta.module';
+import { MAX_ATTEMPTS } from '../src/auth/auth.service';
+import { configureApp } from '../src/configurar-app';
+import { QueryModule } from '../src/consulta/consulta.module';
 import { DatabaseModule } from '../src/database/database.module';
-import { ImportadorModule } from '../src/importador/importador.module';
-import { ImportadorService } from '../src/importador/importador.service';
+import { ImporterModule } from '../src/importador/importador.module';
+import { ImporterService } from '../src/importador/importador.service';
 
 const BOM = String.fromCharCode(0xfeff);
-const USUARIO = 'juan';
+const USER = 'juan';
 const PASSWORD = 'ñandú-ʉnkua-2026';
 
 const config: ConfigAuth = {
   activa: true,
-  usuario: USUARIO,
+  usuario: USER,
   password: PASSWORD,
   secreto: 'secreto-e2e-suficientemente-largo-para-firmar',
   duracionDias: 30,
 };
 
 /** Minimal corpus: it is enough for /api/buscar to have something to return. */
-function escribirCorpus(dir: string): void {
+function writeCorpus(dir: string): void {
   fs.writeFileSync(
     path.join(dir, 'corpus_oraciones.csv'),
     BOM +
@@ -51,24 +51,24 @@ function escribirCorpus(dir: string): void {
   );
 }
 
-async function crearApp(configAuth: ConfigAuth): Promise<{
+async function createApp(configAuth: ConfigAuth): Promise<{
   app: INestApplication;
   dirTmp: string;
 }> {
   const dirTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'corpus-auth-'));
-  escribirCorpus(dirTmp);
+  writeCorpus(dirTmp);
   const moduleRef = await Test.createTestingModule({
     imports: [
       AuthModule.forRoot(configAuth),
       DatabaseModule.forRoot({ rutaDb: ':memory:' }),
-      ImportadorModule,
-      ConsultaModule,
+      ImporterModule,
+      QueryModule,
     ],
   }).compile();
   const app = moduleRef.createNestApplication();
-  configurarApp(app);
+  configureApp(app);
   await app.init();
-  await app.get(ImportadorService).importarTodo(dirTmp);
+  await app.get(ImporterService).importAll(dirTmp);
   return { app, dirTmp };
 }
 
@@ -77,7 +77,7 @@ describe('Authentication (e2e)', () => {
   let dirTmp: string;
 
   beforeEach(async () => {
-    ({ app, dirTmp } = await crearApp(config));
+    ({ app, dirTmp } = await createApp(config));
   });
 
   afterEach(async () => {
@@ -85,10 +85,10 @@ describe('Authentication (e2e)', () => {
     fs.rmSync(dirTmp, { recursive: true, force: true });
   });
 
-  const entrar = () =>
+  const signIn = () =>
     request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ usuario: USUARIO, password: PASSWORD })
+      .send({ usuario: USER, password: PASSWORD })
       .expect(200);
 
   it('without a token, the corpus stays closed', async () => {
@@ -106,8 +106,8 @@ describe('Authentication (e2e)', () => {
   });
 
   it('with the correct credentials it returns a token and opens the corpus', async () => {
-    const login = await entrar();
-    expect(login.body.usuario).toBe(USUARIO);
+    const login = await signIn();
+    expect(login.body.usuario).toBe(USER);
     expect(typeof login.body.token).toBe('string');
 
     const res = await request(app.getHttpServer())
@@ -121,24 +121,24 @@ describe('Authentication (e2e)', () => {
   it('the password with u instead of ʉ does not get in', async () => {
     await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ usuario: USUARIO, password: 'ñandú-unkua-2026' })
+      .send({ usuario: USER, password: 'ñandú-unkua-2026' })
       .expect(401);
   });
 
   it('the error message does not reveal whether the user or the password failed', async () => {
-    const malUsuario = await request(app.getHttpServer())
+    const badUser = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ usuario: 'otro', password: PASSWORD })
       .expect(401);
-    const malPassword = await request(app.getHttpServer())
+    const badPassword = await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ usuario: USUARIO, password: 'otra' })
+      .send({ usuario: USER, password: 'otra' })
       .expect(401);
-    expect(malUsuario.body.message).toBe(malPassword.body.message);
+    expect(badUser.body.message).toBe(badPassword.body.message);
   });
 
   it('a tampered token does not work', async () => {
-    const { body } = await entrar();
+    const { body } = await signIn();
     await request(app.getHttpServer())
       .get('/api/buscar')
       .query({ q: 'nʉnka' })
@@ -147,31 +147,31 @@ describe('Authentication (e2e)', () => {
   });
 
   it('/api/auth/sesion confirms who you are', async () => {
-    const { body } = await entrar();
+    const { body } = await signIn();
     const res = await request(app.getHttpServer())
       .get('/api/auth/sesion')
       .set('Authorization', `Bearer ${body.token}`)
       .expect(200);
-    expect(res.body).toEqual({ usuario: USUARIO });
+    expect(res.body).toEqual({ usuario: USER });
   });
 
   it('after too many failed attempts it answers 429', async () => {
-    for (let i = 0; i < MAX_INTENTOS; i++) {
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
       await request(app.getHttpServer())
         .post('/api/auth/login')
-        .send({ usuario: USUARIO, password: 'incorrecta' })
+        .send({ usuario: USER, password: 'incorrecta' })
         .expect(401);
     }
     await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ usuario: USUARIO, password: PASSWORD })
+      .send({ usuario: USER, password: PASSWORD })
       .expect(429);
   });
 
   it('the guard is global: it closes all controllers, not just one', async () => {
     // Routes from different controllers; none is marked as public.
-    for (const ruta of ['/api/vocabulario', '/api/frases', '/api/gramatica/lemas']) {
-      await request(app.getHttpServer()).get(ruta).expect(401);
+    for (const filePath of ['/api/vocabulario', '/api/frases', '/api/gramatica/lemas']) {
+      await request(app.getHttpServer()).get(filePath).expect(401);
     }
   });
 });
@@ -181,7 +181,7 @@ describe('Authentication disabled (local development)', () => {
   let dirTmp: string;
 
   beforeAll(async () => {
-    ({ app, dirTmp } = await crearApp({ ...config, activa: false }));
+    ({ app, dirTmp } = await createApp({ ...config, activa: false }));
   });
 
   afterAll(async () => {

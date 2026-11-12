@@ -1,14 +1,14 @@
-import { normalizar } from '../comun/texto/normalizador';
-import { esNegacionEspanol, esStopwordEspanol } from '../comun/texto/stopwords-es';
-import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { Idioma } from './consulta.enums';
+import { normalize } from '../comun/texto/normalizador';
+import { isSpanishNegation, isSpanishStopword } from '../comun/texto/stopwords-es';
+import { tokenizeDamana } from '../comun/texto/tokenizador';
+import { Language } from './consulta.enums';
 
 /**
  * Feature of the input sentence that triggers a grammar rule. It is assigned
  * to each rule on import (based on its «tipo» and its «qué hace») and detected
  * in the sentence with simple heuristics at translation time.
  */
-export type Disparador =
+export type Trigger =
   | 'plural'
   | 'posesivo'
   | 'negacion'
@@ -16,7 +16,7 @@ export type Disparador =
   | 'pasado'
   | 'futuro';
 
-export const DISPARADORES: Disparador[] = [
+export const TRIGGERS: Trigger[] = [
   'plural',
   'posesivo',
   'negacion',
@@ -25,7 +25,7 @@ export const DISPARADORES: Disparador[] = [
   'futuro',
 ];
 
-export interface ReglaGramatical {
+export interface GrammarRule {
   id: number;
   tipo: string | null;
   forma: string;
@@ -35,11 +35,11 @@ export interface ReglaGramatical {
   traduccionEjemplo: string | null;
   notas: string | null;
   /** null = general rule: always included. */
-  disparador: Disparador | null;
+  disparador: Trigger | null;
 }
 
 /** Cap on rules that travel in the prompt. */
-export const MAX_REGLAS = 8;
+export const MAX_RULES = 8;
 
 /**
  * Infers a rule's trigger from how it was described by whoever
@@ -47,21 +47,21 @@ export const MAX_REGLAS = 8;
  * Both the type AND the meaning are checked: in the template the type is usually just
  * «sufijo», which says nothing about the feature.
  */
-export function inferirDisparador(
-  tipo: string | null | undefined,
-  significado: string | null | undefined,
-): Disparador | null {
-  const texto = normalizar(`${tipo ?? ''} ${significado ?? ''}`);
-  if (/plural/.test(texto)) return 'plural';
-  if (/poses|pertenen|genitiv|"de"|«de»|'de'/.test(texto)) return 'posesivo';
-  if (/negac|negativ/.test(texto)) return 'negacion';
-  if (/pregunt|interrog/.test(texto)) return 'pregunta';
-  if (/pasado|preterit/.test(texto)) return 'pasado';
-  if (/futuro/.test(texto)) return 'futuro';
+export function inferTrigger(
+  kind: string | null | undefined,
+  meaning: string | null | undefined,
+): Trigger | null {
+  const text = normalize(`${kind ?? ''} ${meaning ?? ''}`);
+  if (/plural/.test(text)) return 'plural';
+  if (/poses|pertenen|genitiv|"de"|«de»|'de'/.test(text)) return 'posesivo';
+  if (/negac|negativ/.test(text)) return 'negacion';
+  if (/pregunt|interrog/.test(text)) return 'pregunta';
+  if (/pasado|preterit/.test(text)) return 'pasado';
+  if (/futuro/.test(text)) return 'futuro';
   return null;
 }
 
-const DETERMINANTES_PLURAL = new Set([
+const PLURAL_DETERMINERS = new Set([
   'los', 'las', 'unos', 'unas', 'muchos', 'muchas', 'varios', 'varias',
   'todos', 'todas', 'algunos', 'algunas', 'pocos', 'pocas', 'ambos', 'ambas',
   'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez',
@@ -69,19 +69,19 @@ const DETERMINANTES_PLURAL = new Set([
   'nuestros', 'nuestras',
 ]);
 
-const POSESIVOS = new Set([
+const POSSESSIVES = new Set([
   'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'nuestro', 'nuestra', 'nuestros',
   'nuestras', 'vuestro', 'vuestra', 'vuestros', 'vuestras', 'mio', 'mia',
   'mios', 'mias', 'tuyo', 'tuya', 'tuyos', 'tuyas', 'suyo', 'suya', 'suyos',
   'suyas', 'de', 'del',
 ]);
 
-const INTERROGATIVOS = new Set([
+const INTERROGATIVES = new Set([
   'que', 'quien', 'quienes', 'donde', 'adonde', 'cuando', 'como', 'cual',
   'cuales', 'cuanto', 'cuanta', 'cuantos', 'cuantas', 'por',
 ]);
 
-const MARCAS_PASADO = new Set([
+const PAST_MARKERS = new Set([
   'ayer', 'anoche', 'antier', 'anteayer', 'antes', 'hace',
   'fue', 'fui', 'fueron', 'fuimos', 'era', 'eran', 'eras', 'eramos',
   'tuvo', 'tuve', 'tuvieron', 'tuvimos', 'hizo', 'hice', 'hicieron', 'hicimos',
@@ -91,15 +91,15 @@ const MARCAS_PASADO = new Set([
   'habia', 'habian', 'hubo', 'trajo', 'traje', 'dio', 'di', 'dieron', 'vio', 'vi',
 ]);
 
-const MARCAS_FUTURO = new Set([
+const FUTURE_MARKERS = new Set([
   'manana', 'luego', 'despues', 'pronto', 'proximo', 'proxima', 'proximos',
   'proximas', 'sera', 'seran', 'sere', 'seremos', 'habra', 'tendra', 'tendre',
   'ira', 'iran', 'ire', 'iremos', 'vendra', 'vendre', 'hara', 'hare', 'haremos',
 ]);
 
-const RE_PASADO_REGULAR = /(aron|ieron|aste|iste|aban|abas|aba|ian|ias|imos)$/;
-const RE_FUTURO_REGULAR = /(remos|reis|aras|eras|iras|aran|eran|iran)$/;
-const RE_PERIFRASIS_FUTURO = /\b(voy|vas|va|vamos|van)\s+a\b/;
+const RE_REGULAR_PAST = /(aron|ieron|aste|iste|aban|abas|aba|ian|ias|imos)$/;
+const RE_REGULAR_FUTURE = /(remos|reis|aras|eras|iras|aran|eran|iran)$/;
+const RE_FUTURE_PERIPHRASIS = /\b(voy|vas|va|vamos|van)\s+a\b/;
 
 /**
  * Which grammatical features a Spanish sentence carries. These are deliberately
@@ -107,100 +107,100 @@ const RE_PERIFRASIS_FUTURO = /\b(voy|vas|va|vamos|van)\s+a\b/;
  * to the prompt (the model decides whether to apply it); a false negative leaves the
  * model without the hint.
  */
-export function detectarDisparadoresEspanol(texto: string): Disparador[] {
-  const tokens = tokenizarDamana(texto);
-  const normalizados = tokens.map((t) => t.normalizada);
-  const originales = tokens.map((t) => t.original);
-  const encontrados = new Set<Disparador>();
+export function detectSpanishTriggers(text: string): Trigger[] {
+  const tokens = tokenizeDamana(text);
+  const normalizedTokens = tokens.map((t) => t.normalizada);
+  const originals = tokens.map((t) => t.original);
+  const found = new Set<Trigger>();
 
-  if (/[¿?]/.test(texto) || INTERROGATIVOS.has(normalizados[0] ?? '')) {
-    encontrados.add('pregunta');
+  if (/[¿?]/.test(text) || INTERROGATIVES.has(normalizedTokens[0] ?? '')) {
+    found.add('pregunta');
   }
-  if (normalizados.some((t) => esNegacionEspanol(t))) encontrados.add('negacion');
-  if (normalizados.some((t) => POSESIVOS.has(t))) encontrados.add('posesivo');
+  if (normalizedTokens.some((t) => isSpanishNegation(t))) found.add('negacion');
+  if (normalizedTokens.some((t) => POSSESSIVES.has(t))) found.add('posesivo');
 
-  const pluralLexico = normalizados.some(
+  const lexicalPlural = normalizedTokens.some(
     (t) =>
       t.length >= 5 &&
       t.endsWith('s') &&
       !t.endsWith('mos') &&
       !t.endsWith('is') &&
-      !esStopwordEspanol(t),
+      !isSpanishStopword(t),
   );
-  if (normalizados.some((t) => DETERMINANTES_PLURAL.has(t)) || pluralLexico) {
-    encontrados.add('plural');
+  if (normalizedTokens.some((t) => PLURAL_DETERMINERS.has(t)) || lexicalPlural) {
+    found.add('plural');
   }
 
-  const pasado =
-    normalizados.some((t) => MARCAS_PASADO.has(t)) ||
-    normalizados.some((t) => t.length >= 5 && RE_PASADO_REGULAR.test(t)) ||
-    originales.some((t) => t.length >= 3 && /[óí]$/.test(t.normalize('NFC')));
-  if (pasado) encontrados.add('pasado');
+  const past =
+    normalizedTokens.some((t) => PAST_MARKERS.has(t)) ||
+    normalizedTokens.some((t) => t.length >= 5 && RE_REGULAR_PAST.test(t)) ||
+    originals.some((t) => t.length >= 3 && /[óí]$/.test(t.normalize('NFC')));
+  if (past) found.add('pasado');
 
-  const futuro =
-    normalizados.some((t) => MARCAS_FUTURO.has(t)) ||
-    normalizados.some((t) => t.length >= 5 && RE_FUTURO_REGULAR.test(t)) ||
-    originales.some((t) => t.length >= 4 && /r(á|án|é|ás)$/.test(t.normalize('NFC'))) ||
-    RE_PERIFRASIS_FUTURO.test(normalizar(texto));
-  if (futuro) encontrados.add('futuro');
+  const future =
+    normalizedTokens.some((t) => FUTURE_MARKERS.has(t)) ||
+    normalizedTokens.some((t) => t.length >= 5 && RE_REGULAR_FUTURE.test(t)) ||
+    originals.some((t) => t.length >= 4 && /r(á|án|é|ás)$/.test(t.normalize('NFC'))) ||
+    RE_FUTURE_PERIPHRASIS.test(normalize(text));
+  if (future) found.add('futuro');
 
-  return DISPARADORES.filter((d) => encontrados.has(d));
+  return TRIGGERS.filter((d) => found.has(d));
 }
 
 /** The form of a rule («-ndzina») as a comparable suffix, without the hyphen. */
-function sufijoDe(forma: string): string {
-  return normalizar(forma).replace(/^-+/, '').trim();
+function suffixOf(form: string): string {
+  return normalize(form).replace(/^-+/, '').trim();
 }
 
 /**
  * In Damana there is no need to guess: a rule is triggered when some word
  * of the input ends in its suffix (and has something before it).
  */
-export function reglasPorSufijoDamana(
-  texto: string,
-  reglas: ReglaGramatical[],
-): ReglaGramatical[] {
-  const tokens = tokenizarDamana(texto).map((t) => t.normalizada);
-  return reglas.filter((regla) => {
-    const sufijo = sufijoDe(regla.forma);
-    if (!sufijo) return false;
-    return tokens.some((t) => t.length > sufijo.length && t.endsWith(sufijo));
+export function rulesByDamanaSuffix(
+  text: string,
+  rules: GrammarRule[],
+): GrammarRule[] {
+  const tokens = tokenizeDamana(text).map((t) => t.normalizada);
+  return rules.filter((rule) => {
+    const suffix = suffixOf(rule.forma);
+    if (!suffix) return false;
+    return tokens.some((t) => t.length > suffix.length && t.endsWith(suffix));
   });
 }
 
-export interface SeleccionReglas {
-  disparadores: Disparador[];
-  reglas: ReglaGramatical[];
+export interface RuleSelection {
+  disparadores: Trigger[];
+  reglas: GrammarRule[];
 }
 
 /**
  * Rules that travel in the prompt: the general ones (no trigger) always,
  * plus those triggered by the sentence's features. In Damana they are triggered by
- * suffix; in Spanish by heuristics. Never more than MAX_REGLAS.
+ * suffix; in Spanish by heuristics. Never more than MAX_RULES.
  */
-export function seleccionarReglas(
-  texto: string,
-  idioma: Idioma,
-  reglas: ReglaGramatical[],
-): SeleccionReglas {
-  let disparadores: Disparador[];
-  let activadas: ReglaGramatical[];
+export function selectRules(
+  text: string,
+  language: Language,
+  rules: GrammarRule[],
+): RuleSelection {
+  let triggers: Trigger[];
+  let triggered: GrammarRule[];
 
-  if (idioma === Idioma.espanol) {
-    disparadores = detectarDisparadoresEspanol(texto);
-    const activos = new Set(disparadores);
-    activadas = reglas.filter((r) => r.disparador !== null && activos.has(r.disparador));
+  if (language === Language.espanol) {
+    triggers = detectSpanishTriggers(text);
+    const activeOnes = new Set(triggers);
+    triggered = rules.filter((r) => r.disparador !== null && activeOnes.has(r.disparador));
   } else {
-    activadas = reglasPorSufijoDamana(texto, reglas);
-    disparadores = DISPARADORES.filter((d) => activadas.some((r) => r.disparador === d));
+    triggered = rulesByDamanaSuffix(text, rules);
+    triggers = TRIGGERS.filter((d) => triggered.some((r) => r.disparador === d));
   }
 
-  const generales = reglas.filter((r) => r.disparador === null);
-  const vistas = new Set<number>();
-  const seleccion = [...activadas, ...generales].filter((r) => {
-    if (vistas.has(r.id)) return false;
-    vistas.add(r.id);
+  const general = rules.filter((r) => r.disparador === null);
+  const seen = new Set<number>();
+  const selection = [...triggered, ...general].filter((r) => {
+    if (seen.has(r.id)) return false;
+    seen.add(r.id);
     return true;
   });
-  return { disparadores, reglas: seleccion.slice(0, MAX_REGLAS) };
+  return { disparadores: triggers, reglas: selection.slice(0, MAX_RULES) };
 }

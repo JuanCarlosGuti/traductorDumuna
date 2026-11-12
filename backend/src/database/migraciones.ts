@@ -3,7 +3,7 @@ import type { Database } from 'better-sqlite3';
 // Schema versioned with PRAGMA user_version. Each array position is
 // a version; the missing ones are applied in order. The DB is regenerable
 // (the importer does DELETE + INSERT), so there are no data migrations.
-const MIGRACIONES: string[] = [
+const MIGRATIONS: string[] = [
   `
   CREATE TABLE capitulos (
     capitulo INTEGER NOT NULL,
@@ -214,10 +214,10 @@ const MIGRACIONES: string[] = [
   `,
 ];
 
-export function ejecutarMigraciones(db: Database): void {
-  const actual = db.pragma('user_version', { simple: true }) as number;
-  for (let version = actual; version < MIGRACIONES.length; version++) {
-    db.exec(MIGRACIONES[version]);
+export function runMigrations(db: Database): void {
+  const current = db.pragma('user_version', { simple: true }) as number;
+  for (let version = current; version < MIGRATIONS.length; version++) {
+    db.exec(MIGRATIONS[version]);
     db.pragma(`user_version = ${version + 1}`);
   }
 }

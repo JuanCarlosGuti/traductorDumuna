@@ -3,14 +3,14 @@ import * as ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { ejecutarMigraciones } from '../database/migraciones';
-import { PendientesRepository } from '../pendientes/pendientes.repository';
-import { esFilaDePrueba } from './elicitacion';
-import { ImportadorService } from './importador.service';
-import { leerPruebas } from './pruebas-csv';
+import { runMigrations } from '../database/migraciones';
+import { PendingRepository } from '../pendientes/pendientes.repository';
+import { isTestRow } from './elicitacion';
+import { ImporterService } from './importador.service';
+import { readTests } from './pruebas-csv';
 
 const BOM = String.fromCharCode(0xfeff);
-const U_DIERESIS = String.fromCharCode(0x00fc); // ü — Word workaround for ʉ
+const U_DIAERESIS = String.fromCharCode(0x00fc); // ü — Word workaround for ʉ
 
 const CSV_ORACIONES =
   BOM +
@@ -22,7 +22,7 @@ const CSV_FRASES =
   BOM +
   'fuente,damana,espanol,notas\n' +
   "Prueba,shke'ta ukurra,anda ligero,\n" +
-  `Prueba,bug${U_DIERESIS}i we ugunga,en la casa de arriba,\n`;
+  `Prueba,bug${U_DIAERESIS}i we ugunga,en la casa de arriba,\n`;
 
 const CSV_VOCABULARIO =
   BOM +
@@ -36,51 +36,51 @@ const CSV_CONJUGACIONES =
   'nujkunʉnanka,yo tuve,tener,VERBO TENER.docx,\n' +
   'mujkunʉnanka,tú tuviste,tener,VERBO TENER.docx,\n';
 
-const ENCABEZADOS_ELICITACION = [
+const ELICITATION_HEADERS = [
   'id', 'ambito', 'palabra_es', 'palabra_dm', 'ejemplo_es', 'ejemplo_dm', 'variante', 'notas',
 ];
 
 // Ids are chosen with the same function the importer uses: that way the test
 // does not depend on which specific ids fall in the 10% reserved for tests.
 const IDS = Array.from({ length: 300 }, (_, i) => String(i + 1));
-const ID_PRUEBA = IDS.find(esFilaDePrueba)!;
-const [ID_AGUA, ID_VECINA, ID_PINGUINO, ID_HOLA, ID_ANOS] = IDS.filter((id) => !esFilaDePrueba(id));
+const TEST_ID = IDS.find(isTestRow)!;
+const [ID_AGUA, ID_VECINA, ID_PINGUINO, ID_HOLA, ID_ANOS] = IDS.filter((id) => !isTestRow(id));
 
-const LOTE_1 = [
-  [ID_AGUA, 'naturaleza', 'agua', `n${U_DIERESIS}nka`, 'El agua está fría.', `nu+nka se n${U_DIERESIS}ka`, '', ''],
+const BATCH_1 = [
+  [ID_AGUA, 'naturaleza', 'agua', `n${U_DIAERESIS}nka`, 'El agua está fría.', `nu+nka se n${U_DIAERESIS}ka`, '', ''],
   [ID_VECINA, 'familia', 'vecina', '', 'Mi vecina cocina.', '', '', 'registrado antes: ? (confirmar)'],
   [ID_PINGUINO, 'otro', 'pingüino', 'pingüino', 'El pingüino nada.', 'pingüino senu', '', ''],
-  [ID_PRUEBA, 'casa', 'casa', 'Urraga', 'Mi casa es grande.', 'Ranzhe urraga aikuia', '', ''],
+  [TEST_ID, 'casa', 'casa', 'Urraga', 'Mi casa es grande.', 'Ranzhe urraga aikuia', '', ''],
   [ID_HOLA, 'saludos', 'hola', 'Zungui', 'Hola, ¿cómo estás?', '', 'pregunta', ''],
   // Unfilled, but the vocabulary already has «año»: it must not be requested.
   [ID_ANOS, 'tiempo', 'años', '', 'Pasaron dos años.', '', '', ''],
 ];
 
-const LOTE_2 = [
+const BATCH_2 = [
   [ID_VECINA, 'familia', 'vecina', 'anzhirru', 'Mi vecina cocina.', 'ranzhe anzhirru duzhi', '', ''],
 ];
 
-async function escribirExcel(
-  ruta: string,
-  hojas: { nombre: string; filas: (string | number)[][] }[],
+async function writeExcel(
+  filePath: string,
+  sheets: { nombre: string; filas: (string | number)[][] }[],
 ): Promise<void> {
-  const libro = new ExcelJS.Workbook();
-  for (const hoja of hojas) {
-    const ws = libro.addWorksheet(hoja.nombre);
-    hoja.filas.forEach((fila) => ws.addRow(fila));
+  const workbook = new ExcelJS.Workbook();
+  for (const sheet of sheets) {
+    const ws = workbook.addWorksheet(sheet.nombre);
+    sheet.filas.forEach((row) => ws.addRow(row));
   }
-  await libro.xlsx.writeFile(ruta);
+  await workbook.xlsx.writeFile(filePath);
 }
 
-function escribirCsvs(dir: string): void {
+function writeCsvs(dir: string): void {
   fs.writeFileSync(path.join(dir, 'corpus_oraciones.csv'), CSV_ORACIONES, 'utf8');
   fs.writeFileSync(path.join(dir, 'corpus_frases_v2.csv'), CSV_FRASES, 'utf8');
   fs.writeFileSync(path.join(dir, 'corpus_vocabulario_v3.csv'), CSV_VOCABULARIO, 'utf8');
   fs.writeFileSync(path.join(dir, 'corpus_conjugaciones.csv'), CSV_CONJUGACIONES, 'utf8');
 }
 
-async function escribirReglas(dir: string): Promise<void> {
-  await escribirExcel(path.join(dir, 'reglas_damana.xlsx'), [
+async function writeRules(dir: string): Promise<void> {
+  await writeExcel(path.join(dir, 'reglas_damana.xlsx'), [
     {
       nombre: 'reglas',
       filas: [
@@ -101,23 +101,23 @@ async function escribirReglas(dir: string): Promise<void> {
   ]);
 }
 
-async function escribirLote(dir: string, nombre: string, filas: string[][]): Promise<void> {
-  await escribirExcel(path.join(dir, nombre), [
+async function writeBatch(dir: string, name: string, rows: string[][]): Promise<void> {
+  await writeExcel(path.join(dir, name), [
     { nombre: 'instrucciones', filas: [['LOTE DE PRUEBA'], ['Solo se llenan las columnas amarillas.']] },
-    { nombre: 'elicitacion', filas: [ENCABEZADOS_ELICITACION, ...filas] },
+    { nombre: 'elicitacion', filas: [ELICITATION_HEADERS, ...rows] },
   ]);
 }
 
-describe('ImportadorService (corpus v3 + rules + elicitation)', () => {
+describe('ImporterService (corpus v3 + rules + elicitation)', () => {
   let dirTmp: string;
   let db: Database.Database;
-  let servicio: ImportadorService;
+  let service: ImporterService;
 
   beforeAll(async () => {
     dirTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'corpus-test-'));
-    escribirCsvs(dirTmp);
-    await escribirReglas(dirTmp);
-    await escribirLote(dirTmp, 'formato_elicitacion_lote1.xlsx', LOTE_1);
+    writeCsvs(dirTmp);
+    await writeRules(dirTmp);
+    await writeBatch(dirTmp, 'formato_elicitacion_lote1.xlsx', BATCH_1);
   });
 
   afterAll(() => {
@@ -126,8 +126,8 @@ describe('ImportadorService (corpus v3 + rules + elicitation)', () => {
 
   beforeEach(() => {
     db = new Database(':memory:');
-    ejecutarMigraciones(db);
-    servicio = new ImportadorService(db, new PendientesRepository(db));
+    runMigrations(db);
+    service = new ImporterService(db, new PendingRepository(db));
     // The tests CSV is regenerated per test: the importer writes it.
     fs.rmSync(path.join(dirTmp, 'pruebas_traduccion.csv'), { force: true });
   });
@@ -136,11 +136,11 @@ describe('ImportadorService (corpus v3 + rules + elicitation)', () => {
     db.close();
   });
 
-  const filas = <T = any>(sql: string, ...params: unknown[]): T[] =>
+  const rows = <T = any>(sql: string, ...params: unknown[]): T[] =>
     db.prepare(sql).all(...params) as T[];
 
   it('imports the counts from the CSVs, the rules, the names and the elicitation', async () => {
-    const stats = await servicio.importarTodo(dirTmp);
+    const stats = await service.importAll(dirTmp);
     expect(stats.oraciones).toBe(2 + 2); // CSV + elicitation (agua, pingüino); the test does not go in
     expect(stats.frases).toBe(2);
     expect(stats.vocabulario).toBe(2 + 4); // CSV + agua, pingüino, casa, hola
@@ -166,20 +166,20 @@ describe('ImportadorService (corpus v3 + rules + elicitation)', () => {
   });
 
   it('fixes the Word ü to ʉ in the Damana of the CSVs and in the tokens', async () => {
-    await servicio.importarTodo(dirTmp);
-    const fila = db.prepare('SELECT damana FROM frases WHERE rowid = 2').get() as { damana: string };
-    expect(fila.damana).toBe('bugʉi we ugunga');
-    const palabras = filas('SELECT DISTINCT palabra_normalizada AS p FROM tokens_damana').map((f) => f.p);
-    expect(palabras).toContain('bugʉi');
-    expect(palabras).not.toContain('bugui');
+    await service.importAll(dirTmp);
+    const row = db.prepare('SELECT damana FROM frases WHERE rowid = 2').get() as { damana: string };
+    expect(row.damana).toBe('bugʉi we ugunga');
+    const words = rows('SELECT DISTINCT palabra_normalizada AS p FROM tokens_damana').map((f) => f.p);
+    expect(words).toContain('bugʉi');
+    expect(words).not.toContain('bugui');
   });
 
   it('in elicitation it converts ü and u+ to ʉ, but respects pingüino', async () => {
-    await servicio.importarTodo(dirTmp);
+    await service.importAll(dirTmp);
     const agua = db.prepare("SELECT damana, categoria, fuente FROM vocabulario WHERE espanol = 'agua' AND fuente = 'elicitacion'").get() as any;
     expect(agua).toMatchObject({ damana: 'nʉnka', categoria: 'naturaleza' });
-    const oracion = db.prepare(`SELECT damana, espanol, fuente, dominio, estado FROM oraciones WHERE id_externo = ?`).get(`elic_${ID_AGUA}`) as any;
-    expect(oracion).toMatchObject({
+    const sentence = db.prepare(`SELECT damana, espanol, fuente, dominio, estado FROM oraciones WHERE id_externo = ?`).get(`elic_${ID_AGUA}`) as any;
+    expect(sentence).toMatchObject({
       damana: 'nʉnka se nʉka',
       espanol: 'El agua está fría.',
       fuente: 'elicitacion',
@@ -191,83 +191,83 @@ describe('ImportadorService (corpus v3 + rules + elicitation)', () => {
   });
 
   it('marks the domain: lfb → biblico, phrases and elicitation → cotidiano', async () => {
-    await servicio.importarTodo(dirTmp);
-    expect(filas("SELECT dominio FROM oraciones WHERE fuente LIKE 'lfb%'").map((f) => f.dominio)).toEqual(['biblico', 'biblico']);
-    expect(filas("SELECT dominio FROM oraciones WHERE fuente = 'elicitacion'").map((f) => f.dominio)).toEqual(['cotidiano', 'cotidiano']);
-    expect(filas('SELECT dominio FROM frases').map((f) => f.dominio)).toEqual(['cotidiano', 'cotidiano']);
+    await service.importAll(dirTmp);
+    expect(rows("SELECT dominio FROM oraciones WHERE fuente LIKE 'lfb%'").map((f) => f.dominio)).toEqual(['biblico', 'biblico']);
+    expect(rows("SELECT dominio FROM oraciones WHERE fuente = 'elicitacion'").map((f) => f.dominio)).toEqual(['cotidiano', 'cotidiano']);
+    expect(rows('SELECT dominio FROM frases').map((f) => f.dominio)).toEqual(['cotidiano', 'cotidiano']);
   });
 
   it('imports the rules with their trigger and the proper names with their spellings', async () => {
-    await servicio.importarTodo(dirTmp);
-    expect(filas('SELECT forma, significado, disparador, ejemplo_regla FROM reglas ORDER BY rowid')).toEqual([
+    await service.importAll(dirTmp);
+    expect(rows('SELECT forma, significado, disparador, ejemplo_regla FROM reglas ORDER BY rowid')).toEqual([
       { forma: '-ndzina', significado: 'pluraliza sustantivos', disparador: 'plural', ejemplo_regla: 'terruandzina' },
       { forma: '-nzhe', significado: 'posesivo / "de"', disparador: 'posesivo', ejemplo_regla: 'Kunkujshinanzhe' },
     ]);
-    expect(filas('SELECT damana, espanol, se_escribe_igual, otras_grafias FROM nombres_propios ORDER BY rowid')).toEqual([
+    expect(rows('SELECT damana, espanol, se_escribe_igual, otras_grafias FROM nombres_propios ORDER BY rowid')).toEqual([
       { damana: 'Jehová', espanol: 'Jehová', se_escribe_igual: 1, otras_grafias: 'Jehova' },
       { damana: 'faraón', espanol: 'faraón', se_escribe_igual: 1, otras_grafias: 'Faraón' },
     ]);
   });
 
   it('reserves the test row in pruebas_traduccion.csv and leaves it out of the sentences', async () => {
-    await servicio.importarTodo(dirTmp);
-    expect(leerPruebas(dirTmp)).toEqual([
+    await service.importAll(dirTmp);
+    expect(readTests(dirTmp)).toEqual([
       { espanol: 'Mi casa es grande.', damanaEsperado: 'Ranzhe urraga aikuia', ambito: 'casa' },
     ]);
-    expect(filas("SELECT 1 FROM oraciones WHERE damana = 'Ranzhe urraga aikuia'")).toHaveLength(0);
+    expect(rows("SELECT 1 FROM oraciones WHERE damana = 'Ranzhe urraga aikuia'")).toHaveLength(0);
     // the word does go into the dictionary: the test measures composition, not lexicon
-    expect(filas("SELECT damana FROM vocabulario WHERE espanol = 'casa'")).toEqual([{ damana: 'Urraga' }]);
+    expect(rows("SELECT damana FROM vocabulario WHERE espanol = 'casa'")).toEqual([{ damana: 'Urraga' }]);
     // and the file carries a BOM and CRLF like the rest of the project's CSVs
-    const crudo = fs.readFileSync(path.join(dirTmp, 'pruebas_traduccion.csv'), 'utf8');
-    expect(crudo.charCodeAt(0)).toBe(0xfeff);
-    expect(crudo).toContain('\r\n');
+    const rawText = fs.readFileSync(path.join(dirTmp, 'pruebas_traduccion.csv'), 'utf8');
+    expect(rawText.charCodeAt(0)).toBe(0xfeff);
+    expect(rawText).toContain('\r\n');
   });
 
   it('unfilled rows stay as pending elicitation items, without duplicating on re-import', async () => {
-    await servicio.importarTodo(dirTmp);
-    await servicio.importarTodo(dirTmp);
+    await service.importAll(dirTmp);
+    await service.importAll(dirTmp);
     // hola carries palabra_dm in the batch itself and «años» is already in the
     // vocabulary as «año»: the speakers are asked for neither.
-    expect(filas('SELECT palabra, estado, origen, contexto, veces_pedida FROM pendientes ORDER BY palabra')).toEqual([
+    expect(rows('SELECT palabra, estado, origen, contexto, veces_pedida FROM pendientes ORDER BY palabra')).toEqual([
       { palabra: 'vecina', estado: 'pendiente', origen: 'elicitacion', contexto: 'Mi vecina cocina.', veces_pedida: 1 },
     ]);
   });
 
   it('a later batch that fills in the row closes the pending item and wins by id (idempotent by id)', async () => {
-    await servicio.importarTodo(dirTmp);
-    await escribirLote(dirTmp, 'formato_elicitacion_lote2.xlsx', LOTE_2);
+    await service.importAll(dirTmp);
+    await writeBatch(dirTmp, 'formato_elicitacion_lote2.xlsx', BATCH_2);
     try {
-      const stats = await servicio.importarTodo(dirTmp);
+      const stats = await service.importAll(dirTmp);
       expect(stats.elicitacion.archivos).toBe(2);
       expect(stats.elicitacion.idsRepetidos).toBe(1);
       expect(stats.elicitacion.pendientes).toBe(0); // vecina has arrived; hola and años are covered
       expect(stats.elicitacion.cubiertasPorVocabulario).toBe(2);
       expect(db.prepare("SELECT estado FROM pendientes WHERE palabra = 'vecina'").get()).toEqual({ estado: 'resuelta' });
-      expect(filas("SELECT damana FROM vocabulario WHERE espanol = 'vecina'")).toEqual([{ damana: 'anzhirru' }]);
-      expect(filas(`SELECT damana FROM oraciones WHERE id_externo = ?`, `elic_${ID_VECINA}`)).toEqual([{ damana: 'ranzhe anzhirru duzhi' }]);
+      expect(rows("SELECT damana FROM vocabulario WHERE espanol = 'vecina'")).toEqual([{ damana: 'anzhirru' }]);
+      expect(rows(`SELECT damana FROM oraciones WHERE id_externo = ?`, `elic_${ID_VECINA}`)).toEqual([{ damana: 'ranzhe anzhirru duzhi' }]);
     } finally {
       fs.rmSync(path.join(dirTmp, 'formato_elicitacion_lote2.xlsx'), { force: true });
     }
   });
 
   it('without reglas_damana.xlsx or elicitation batches it still imports (minimal corpus)', async () => {
-    const dirMinimo = fs.mkdtempSync(path.join(os.tmpdir(), 'corpus-min-'));
+    const minimalDir = fs.mkdtempSync(path.join(os.tmpdir(), 'corpus-min-'));
     try {
-      escribirCsvs(dirMinimo);
-      const stats = await servicio.importarTodo(dirMinimo);
+      writeCsvs(minimalDir);
+      const stats = await service.importAll(minimalDir);
       expect(stats.reglas).toBe(0);
       expect(stats.nombresPropios).toBe(0);
       expect(stats.elicitacion.archivos).toBe(0);
       expect(stats.oraciones).toBe(2);
-      expect(leerPruebas(dirMinimo)).toEqual([]);
+      expect(readTests(minimalDir)).toEqual([]);
     } finally {
-      fs.rmSync(dirMinimo, { recursive: true, force: true });
+      fs.rmSync(minimalDir, { recursive: true, force: true });
     }
   });
 
   it('stores id_externo and estado of the sentences (multi-line cells intact)', async () => {
-    await servicio.importarTodo(dirTmp);
-    const csv = filas('SELECT id_externo, damana, estado FROM oraciones WHERE id_externo LIKE ? ORDER BY rowid', 'o%');
+    await service.importAll(dirTmp);
+    const csv = rows('SELECT id_externo, damana, estado FROM oraciones WHERE id_externo LIKE ? ORDER BY rowid', 'o%');
     expect(csv[0].id_externo).toBe('o1');
     expect(csv[0].estado).toBe('aprobado');
     expect(csv[0].damana).toContain('\n');
@@ -275,20 +275,20 @@ describe('ImportadorService (corpus v3 + rules + elicitation)', () => {
   });
 
   it('tokenizes all sources keeping ʉ and ñ', async () => {
-    await servicio.importarTodo(dirTmp);
-    const origenes = filas('SELECT DISTINCT tabla_origen AS t FROM tokens_damana ORDER BY t').map((f) => f.t);
-    expect(origenes).toEqual(['conjugaciones', 'frases', 'oraciones', 'vocabulario']);
-    const palabras = filas('SELECT DISTINCT palabra_normalizada AS p FROM tokens_damana').map((f) => f.p);
-    expect(palabras).toContain('nʉnka');
-    expect(palabras).toContain('ñingui');
-    expect(palabras).not.toContain('nunka');
-    expect(palabras).not.toContain('ningui');
+    await service.importAll(dirTmp);
+    const origins = rows('SELECT DISTINCT tabla_origen AS t FROM tokens_damana ORDER BY t').map((f) => f.t);
+    expect(origins).toEqual(['conjugaciones', 'frases', 'oraciones', 'vocabulario']);
+    const words = rows('SELECT DISTINCT palabra_normalizada AS p FROM tokens_damana').map((f) => f.p);
+    expect(words).toContain('nʉnka');
+    expect(words).toContain('ñingui');
+    expect(words).not.toContain('nunka');
+    expect(words).not.toContain('ningui');
   });
 
   it('is idempotent: importing twice leaves the same statistics', async () => {
-    const primera = await servicio.importarTodo(dirTmp);
-    const segunda = await servicio.importarTodo(dirTmp);
-    expect(segunda).toEqual(primera);
+    const first = await service.importAll(dirTmp);
+    const second = await service.importAll(dirTmp);
+    expect(second).toEqual(first);
   });
 
   it('does not touch translations, SRS progress, validated pairs or translator pending items on re-import', async () => {
@@ -307,9 +307,9 @@ describe('ImportadorService (corpus v3 + rules + elicitation)', () => {
       `INSERT INTO validadas (creado_en, espanol, damana, direccion, origen, traduccion_modelo)
        VALUES ('2026-10-01T00:00:00.000Z', 'el agua', 'nʉnka', 'espanol_a_damana', 'confirmada', 'nʉnka')`,
     ).run();
-    new PendientesRepository(db).registrarPedida('ñame', 'espanol', 'quiero ñame');
+    new PendingRepository(db).recordRequested('ñame', 'espanol', 'quiero ñame');
 
-    await servicio.importarTodo(dirTmp);
+    await service.importAll(dirTmp);
 
     expect(db.prepare('SELECT texto FROM traducciones').get()).toEqual({ texto: 'nʉnka' });
     expect(db.prepare("SELECT repeticiones FROM progreso_srs WHERE palabra = 'nʉnka'").get()).toEqual({ repeticiones: 2 });
@@ -318,20 +318,20 @@ describe('ImportadorService (corpus v3 + rules + elicitation)', () => {
   });
 
   it('closes open pending items the vocabulary already covers (Spanish and Damana) and leaves the rest', async () => {
-    const repo = new PendientesRepository(db);
-    repo.registrarPedida('aguas', 'espanol', 'las aguas del río'); // plural of «agua», which is in the CSV
-    repo.registrarPedida('ñame', 'espanol', 'quiero ñame'); // not anywhere
-    repo.registrarPedida('nʉnka', 'damana', 'nʉnka gontka'); // the Damana form of «agua»
-    repo.registrarPedida('nunka', 'damana', 'nunka'); // u ≠ ʉ: not the same word
+    const repo = new PendingRepository(db);
+    repo.recordRequested('aguas', 'espanol', 'las aguas del río'); // plural of «agua», which is in the CSV
+    repo.recordRequested('ñame', 'espanol', 'quiero ñame'); // not anywhere
+    repo.recordRequested('nʉnka', 'damana', 'nʉnka gontka'); // the Damana form of «agua»
+    repo.recordRequested('nunka', 'damana', 'nunka'); // u ≠ ʉ: not the same word
 
-    const stats = await servicio.importarTodo(dirTmp);
+    const stats = await service.importAll(dirTmp);
 
     expect(stats.elicitacion.cerradasPorVocabulario).toBe(2);
-    const estado = (p: string) => (db.prepare('SELECT estado FROM pendientes WHERE palabra = ?').get(p) as { estado: string }).estado;
-    expect(estado('aguas')).toBe('resuelta');
-    expect(estado('nʉnka')).toBe('resuelta');
-    expect(estado('ñame')).toBe('pendiente');
-    expect(estado('nunka')).toBe('pendiente');
+    const status = (p: string) => (db.prepare('SELECT estado FROM pendientes WHERE palabra = ?').get(p) as { estado: string }).estado;
+    expect(status('aguas')).toBe('resuelta');
+    expect(status('nʉnka')).toBe('resuelta');
+    expect(status('ñame')).toBe('pendiente');
+    expect(status('nunka')).toBe('pendiente');
     // and the «años» row of the batch was never recorded
     expect(db.prepare("SELECT COUNT(*) AS n FROM pendientes WHERE palabra = 'años'").get()).toEqual({ n: 0 });
   });

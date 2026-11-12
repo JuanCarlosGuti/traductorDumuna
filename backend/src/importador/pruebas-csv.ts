@@ -1,31 +1,31 @@
 import { parse } from 'csv-parse/sync';
 import * as fs from 'fs';
 import * as path from 'path';
-import { normalizar } from '../comun/texto/normalizador';
-import { PruebaTraduccion } from './elicitacion';
+import { normalize } from '../comun/texto/normalizador';
+import { TranslationTest } from './elicitacion';
 
-export const ARCHIVO_PRUEBAS = 'pruebas_traduccion.csv';
+export const TESTS_FILE = 'pruebas_traduccion.csv';
 const BOM = String.fromCharCode(0xfeff);
 const EOL = '\r\n'; // same terminator as the rest of the project's CSVs
 
-function campo(valor: string): string {
-  return /[",\n\r]/.test(valor) ? `"${valor.replace(/"/g, '""')}"` : valor;
+function field(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-function clave(p: PruebaTraduccion): string {
-  return `${normalizar(p.espanol.trim())}|${normalizar(p.damanaEsperado.trim())}`;
+function key(p: TranslationTest): string {
+  return `${normalize(p.espanol.trim())}|${normalize(p.damanaEsperado.trim())}`;
 }
 
 /** Reads the tests CSV (espanol, damana_esperado, ambito); empty if it does not exist. */
-export function leerPruebas(dirDatos: string): PruebaTraduccion[] {
-  const ruta = path.join(dirDatos, ARCHIVO_PRUEBAS);
-  if (!fs.existsSync(ruta)) return [];
-  const filas = parse(fs.readFileSync(ruta), {
+export function readTests(dataDir: string): TranslationTest[] {
+  const filePath = path.join(dataDir, TESTS_FILE);
+  if (!fs.existsSync(filePath)) return [];
+  const rows = parse(fs.readFileSync(filePath), {
     columns: true,
     bom: true,
     skip_empty_lines: true,
   }) as { espanol: string; damana_esperado: string; ambito: string }[];
-  return filas
+  return rows
     .filter((f) => f.espanol && f.damana_esperado)
     .map((f) => ({
       espanol: f.espanol,
@@ -39,23 +39,23 @@ export function leerPruebas(dirDatos: string): PruebaTraduccion[] {
  * in the file (e.g. added by hand) and rewrites it. Idempotent: the
  * same Spanish/Damana pair is not repeated. It never deletes existing rows.
  */
-export function escribirPruebas(
-  dirDatos: string,
-  nuevas: PruebaTraduccion[],
+export function writeTests(
+  dataDir: string,
+  newItems: TranslationTest[],
 ): { total: number; agregadas: number } {
-  const existentes = leerPruebas(dirDatos);
-  const vistas = new Set(existentes.map(clave));
-  const agregadas = nuevas.filter((p) => {
-    const k = clave(p);
-    if (vistas.has(k)) return false;
-    vistas.add(k);
+  const existing = readTests(dataDir);
+  const seen = new Set(existing.map(key));
+  const added = newItems.filter((p) => {
+    const k = key(p);
+    if (seen.has(k)) return false;
+    seen.add(k);
     return true;
   });
-  const todas = [...existentes, ...agregadas];
-  const lineas = [
+  const all = [...existing, ...added];
+  const lines = [
     'espanol,damana_esperado,ambito',
-    ...todas.map((p) => [campo(p.espanol), campo(p.damanaEsperado), campo(p.ambito)].join(',')),
+    ...all.map((p) => [field(p.espanol), field(p.damanaEsperado), field(p.ambito)].join(',')),
   ];
-  fs.writeFileSync(path.join(dirDatos, ARCHIVO_PRUEBAS), BOM + lineas.join(EOL) + EOL, 'utf8');
-  return { total: todas.length, agregadas: agregadas.length };
+  fs.writeFileSync(path.join(dataDir, TESTS_FILE), BOM + lines.join(EOL) + EOL, 'utf8');
+  return { total: all.length, agregadas: added.length };
 }

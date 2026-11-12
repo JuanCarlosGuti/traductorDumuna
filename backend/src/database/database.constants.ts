@@ -1,5 +1,5 @@
-export const CONEXION_DB = 'CONEXION_DB';
+export const DB_CONNECTION = 'CONEXION_DB';
 
-export interface OpcionesDatabase {
+export interface DatabaseOptions {
   rutaDb: string;
 }

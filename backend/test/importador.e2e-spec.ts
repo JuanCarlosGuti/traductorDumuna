@@ -4,15 +4,15 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { DatabaseModule } from '../src/database/database.module';
-import { ImportadorModule } from '../src/importador/importador.module';
-import { ImportadorService } from '../src/importador/importador.service';
+import { ImporterModule } from '../src/importador/importador.module';
+import { ImporterService } from '../src/importador/importador.service';
 
 const BOM = String.fromCharCode(0xfeff);
 
 describe('Importer (e2e, full Nest module with in-memory SQLite)', () => {
   let dirTmp: string;
   let app: INestApplicationContext;
-  let servicio: ImportadorService;
+  let service: ImporterService;
 
   beforeAll(async () => {
     dirTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'corpus-e2e-'));
@@ -43,11 +43,11 @@ describe('Importer (e2e, full Nest module with in-memory SQLite)', () => {
     );
 
     const moduleRef = await Test.createTestingModule({
-      imports: [DatabaseModule.forRoot({ rutaDb: ':memory:' }), ImportadorModule],
+      imports: [DatabaseModule.forRoot({ rutaDb: ':memory:' }), ImporterModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
-    servicio = app.get(ImportadorService);
+    service = app.get(ImporterService);
   });
 
   afterAll(async () => {
@@ -56,7 +56,7 @@ describe('Importer (e2e, full Nest module with in-memory SQLite)', () => {
   });
 
   it('imports and reports consistent statistics for the 4 sources (no rules or elicitation)', async () => {
-    const stats = await servicio.importarTodo(dirTmp);
+    const stats = await service.importAll(dirTmp);
     expect(stats.oraciones).toBe(2);
     expect(stats.frases).toBe(1);
     expect(stats.vocabulario).toBe(1);
@@ -68,23 +68,23 @@ describe('Importer (e2e, full Nest module with in-memory SQLite)', () => {
   });
 
   it('tokens keep ʉ and ñ (never degraded to u/n)', async () => {
-    const stats = await servicio.importarTodo(dirTmp);
-    const palabras = stats.topPalabras.map((p) => p.palabra);
-    expect(palabras).toContain('nʉnka');
-    expect(palabras).toContain('ñingui');
-    expect(palabras).not.toContain('nunka');
-    expect(palabras).not.toContain('ningui');
+    const stats = await service.importAll(dirTmp);
+    const words = stats.topPalabras.map((p) => p.palabra);
+    expect(words).toContain('nʉnka');
+    expect(words).toContain('ñingui');
+    expect(words).not.toContain('nunka');
+    expect(words).not.toContain('ningui');
   });
 
   it('writes pruebas_traduccion.csv even if there are no tests (header only)', async () => {
-    await servicio.importarTodo(dirTmp);
+    await service.importAll(dirTmp);
     const csv = fs.readFileSync(path.join(dirTmp, 'pruebas_traduccion.csv'), 'utf8');
     expect(csv).toContain('espanol,damana_esperado,ambito');
   });
 
   it('is idempotent when importing twice', async () => {
-    const primera = await servicio.importarTodo(dirTmp);
-    const segunda = await servicio.importarTodo(dirTmp);
-    expect(segunda).toEqual(primera);
+    const first = await service.importAll(dirTmp);
+    const second = await service.importAll(dirTmp);
+    expect(second).toEqual(first);
   });
 });

@@ -20,17 +20,17 @@ const STOPWORDS_ES = new Set([
  * «ni», «nada»), but for the translator they count as content: they change the
  * meaning of the sentence and in Damana they are expressed in the verb form.
  */
-const NEGACIONES_ES = new Set([
+const NEGATIONS_ES = new Set([
   'no', 'nunca', 'jamas', 'nadie', 'nada', 'ni', 'tampoco', 'ningun',
   'ninguno', 'ninguna', 'ningunos', 'ningunas',
 ]);
 
 /** Receives the word ALREADY normalized (see normalizar()). */
-export function esStopwordEspanol(palabraNormalizada: string): boolean {
-  return STOPWORDS_ES.has(palabraNormalizada);
+export function isSpanishStopword(normalizedWord: string): boolean {
+  return STOPWORDS_ES.has(normalizedWord);
 }
 
 /** Receives the word ALREADY normalized (see normalizar()). */
-export function esNegacionEspanol(palabraNormalizada: string): boolean {
-  return NEGACIONES_ES.has(palabraNormalizada);
+export function isSpanishNegation(normalizedWord: string): boolean {
+  return NEGATIONS_ES.has(normalizedWord);
 }

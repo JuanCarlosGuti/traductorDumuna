@@ -1,12 +1,12 @@
 import {
-  aDistanciaUno,
-  esqueletoOrtografico,
-  reglasQueDistinguen,
+  atDistanceOne,
+  spellingSkeleton,
+  distinguishingRules,
 } from '../comun/texto/esqueleto';
-import { normalizar } from '../comun/texto/normalizador';
-import { esStopwordEspanol } from '../comun/texto/stopwords-es';
-import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { alternativasEspanol } from '../consulta/diccionario';
+import { normalize } from '../comun/texto/normalizador';
+import { isSpanishStopword } from '../comun/texto/stopwords-es';
+import { tokenizeDamana } from '../comun/texto/tokenizador';
+import { spanishAlternatives } from '../consulta/diccionario';
 
 /**
  * Detectors of what is NOT clear in the data, to ask native
@@ -14,12 +14,12 @@ import { alternativasEspanol } from '../consulta/diccionario';
  * groups. They never fix anything; they only build the questions.
  */
 
-export interface OracionEjemplo {
+export interface ExampleSentence {
   damana: string;
   espanol: string;
 }
 
-export interface EntradaLexica {
+export interface LexicalEntry {
   espanol: string;
   damana: string;
   categoria: string | null;
@@ -28,66 +28,66 @@ export interface EntradaLexica {
 }
 
 /** A Damana form as it appears in some source. */
-export interface FormaVista {
+export interface SeenForm {
   /** Normalized (lowercase, no accents; ʉ and ñ intact). */
   forma: string;
   /** Times it appears in sentences and phrases. */
   frecuencia: number;
   /** What the vocabulary or the conjugations say it means. */
   significados: string[];
-  ejemplo?: OracionEjemplo;
+  ejemplo?: ExampleSentence;
 }
 
 // ---------------------------------------------------------------------------
 // 1. Spelling: the same word written in several ways
 // ---------------------------------------------------------------------------
 
-export interface GrupoEscritura {
+export interface SpellingGroup {
   /** Which alternation separates them: «u / ʉ», «w / u», «ndzina / nyina»… */
   tipo: string;
   /** From most used to least used. */
-  formas: FormaVista[];
+  formas: SeenForm[];
   total: number;
 }
 
-export const LONGITUD_MINIMA_VARIANTE = 4;
-export const TIPO_PARECIDAS = 'se parecen y significan lo mismo';
+export const MIN_VARIANT_LENGTH = 4;
+export const LOOKALIKE_KIND = 'se parecen y significan lo mismo';
 
-const porUso = (a: FormaVista, b: FormaVista) =>
+const byUsage = (a: SeenForm, b: SeenForm) =>
   b.frecuencia - a.frecuencia || a.forma.localeCompare(b.forma, 'es');
 
-const porTotal = (a: GrupoEscritura, b: GrupoEscritura) =>
+const byTotal = (a: SpellingGroup, b: SpellingGroup) =>
   b.total - a.total || a.formas[0].forma.localeCompare(b.formas[0].forma, 'es');
 
-function grupo(tipo: string, formas: FormaVista[]): GrupoEscritura {
-  const ordenadas = [...formas].sort(porUso);
-  return { tipo, formas: ordenadas, total: ordenadas.reduce((s, f) => s + f.frecuencia, 0) };
+function group(kind: string, forms: SeenForm[]): SpellingGroup {
+  const sortedWords = [...forms].sort(byUsage);
+  return { tipo: kind, formas: sortedWords, total: sortedWords.reduce((s, f) => s + f.frecuencia, 0) };
 }
 
 /** Forms that differ only by a known spelling alternation. */
-export function detectarVariantes(formas: FormaVista[]): GrupoEscritura[] {
-  const porEsqueleto = new Map<string, Map<string, FormaVista>>();
-  for (const f of formas) {
-    const clave = esqueletoOrtografico(f.forma);
-    if (clave.length < LONGITUD_MINIMA_VARIANTE) continue;
-    const vistas = porEsqueleto.get(clave) ?? new Map<string, FormaVista>();
-    if (!vistas.has(f.forma)) vistas.set(f.forma, f);
-    porEsqueleto.set(clave, vistas);
+export function detectVariants(forms: SeenForm[]): SpellingGroup[] {
+  const bySkeleton = new Map<string, Map<string, SeenForm>>();
+  for (const f of forms) {
+    const key = spellingSkeleton(f.forma);
+    if (key.length < MIN_VARIANT_LENGTH) continue;
+    const seen = bySkeleton.get(key) ?? new Map<string, SeenForm>();
+    if (!seen.has(f.forma)) seen.set(f.forma, f);
+    bySkeleton.set(key, seen);
   }
-  return [...porEsqueleto.values()]
-    .filter((vistas) => vistas.size > 1)
-    .map((vistas) => {
-      const lista = [...vistas.values()];
-      return grupo(reglasQueDistinguen(lista.map((f) => f.forma)).join(' + ') || 'otra', lista);
+  return [...bySkeleton.values()]
+    .filter((seen) => seen.size > 1)
+    .map((seen) => {
+      const list = [...seen.values()];
+      return group(distinguishingRules(list.map((f) => f.forma)).join(' + ') || 'otra', list);
     })
-    .sort(porTotal);
+    .sort(byTotal);
 }
 
-function palabrasDeContenido(texto: string): Set<string> {
+function contentWords(text: string): Set<string> {
   return new Set(
-    tokenizarDamana(texto)
+    tokenizeDamana(text)
       .map((t) => t.normalizada)
-      .filter((t) => t.length >= 3 && !esStopwordEspanol(t)),
+      .filter((t) => t.length >= 3 && !isSpanishStopword(t)),
   );
 }
 
@@ -97,35 +97,35 @@ function palabrasDeContenido(texto: string): Set<string> {
  * meaning they would be noise: abisha «calentar» and abishi «hiérvalo» also look
  * alike and are legitimately different forms.
  */
-export function detectarParecidas(formas: FormaVista[]): GrupoEscritura[] {
-  const candidatas = formas
+export function detectLookalikes(forms: SeenForm[]): SpellingGroup[] {
+  const candidateWords = forms
     .filter((f) => f.significados.length > 0 && f.forma.length >= 6)
     .map((f) => ({
       f,
-      clave: esqueletoOrtografico(f.forma),
-      glosa: palabrasDeContenido(f.significados.join(' ')),
+      clave: spellingSkeleton(f.forma),
+      glosa: contentWords(f.significados.join(' ')),
     }));
-  const grupos: GrupoEscritura[] = [];
-  for (let i = 0; i < candidatas.length; i++) {
-    for (let j = i + 1; j < candidatas.length; j++) {
-      const a = candidatas[i];
-      const b = candidatas[j];
-      if (a.clave === b.clave || !aDistanciaUno(a.clave, b.clave)) continue;
+  const groups: SpellingGroup[] = [];
+  for (let i = 0; i < candidateWords.length; i++) {
+    for (let j = i + 1; j < candidateWords.length; j++) {
+      const a = candidateWords[i];
+      const b = candidateWords[j];
+      if (a.clave === b.clave || !atDistanceOne(a.clave, b.clave)) continue;
       // If what changes is the first letter it is usually a person prefix
       // (anzhʉngʉma «su hijo» / ranzhʉngʉma «mi hijo»): that is grammar.
       if (a.clave[0] !== b.clave[0]) continue;
-      if (![...a.glosa].some((palabra) => b.glosa.has(palabra))) continue;
-      grupos.push(grupo(TIPO_PARECIDAS, [a.f, b.f]));
+      if (![...a.glosa].some((word) => b.glosa.has(word))) continue;
+      groups.push(group(LOOKALIKE_KIND, [a.f, b.f]));
     }
   }
-  return grupos.sort(porTotal);
+  return groups.sort(byTotal);
 }
 
 // ---------------------------------------------------------------------------
 // 2. One Spanish word with several Damana forms
 // ---------------------------------------------------------------------------
 
-export interface OpcionDamana {
+export interface DamanaOption {
   damana: string;
   categoria: string | null;
   fuente: string | null;
@@ -134,9 +134,9 @@ export interface OpcionDamana {
   frecuencia: number | null;
 }
 
-export interface GrupoSinonimos {
+export interface SynonymGroup {
   espanol: string;
-  opciones: OpcionDamana[];
+  opciones: DamanaOption[];
 }
 
 /**
@@ -144,21 +144,21 @@ export interface GrupoSinonimos {
  * that are NOT the same one with another spelling (those go under «escritura»).
  * They may be real synonyms, different senses or a mistake.
  */
-export function detectarSinonimos(entradas: EntradaLexica[]): GrupoSinonimos[] {
-  const porEspanol = new Map<string, { texto: string; opciones: Map<string, OpcionDamana> }>();
-  for (const e of entradas) {
-    for (const alternativa of alternativasEspanol(e.espanol)) {
-      const clave = tokenizarDamana(alternativa)
+export function detectSynonyms(entries: LexicalEntry[]): SynonymGroup[] {
+  const bySpanish = new Map<string, { texto: string; opciones: Map<string, DamanaOption> }>();
+  for (const e of entries) {
+    for (const alternative of spanishAlternatives(e.espanol)) {
+      const key = tokenizeDamana(alternative)
         .map((t) => t.normalizada)
         .join(' ');
-      if (!clave) continue;
-      const grupoEs = porEspanol.get(clave) ?? {
-        texto: alternativa.trim(),
-        opciones: new Map<string, OpcionDamana>(),
+      if (!key) continue;
+      const groupEs = bySpanish.get(key) ?? {
+        texto: alternative.trim(),
+        opciones: new Map<string, DamanaOption>(),
       };
-      const claveDamana = normalizar(e.damana.trim());
-      if (!grupoEs.opciones.has(claveDamana)) {
-        grupoEs.opciones.set(claveDamana, {
+      const damanaKey = normalize(e.damana.trim());
+      if (!groupEs.opciones.has(damanaKey)) {
+        groupEs.opciones.set(damanaKey, {
           damana: e.damana.trim(),
           categoria: e.categoria,
           fuente: e.fuente,
@@ -166,12 +166,12 @@ export function detectarSinonimos(entradas: EntradaLexica[]): GrupoSinonimos[] {
           frecuencia: null,
         });
       }
-      porEspanol.set(clave, grupoEs);
+      bySpanish.set(key, groupEs);
     }
   }
-  return [...porEspanol.values()]
+  return [...bySpanish.values()]
     .filter((g) => g.opciones.size > 1)
-    .filter((g) => new Set([...g.opciones.keys()].map(esqueletoOrtografico)).size > 1)
+    .filter((g) => new Set([...g.opciones.keys()].map(spellingSkeleton)).size > 1)
     .map((g) => ({ espanol: g.texto, opciones: [...g.opciones.values()] }))
     .sort((a, b) => a.espanol.localeCompare(b.espanol, 'es'));
 }
@@ -180,14 +180,14 @@ export function detectarSinonimos(entradas: EntradaLexica[]): GrupoSinonimos[] {
 // 3. One Damana form with several meanings in Spanish
 // ---------------------------------------------------------------------------
 
-export interface SentidoEspanol {
+export interface SpanishSense {
   /** As written in the source, with its accent if it has one. */
   damana: string;
   espanol: string;
   fuente: string | null;
 }
 
-export interface GrupoPolisemia {
+export interface PolysemyGroup {
   clave: string;
   /**
    * The forms in the group are told apart only by the accent (Ako «córtelo» /
@@ -195,31 +195,31 @@ export interface GrupoPolisemia {
    * treats them as the same word: if the accent marks something, it is a rule.
    */
   soloTilde: boolean;
-  sentidos: SentidoEspanol[];
+  sentidos: SpanishSense[];
 }
 
-export function detectarPolisemia(entradas: EntradaLexica[]): GrupoPolisemia[] {
-  const porDamana = new Map<string, Map<string, SentidoEspanol>>();
-  for (const e of entradas) {
-    const clave = normalizar(e.damana.trim()).replace(/\s+/g, ' ');
-    if (!clave) continue;
-    const sentidos = porDamana.get(clave) ?? new Map<string, SentidoEspanol>();
-    const claveEspanol = normalizar(e.espanol.trim());
-    if (!sentidos.has(claveEspanol)) {
-      sentidos.set(claveEspanol, {
+export function detectPolysemy(entries: LexicalEntry[]): PolysemyGroup[] {
+  const byDamana = new Map<string, Map<string, SpanishSense>>();
+  for (const e of entries) {
+    const key = normalize(e.damana.trim()).replace(/\s+/g, ' ');
+    if (!key) continue;
+    const senses = byDamana.get(key) ?? new Map<string, SpanishSense>();
+    const spanishKey = normalize(e.espanol.trim());
+    if (!senses.has(spanishKey)) {
+      senses.set(spanishKey, {
         damana: e.damana.trim(),
         espanol: e.espanol.trim(),
         fuente: e.fuente,
       });
     }
-    porDamana.set(clave, sentidos);
+    byDamana.set(key, senses);
   }
-  return [...porDamana.entries()]
-    .filter(([, sentidos]) => sentidos.size > 1)
-    .map(([clave, sentidos]) => {
-      const lista = [...sentidos.values()];
-      const escritas = new Set(lista.map((s) => s.damana.toLowerCase().normalize('NFC')));
-      return { clave, soloTilde: escritas.size > 1, sentidos: lista };
+  return [...byDamana.entries()]
+    .filter(([, senses]) => senses.size > 1)
+    .map(([key, senses]) => {
+      const list = [...senses.values()];
+      const written = new Set(list.map((s) => s.damana.toLowerCase().normalize('NFC')));
+      return { clave: key, soloTilde: written.size > 1, sentidos: list };
     })
     .sort(
       (a, b) => Number(b.soloTilde) - Number(a.soloTilde) || a.clave.localeCompare(b.clave, 'es'),
@@ -230,7 +230,7 @@ export function detectarPolisemia(entradas: EntradaLexica[]): GrupoPolisemia[] {
 // 4. Entries that must be clarified one by one
 // ---------------------------------------------------------------------------
 
-export type MotivoDuda =
+export type DoubtReason =
   | 'igual_que_espanol'
   | 'sin_forma'
   | 'varias_formas'
@@ -238,7 +238,7 @@ export type MotivoDuda =
   | 'espanol_poco_claro'
   | 'nota_por_confirmar';
 
-export const TEXTO_MOTIVO: Record<MotivoDuda, string> = {
+export const REASON_TEXT: Record<DoubtReason, string> = {
   igual_que_espanol:
     'Está escrita igual que en español. ¿Se dice así en damana o hay una palabra propia?',
   sin_forma: 'La nota dice que no hay forma de traducirla. ¿Cómo se diría esa idea?',
@@ -250,47 +250,47 @@ export const TEXTO_MOTIVO: Record<MotivoDuda, string> = {
     'Tiene una explicación de la hablante. Confirmar que la palabra y la explicación están bien.',
 };
 
-export interface EntradaDudosa {
-  entrada: EntradaLexica;
-  motivos: MotivoDuda[];
+export interface DoubtfulEntry {
+  entrada: LexicalEntry;
+  motivos: DoubtReason[];
   /** Concrete help: e.g. which neighbouring row the note seems to belong to. */
   pista: string;
 }
 
-const RE_SEPARADOR_DE_FORMAS = /\/|\s-\s|\p{L}-\p{L}/u;
+const RE_FORM_SEPARATOR = /\/|\s-\s|\p{L}-\p{L}/u;
 /** A comma separates forms only in short cells; in a sentence it is punctuation. */
-const MAXIMO_PALABRAS_CON_COMA = 4;
+const MAX_WORDS_WITH_COMMA = 4;
 
-function tieneVariasFormas(damana: string): boolean {
-  if (RE_SEPARADOR_DE_FORMAS.test(damana)) return true;
-  return damana.includes(',') && tokenizarDamana(damana).length <= MAXIMO_PALABRAS_CON_COMA;
+function hasSeveralForms(damana: string): boolean {
+  if (RE_FORM_SEPARATOR.test(damana)) return true;
+  return damana.includes(',') && tokenizeDamana(damana).length <= MAX_WORDS_WITH_COMMA;
 }
-const RE_SIN_FORMA = /no hay forma|no tiene forma|no hay palabra/i;
-const RE_ESPANOL_POCO_CLARO = /\(probable\)|^\s*(verb|afi)\s*:/i;
-const RE_FUENTE_HABLANTES = /nativ/i;
+const RE_NO_FORM = /no hay forma|no tiene forma|no hay palabra/i;
+const RE_UNCLEAR_SPANISH = /\(probable\)|^\s*(verb|afi)\s*:/i;
+const RE_SPEAKERS_SOURCE = /nativ/i;
 /** How many rows away to look for the owner of a shifted note. */
-const VECINDAD_NOTA = 2;
+const NOTE_NEIGHBOURHOOD = 2;
 
 /** Words the notes use to explain and that identify no row. */
-const PALABRAS_DE_EXPLICACION = new Set(
+const EXPLANATION_WORDS = new Set(
   [
     'damana', 'dumuna', 'ejemplo', 'palabra', 'palabras', 'significa', 'quiere', 'decir',
     'refiere', 'varios', 'varias', 'forma', 'traducir', 'traducirlo', 'traduzca', 'texto',
     'citado', 'pasado', 'tambien', 'puede', 'podemos', 'cuando', 'encuentra', 'agrega',
     'agregado', 'nombre', 'nombres', 'propios', 'lugares', 'escribe', 'suele', 'traducirse',
     'realmente', 'frase', 'porque', 'mismo', 'tiempo', 'lugar', 'persona', 'personas',
-  ].map(esqueletoOrtografico),
+  ].map(spellingSkeleton),
 );
 
-function clavesDe(texto: string): string[] {
-  return tokenizarDamana(texto)
-    .map((t) => esqueletoOrtografico(t.normalizada))
-    .filter((k) => k.length >= 5 && !esStopwordEspanol(k));
+function keysOf(text: string): string[] {
+  return tokenizeDamana(text)
+    .map((t) => spellingSkeleton(t.normalizada))
+    .filter((k) => k.length >= 5 && !isSpanishStopword(k));
 }
 
-function laNotaMenciona(clavesNota: string[], entrada: EntradaLexica): boolean {
-  const propias = [...clavesDe(entrada.damana), ...clavesDe(entrada.espanol)];
-  return propias.some((p) => clavesNota.some((n) => n === p || aDistanciaUno(n, p)));
+function noteMentions(noteKeys: string[], entry: LexicalEntry): boolean {
+  const own = [...keysOf(entry.damana), ...keysOf(entry.espanol)];
+  return own.some((p) => noteKeys.some((n) => n === p || atDistanceOne(n, p)));
 }
 
 /**
@@ -298,64 +298,64 @@ function laNotaMenciona(clavesNota: string[], entrada: EntradaLexica): boolean {
  * matters: to detect notes shifted to another row the neighbours are checked (in
  * the «nativas 2026-10» block the note for «pastores» ended up on «pedazo»).
  */
-export function detectarEntradasDudosas(entradas: EntradaLexica[]): EntradaDudosa[] {
-  const dudosas: EntradaDudosa[] = [];
-  entradas.forEach((entrada, i) => {
-    const motivos: MotivoDuda[] = [];
-    let pista = '';
-    const nota = (entrada.notas ?? '').trim();
+export function detectDoubtfulEntries(entries: LexicalEntry[]): DoubtfulEntry[] {
+  const doubtful: DoubtfulEntry[] = [];
+  entries.forEach((entry, i) => {
+    const reasons: DoubtReason[] = [];
+    let hint = '';
+    const noteText = (entry.notas ?? '').trim();
 
-    if (normalizar(entrada.damana.trim()) === normalizar(entrada.espanol.trim())) {
-      motivos.push('igual_que_espanol');
+    if (normalize(entry.damana.trim()) === normalize(entry.espanol.trim())) {
+      reasons.push('igual_que_espanol');
     }
-    if (RE_SIN_FORMA.test(nota)) motivos.push('sin_forma');
-    if (tieneVariasFormas(entrada.damana)) motivos.push('varias_formas');
-    if (RE_ESPANOL_POCO_CLARO.test(entrada.espanol)) motivos.push('espanol_poco_claro');
+    if (RE_NO_FORM.test(noteText)) reasons.push('sin_forma');
+    if (hasSeveralForms(entry.damana)) reasons.push('varias_formas');
+    if (RE_UNCLEAR_SPANISH.test(entry.espanol)) reasons.push('espanol_poco_claro');
 
-    const esDeHablantes = RE_FUENTE_HABLANTES.test(entrada.fuente ?? '');
-    if (esDeHablantes && nota) {
-      const clavesNota = clavesDe(nota).filter((k) => !PALABRAS_DE_EXPLICACION.has(k));
-      if (clavesNota.length > 0 && !laNotaMenciona(clavesNota, entrada)) {
-        for (let d = 1; d <= VECINDAD_NOTA && !pista; d++) {
-          for (const vecina of [entradas[i + d], entradas[i - d]]) {
-            if (vecina && laNotaMenciona(clavesNota, vecina)) {
-              pista = `¿La nota será de «${vecina.espanol} = ${vecina.damana}»?`;
+    const isFromSpeakers = RE_SPEAKERS_SOURCE.test(entry.fuente ?? '');
+    if (isFromSpeakers && noteText) {
+      const noteKeys = keysOf(noteText).filter((k) => !EXPLANATION_WORDS.has(k));
+      if (noteKeys.length > 0 && !noteMentions(noteKeys, entry)) {
+        for (let d = 1; d <= NOTE_NEIGHBOURHOOD && !hint; d++) {
+          for (const neighbour of [entries[i + d], entries[i - d]]) {
+            if (neighbour && noteMentions(noteKeys, neighbour)) {
+              hint = `¿La nota será de «${neighbour.espanol} = ${neighbour.damana}»?`;
               break;
             }
           }
         }
-        if (pista) motivos.push('nota_de_otra_palabra');
+        if (hint) reasons.push('nota_de_otra_palabra');
       }
-      if (!motivos.includes('nota_de_otra_palabra') && !motivos.includes('sin_forma')) {
-        motivos.push('nota_por_confirmar');
+      if (!reasons.includes('nota_de_otra_palabra') && !reasons.includes('sin_forma')) {
+        reasons.push('nota_por_confirmar');
       }
     }
 
-    if (motivos.length > 0) dudosas.push({ entrada, motivos, pista });
+    if (reasons.length > 0) doubtful.push({ entrada: entry, motivos: reasons, pista: hint });
   });
-  return dudosas;
+  return doubtful;
 }
 
 // ---------------------------------------------------------------------------
 // 5. Endings: the grammar that shows in the words
 // ---------------------------------------------------------------------------
 
-export interface RaizConocida {
+export interface KnownRoot {
   raiz: string;
   significado: string;
 }
 
 export interface TokenCorpus {
   frecuencia: number;
-  ejemplo?: OracionEjemplo;
+  ejemplo?: ExampleSentence;
 }
 
-export interface EjemploTerminacion {
+export interface EndingExample {
   raiz: string;
   significado: string;
   forma: string;
   frecuencia: number;
-  ejemplo?: OracionEjemplo;
+  ejemplo?: ExampleSentence;
   /**
    * The Spanish sentence mentions the meaning of the base word: a sign
    * that the root really is that word and not a chance resemblance
@@ -364,36 +364,36 @@ export interface EjemploTerminacion {
   encaja: boolean;
 }
 
-function encajaConLaOracion(significado: string, ejemplo?: OracionEjemplo): boolean {
-  if (!ejemplo) return false;
-  const palabras = (texto: string) =>
-    tokenizarDamana(texto)
+function fitsTheSentence(meaning: string, example?: ExampleSentence): boolean {
+  if (!example) return false;
+  const words = (text: string) =>
+    tokenizeDamana(text)
       .map((t) => t.normalizada)
       .filter((t) => t.length >= 4);
   // From the meaning, content words count; if it only carries
   // function words («Ellos»), those are used.
-  const todas = palabras(significado);
-  const contenido = todas.filter((t) => !esStopwordEspanol(t));
-  const enOracion = new Set(palabras(ejemplo.espanol).map((t) => t.slice(0, 4)));
-  return (contenido.length > 0 ? contenido : todas).some((t) => enOracion.has(t.slice(0, 4)));
+  const all = words(meaning);
+  const content = all.filter((t) => !isSpanishStopword(t));
+  const inSentence = new Set(words(example.espanol).map((t) => t.slice(0, 4)));
+  return (content.length > 0 ? content : all).some((t) => inSentence.has(t.slice(0, 4)));
 }
 
-export interface TerminacionCandidata {
+export interface CandidateEnding {
   terminacion: string;
   /** In how many distinct base words it appears. */
   raices: number;
   /** Rule or dictionary entry that already explains it, if any. */
   yaSabemos: string;
-  ejemplos: EjemploTerminacion[];
+  ejemplos: EndingExample[];
 }
 
-export interface OpcionesTerminaciones {
+export interface EndingsOptions {
   minimoRaices?: number;
   maximo?: number;
   ejemplosPorTerminacion?: number;
 }
 
-export const LETRAS_TERMINACION = { minimo: 2, maximo: 7 };
+export const ENDING_LETTERS = { minimo: 2, maximo: 7 };
 
 /**
  * Endings that repeat after words we already know:
@@ -401,49 +401,49 @@ export const LETRAS_TERMINACION = { minimo: 2, maximo: 7 };
  * shows up after 40 different words it is grammar, not chance, and
  * it is worth asking what it adds.
  */
-export function detectarTerminaciones(
-  raices: RaizConocida[],
+export function detectEndings(
+  roots: KnownRoot[],
   tokens: Map<string, TokenCorpus>,
-  conocidas: Map<string, string>,
-  opciones: OpcionesTerminaciones = {},
-): TerminacionCandidata[] {
-  const { minimoRaices = 6, maximo = 30, ejemplosPorTerminacion = 3 } = opciones;
-  const unicas = new Map<string, RaizConocida>();
-  for (const r of raices) if (r.raiz.length >= 4 && !unicas.has(r.raiz)) unicas.set(r.raiz, r);
+  known: Map<string, string>,
+  options: EndingsOptions = {},
+): CandidateEnding[] {
+  const { minimoRaices: minRoots = 6, maximo: maximum = 30, ejemplosPorTerminacion: examplesPerEnding = 3 } = options;
+  const uniqueWords = new Map<string, KnownRoot>();
+  for (const r of roots) if (r.raiz.length >= 4 && !uniqueWords.has(r.raiz)) uniqueWords.set(r.raiz, r);
 
-  const porTerminacion = new Map<string, Map<string, EjemploTerminacion>>();
-  for (const [forma, info] of tokens) {
-    for (const r of unicas.values()) {
-      const extra = forma.length - r.raiz.length;
-      if (extra < LETRAS_TERMINACION.minimo || extra > LETRAS_TERMINACION.maximo) continue;
-      if (!forma.startsWith(r.raiz)) continue;
-      const terminacion = forma.slice(r.raiz.length);
-      const porRaiz = porTerminacion.get(terminacion) ?? new Map<string, EjemploTerminacion>();
-      const previo = porRaiz.get(r.raiz);
-      if (!previo || info.frecuencia > previo.frecuencia) {
-        porRaiz.set(r.raiz, {
+  const byEnding = new Map<string, Map<string, EndingExample>>();
+  for (const [form, info] of tokens) {
+    for (const r of uniqueWords.values()) {
+      const extra = form.length - r.raiz.length;
+      if (extra < ENDING_LETTERS.minimo || extra > ENDING_LETTERS.maximo) continue;
+      if (!form.startsWith(r.raiz)) continue;
+      const ending = form.slice(r.raiz.length);
+      const byRoot = byEnding.get(ending) ?? new Map<string, EndingExample>();
+      const prior = byRoot.get(r.raiz);
+      if (!prior || info.frecuencia > prior.frecuencia) {
+        byRoot.set(r.raiz, {
           raiz: r.raiz,
           significado: r.significado,
-          forma,
+          forma: form,
           frecuencia: info.frecuencia,
           ejemplo: info.ejemplo,
-          encaja: encajaConLaOracion(r.significado, info.ejemplo),
+          encaja: fitsTheSentence(r.significado, info.ejemplo),
         });
       }
-      porTerminacion.set(terminacion, porRaiz);
+      byEnding.set(ending, byRoot);
     }
   }
 
-  return [...porTerminacion.entries()]
-    .filter(([, porRaiz]) => porRaiz.size >= minimoRaices)
+  return [...byEnding.entries()]
+    .filter(([, byRoot]) => byRoot.size >= minRoots)
     .sort((a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0], 'es'))
-    .slice(0, maximo)
-    .map(([terminacion, porRaiz]) => ({
-      terminacion,
-      raices: porRaiz.size,
-      yaSabemos: conocidas.get(terminacion) ?? '',
-      ejemplos: [...porRaiz.values()]
+    .slice(0, maximum)
+    .map(([ending, byRoot]) => ({
+      terminacion: ending,
+      raices: byRoot.size,
+      yaSabemos: known.get(ending) ?? '',
+      ejemplos: [...byRoot.values()]
         .sort((a, b) => Number(b.encaja) - Number(a.encaja) || b.frecuencia - a.frecuencia)
-        .slice(0, ejemplosPorTerminacion),
+        .slice(0, examplesPerEnding),
     }));
 }

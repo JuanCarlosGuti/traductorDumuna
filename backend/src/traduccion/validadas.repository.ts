@@ -1,25 +1,25 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Database } from 'better-sqlite3';
-import { CONEXION_DB } from '../database/database.constants';
-import { DireccionTraduccion } from './dto/traduccion.dto';
+import { DB_CONNECTION } from '../database/database.constants';
+import { TranslationDirection } from './dto/traduccion.dto';
 
-export type OrigenValidacion = 'confirmada' | 'corregida';
+export type ValidationOrigin = 'confirmada' | 'corregida';
 
-export interface Validada {
+export interface ValidatedPair {
   id: number;
   creadoEn: string;
   espanol: string;
   damana: string;
-  direccion: DireccionTraduccion;
-  origen: OrigenValidacion;
+  direccion: TranslationDirection;
+  origen: ValidationOrigin;
   traduccionModelo: string | null;
 }
 
-export interface NuevaValidada {
+export interface NewValidated {
   espanol: string;
   damana: string;
-  direccion: DireccionTraduccion;
-  origen: OrigenValidacion;
+  direccion: TranslationDirection;
+  origen: ValidationOrigin;
   /** What the model proposed (equal to the pair if it was confirmed). */
   traduccionModelo: string | null;
 }
@@ -30,30 +30,30 @@ export interface NuevaValidada {
  * now it only accumulates. It survives re-imports.
  */
 @Injectable()
-export class ValidadasRepository {
-  constructor(@Inject(CONEXION_DB) private readonly db: Database) {}
+export class ValidatedRepository {
+  constructor(@Inject(DB_CONNECTION) private readonly db: Database) {}
 
-  guardar(nueva: NuevaValidada, ahora: Date = new Date()): void {
+  save(newItem: NewValidated, now: Date = new Date()): void {
     this.db
       .prepare(
         `INSERT INTO validadas (creado_en, espanol, damana, direccion, origen, traduccion_modelo)
          VALUES (?, ?, ?, ?, ?, ?)`,
       )
       .run(
-        ahora.toISOString(),
-        nueva.espanol,
-        nueva.damana,
-        nueva.direccion,
-        nueva.origen,
-        nueva.traduccionModelo,
+        now.toISOString(),
+        newItem.espanol,
+        newItem.damana,
+        newItem.direccion,
+        newItem.origen,
+        newItem.traduccionModelo,
       );
   }
 
-  contar(): number {
+  count(): number {
     return (this.db.prepare('SELECT COUNT(*) AS n FROM validadas').get() as { n: number }).n;
   }
 
-  listar(): Validada[] {
+  listAll(): ValidatedPair[] {
     return (
       this.db
         .prepare(

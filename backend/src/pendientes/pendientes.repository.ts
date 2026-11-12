@@ -1,27 +1,27 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Database } from 'better-sqlite3';
-import { normalizar } from '../comun/texto/normalizador';
-import { CONEXION_DB } from '../database/database.constants';
+import { normalize } from '../comun/texto/normalizador';
+import { DB_CONNECTION } from '../database/database.constants';
 
-export type IdiomaPendiente = 'espanol' | 'damana';
-export type EstadoPendiente = 'pendiente' | 'exportada' | 'resuelta';
-export type OrigenPendiente = 'traductor' | 'elicitacion';
+export type PendingLanguage = 'espanol' | 'damana';
+export type PendingStatus = 'pendiente' | 'exportada' | 'resuelta';
+export type PendingOrigin = 'traductor' | 'elicitacion';
 
-export interface Pendiente {
+export interface PendingItem {
   id: number;
   palabra: string;
-  idioma: IdiomaPendiente;
+  idioma: PendingLanguage;
   contexto: string | null;
   vecesPedida: number;
-  estado: EstadoPendiente;
-  origen: OrigenPendiente;
+  estado: PendingStatus;
+  origen: PendingOrigin;
   creadoEn: string;
   actualizadoEn: string;
 }
 
 /** Deduplication key: lowercase and no accents, with ʉ and ñ intact. */
-export function clavePendiente(palabra: string): string {
-  return normalizar(palabra.trim());
+export function pendingKey(word: string): string {
+  return normalize(word.trim());
 }
 
 /**
@@ -30,11 +30,11 @@ export function clavePendiente(palabra: string): string {
  * the native speakers fill in on the elicitation format.
  */
 @Injectable()
-export class PendientesRepository {
-  constructor(@Inject(CONEXION_DB) private readonly db: Database) {}
+export class PendingRepository {
+  constructor(@Inject(DB_CONNECTION) private readonly db: Database) {}
 
   /** All of them, most requested first (and among equals, the most recent). */
-  listar(): Pendiente[] {
+  listAll(): PendingItem[] {
     return (
       this.db
         .prepare(
@@ -44,12 +44,12 @@ export class PendientesRepository {
            ORDER BY veces_pedida DESC, actualizado_en DESC, rowid`,
         )
         .all() as any[]
-    ).map(mapear);
+    ).map(mapRow);
   }
 
   /** Those that have not come back resolved yet: what is exported to the native speakers. */
-  listarAbiertas(): Pendiente[] {
-    return this.listar().filter((p) => p.estado !== 'resuelta');
+  listOpen(): PendingItem[] {
+    return this.listAll().filter((p) => p.estado !== 'resuelta');
   }
 
   /**
@@ -57,14 +57,14 @@ export class PendientesRepository {
    * if it was already there, one request is added. An already resolved word that is
    * requested again is reopened (a sign that the solution did not reach the corpus).
    */
-  registrarPedida(
-    palabra: string,
-    idioma: IdiomaPendiente,
-    contexto: string | null,
-    ahora: string = new Date().toISOString(),
+  recordRequested(
+    word: string,
+    language: PendingLanguage,
+    context: string | null,
+    now: string = new Date().toISOString(),
   ): void {
-    const limpia = palabra.trim();
-    if (!limpia) return;
+    const clean = word.trim();
+    if (!clean) return;
     this.db
       .prepare(
         `INSERT INTO pendientes
@@ -76,20 +76,20 @@ export class PendientesRepository {
            estado = CASE WHEN pendientes.estado = 'resuelta' THEN 'pendiente' ELSE pendientes.estado END,
            actualizado_en = excluded.actualizado_en`,
       )
-      .run(clavePendiente(limpia), limpia, idioma, contexto, ahora, ahora);
+      .run(pendingKey(clean), clean, language, context, now, now);
   }
 
   /**
    * Elicitation row that came back unfilled. It does not add requests or overwrite
    * what was already there: it only guarantees the word is listed as pending.
    */
-  registrarDeElicitacion(
-    palabra: string,
-    contexto: string | null,
-    ahora: string = new Date().toISOString(),
+  recordFromElicitation(
+    word: string,
+    context: string | null,
+    now: string = new Date().toISOString(),
   ): boolean {
-    const limpia = palabra.trim();
-    if (!limpia) return false;
+    const clean = word.trim();
+    if (!clean) return false;
     const info = this.db
       .prepare(
         `INSERT INTO pendientes
@@ -97,35 +97,35 @@ export class PendientesRepository {
          VALUES (?, ?, 'espanol', ?, 1, 'pendiente', 'elicitacion', ?, ?)
          ON CONFLICT(clave) DO NOTHING`,
       )
-      .run(clavePendiente(limpia), limpia, contexto || null, ahora, ahora);
+      .run(pendingKey(clean), clean, context || null, now, now);
     return info.changes > 0;
   }
 
   /** The word arrived translated: it is closed if it was open. */
-  marcarResuelta(palabra: string, ahora: string = new Date().toISOString()): boolean {
+  markResolved(word: string, now: string = new Date().toISOString()): boolean {
     const info = this.db
       .prepare(
         `UPDATE pendientes SET estado = 'resuelta', actualizado_en = ?
          WHERE clave = ? AND estado != 'resuelta'`,
       )
-      .run(ahora, clavePendiente(palabra));
+      .run(now, pendingKey(word));
     return info.changes > 0;
   }
 
-  marcarExportadas(ids: number[], ahora: string = new Date().toISOString()): void {
+  markExported(ids: number[], now: string = new Date().toISOString()): void {
     if (ids.length === 0) return;
-    const actualizar = this.db.prepare(
+    const update = this.db.prepare(
       `UPDATE pendientes SET estado = 'exportada', actualizado_en = ?
        WHERE rowid = ? AND estado = 'pendiente'`,
     );
-    const todas = this.db.transaction((lista: number[]) => {
-      for (const id of lista) actualizar.run(ahora, id);
+    const all = this.db.transaction((list: number[]) => {
+      for (const id of list) update.run(now, id);
     });
-    todas(ids);
+    all(ids);
   }
 }
 
-function mapear(f: any): Pendiente {
+function mapRow(f: any): PendingItem {
   return {
     id: f.id,
     palabra: f.palabra,

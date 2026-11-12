@@ -1,10 +1,10 @@
 import * as ExcelJS from 'exceljs';
-import { AMARILLO } from '../pendientes/pendientes.service';
-import { TEXTO_MOTIVO } from './dudas';
-import { InformeDudas } from './dudas.service';
+import { YELLOW } from '../pendientes/pendientes.service';
+import { REASON_TEXT } from './dudas';
+import { DoubtsReport } from './dudas.service';
 
 /** Sheet names, in the order in which they should be filled in. */
-export const HOJAS_DUDAS = {
+export const DOUBT_SHEETS = {
   instrucciones: 'leer primero',
   escritura: '1 escritura',
   sinonimos: '2 mismo significado',
@@ -13,53 +13,53 @@ export const HOJAS_DUDAS = {
   terminaciones: '5 terminaciones',
 } as const;
 
-const AZUL_ENCABEZADO = 'FFDCE8F0';
+const HEADER_BLUE = 'FFDCE8F0';
 /** How many distinct forms fit in columns of their own; the rest go in the comment. */
-const FORMAS_POR_FILA = 4;
+const FORMS_PER_ROW = 4;
 
-interface Columna {
+interface Column {
   titulo: string;
   ancho: number;
   /** Filled in by the speaker. */
   amarilla?: boolean;
 }
 
-type Celda = string | number | null;
+type Cell = string | number | null;
 
-function agregarHoja(
-  libro: ExcelJS.Workbook,
-  nombre: string,
-  columnas: Columna[],
-  filas: Celda[][],
+function addSheet(
+  workbook: ExcelJS.Workbook,
+  name: string,
+  columns: Column[],
+  rows: Cell[][],
 ): ExcelJS.Worksheet {
-  const hoja = libro.addWorksheet(nombre);
-  hoja.columns = columnas.map((c) => ({ header: c.titulo, width: c.ancho }));
-  const encabezado = hoja.getRow(1);
-  encabezado.font = { bold: true };
-  encabezado.alignment = { vertical: 'middle', wrapText: true };
-  encabezado.height = 42;
-  columnas.forEach((c, i) => {
-    encabezado.getCell(i + 1).fill = {
+  const sheet = workbook.addWorksheet(name);
+  sheet.columns = columns.map((c) => ({ header: c.titulo, width: c.ancho }));
+  const heading = sheet.getRow(1);
+  heading.font = { bold: true };
+  heading.alignment = { vertical: 'middle', wrapText: true };
+  heading.height = 42;
+  columns.forEach((c, i) => {
+    heading.getCell(i + 1).fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: c.amarilla ? AMARILLO : AZUL_ENCABEZADO },
+      fgColor: { argb: c.amarilla ? YELLOW : HEADER_BLUE },
     };
   });
-  for (const valores of filas) {
-    const fila = hoja.addRow(valores);
-    fila.alignment = { vertical: 'top', wrapText: true };
-    columnas.forEach((c, i) => {
+  for (const values of rows) {
+    const row = sheet.addRow(values);
+    row.alignment = { vertical: 'top', wrapText: true };
+    columns.forEach((c, i) => {
       if (c.amarilla) {
-        fila.getCell(i + 1).fill = {
+        row.getCell(i + 1).fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: AMARILLO },
+          fgColor: { argb: YELLOW },
         };
       }
     });
   }
-  hoja.views = [{ state: 'frozen', ySplit: 1 }];
-  return hoja;
+  sheet.views = [{ state: 'frozen', ySplit: 1 }];
+  return sheet;
 }
 
 /**
@@ -68,17 +68,17 @@ function agregarHoja(
  * last three sheets call for judgement: they are for someone with experience
  * translating.
  */
-export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS.Workbook {
-  const libro = new ExcelJS.Workbook();
-  const dia = fecha.toISOString().slice(0, 10);
+export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.Workbook {
+  const workbook = new ExcelJS.Workbook();
+  const day = date.toISOString().slice(0, 10);
 
-  const instrucciones = libro.addWorksheet(HOJAS_DUDAS.instrucciones);
-  instrucciones.getColumn(1).width = 28;
-  instrucciones.getColumn(2).width = 12;
-  instrucciones.getColumn(3).width = 30;
-  instrucciones.getColumn(4).width = 90;
+  const instructions = workbook.addWorksheet(DOUBT_SHEETS.instrucciones);
+  instructions.getColumn(1).width = 28;
+  instructions.getColumn(2).width = 12;
+  instructions.getColumn(3).width = 30;
+  instructions.getColumn(4).width = 90;
   [
-    [`DUDAS DEL DICCIONARIO Y DEL CORPUS — ${dia}`],
+    [`DUDAS DEL DICCIONARIO Y DEL CORPUS — ${day}`],
     [],
     ['Qué es esto: al juntar todas las fuentes encontramos palabras escritas de varias maneras, palabras con varios significados y notas que no entendemos. Necesitamos que nos digan cuál es la forma correcta.'],
     ['Cómo se llena: solo las casillas AMARILLAS. Si no saben algo, déjenlo vacío. No borren ni muevan filas.'],
@@ -86,32 +86,32 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
     ['Si las dos formas son correctas, o si significan cosas distintas, escríbanlo: eso también nos sirve.'],
     [],
     ['Hoja', 'Filas', 'Quién la llena', 'Qué se pregunta'],
-    [HOJAS_DUDAS.escritura, informe.escritura.length, 'Cualquier hablante', 'La misma palabra aparece escrita de varias maneras. ¿Cuál es la correcta?'],
-    [HOJAS_DUDAS.sinonimos, informe.sinonimos.reduce((s, g) => s + g.opciones.length, 0), 'Revisor con experiencia', 'Una palabra del español tiene varias en damana. ¿Significan lo mismo? ¿Cuándo se usa cada una?'],
-    [HOJAS_DUDAS.polisemia, informe.polisemia.reduce((s, g) => s + g.sentidos.length, 0), 'Revisor con experiencia', 'Una palabra damana tiene varios significados anotados. ¿Están todos bien? Incluye las que solo cambian por la tilde.'],
-    [HOJAS_DUDAS.dudosas, informe.dudosas.length, 'Revisor con experiencia', 'Entradas que no quedaron claras: iguales al español, con varias formas en una casilla o con notas confusas.'],
-    [HOJAS_DUDAS.terminaciones, informe.terminaciones.reduce((s, t) => s + t.ejemplos.length, 0), 'Revisor con experiencia', 'Terminaciones que se repiten en muchas palabras (-mba, -win, -ga…). ¿Qué le agregan a la palabra?'],
-  ].forEach((linea) => instrucciones.addRow(linea));
-  instrucciones.getRow(1).font = { bold: true, size: 13 };
-  instrucciones.getRow(8).font = { bold: true };
-  instrucciones.eachRow((fila) => {
-    fila.alignment = { vertical: 'top', wrapText: true };
+    [DOUBT_SHEETS.escritura, report.escritura.length, 'Cualquier hablante', 'La misma palabra aparece escrita de varias maneras. ¿Cuál es la correcta?'],
+    [DOUBT_SHEETS.sinonimos, report.sinonimos.reduce((s, g) => s + g.opciones.length, 0), 'Revisor con experiencia', 'Una palabra del español tiene varias en damana. ¿Significan lo mismo? ¿Cuándo se usa cada una?'],
+    [DOUBT_SHEETS.polisemia, report.polisemia.reduce((s, g) => s + g.sentidos.length, 0), 'Revisor con experiencia', 'Una palabra damana tiene varios significados anotados. ¿Están todos bien? Incluye las que solo cambian por la tilde.'],
+    [DOUBT_SHEETS.dudosas, report.dudosas.length, 'Revisor con experiencia', 'Entradas que no quedaron claras: iguales al español, con varias formas en una casilla o con notas confusas.'],
+    [DOUBT_SHEETS.terminaciones, report.terminaciones.reduce((s, t) => s + t.ejemplos.length, 0), 'Revisor con experiencia', 'Terminaciones que se repiten en muchas palabras (-mba, -win, -ga…). ¿Qué le agregan a la palabra?'],
+  ].forEach((line) => instructions.addRow(line));
+  instructions.getRow(1).font = { bold: true, size: 13 };
+  instructions.getRow(8).font = { bold: true };
+  instructions.eachRow((row) => {
+    row.alignment = { vertical: 'top', wrapText: true };
   });
-  for (const numero of [3, 4, 5, 6]) instrucciones.mergeCells(numero, 1, numero, 4);
+  for (const num of [3, 4, 5, 6]) instructions.mergeCells(num, 1, num, 4);
 
   // 1. Spelling
-  const columnasFormas: Columna[] = [];
-  for (let i = 0; i < FORMAS_POR_FILA; i++) {
-    columnasFormas.push({ titulo: i === 0 ? 'forma más usada' : `otra forma ${i}`, ancho: 20 });
-    columnasFormas.push({ titulo: 'veces', ancho: 7 });
+  const formColumns: Column[] = [];
+  for (let i = 0; i < FORMS_PER_ROW; i++) {
+    formColumns.push({ titulo: i === 0 ? 'forma más usada' : `otra forma ${i}`, ancho: 20 });
+    formColumns.push({ titulo: 'veces', ancho: 7 });
   }
-  agregarHoja(
-    libro,
-    HOJAS_DUDAS.escritura,
+  addSheet(
+    workbook,
+    DOUBT_SHEETS.escritura,
     [
       { titulo: 'n.º', ancho: 6 },
       { titulo: 'qué cambia', ancho: 18 },
-      ...columnasFormas,
+      ...formColumns,
       { titulo: 'significado que tenemos', ancho: 28 },
       { titulo: 'ejemplo en damana', ancho: 44 },
       { titulo: 'ejemplo en español', ancho: 44 },
@@ -119,33 +119,33 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
       { titulo: '¿Son palabras distintas? (sí / no)', ancho: 16, amarilla: true },
       { titulo: 'comentario', ancho: 34, amarilla: true },
     ],
-    informe.escritura.map((grupo, i) => {
-      const celdas: Celda[] = [];
-      for (let f = 0; f < FORMAS_POR_FILA; f++) {
-        const forma = grupo.formas[f];
-        celdas.push(forma ? forma.forma : '', forma ? forma.frecuencia : '');
+    report.escritura.map((group, i) => {
+      const cells: Cell[] = [];
+      for (let f = 0; f < FORMS_PER_ROW; f++) {
+        const form = group.formas[f];
+        cells.push(form ? form.forma : '', form ? form.frecuencia : '');
       }
-      const significados = [...new Set(grupo.formas.flatMap((f) => f.significados))];
-      const ejemplo = grupo.formas.find((f) => f.ejemplo)?.ejemplo;
-      const sobrantes = grupo.formas.slice(FORMAS_POR_FILA).map((f) => f.forma);
+      const meanings = [...new Set(group.formas.flatMap((f) => f.significados))];
+      const example = group.formas.find((f) => f.ejemplo)?.ejemplo;
+      const leftover = group.formas.slice(FORMS_PER_ROW).map((f) => f.forma);
       return [
         i + 1,
-        grupo.tipo,
-        ...celdas,
-        significados.join(' / '),
-        ejemplo?.damana ?? '',
-        ejemplo?.espanol ?? '',
+        group.tipo,
+        ...cells,
+        meanings.join(' / '),
+        example?.damana ?? '',
+        example?.espanol ?? '',
         '',
         '',
-        sobrantes.length ? `También aparece: ${sobrantes.join(', ')}` : '',
+        leftover.length ? `También aparece: ${leftover.join(', ')}` : '',
       ];
     }),
   );
 
   // 2. One Spanish word, several in Damana
-  agregarHoja(
-    libro,
-    HOJAS_DUDAS.sinonimos,
+  addSheet(
+    workbook,
+    DOUBT_SHEETS.sinonimos,
     [
       { titulo: 'grupo', ancho: 7 },
       { titulo: 'español', ancho: 24 },
@@ -157,10 +157,10 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
       { titulo: '¿Está bien? (sí / no)', ancho: 12, amarilla: true },
       { titulo: '¿Significa lo mismo que las otras del grupo? ¿Cuándo se usa esta?', ancho: 46, amarilla: true },
     ],
-    informe.sinonimos.flatMap((grupo, i) =>
-      grupo.opciones.map((o): Celda[] => [
+    report.sinonimos.flatMap((group, i) =>
+      group.opciones.map((o): Cell[] => [
         i + 1,
-        grupo.espanol,
+        group.espanol,
         o.damana,
         o.frecuencia ?? '',
         o.categoria ?? '',
@@ -173,9 +173,9 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
   );
 
   // 3. One Damana form, several meanings
-  agregarHoja(
-    libro,
-    HOJAS_DUDAS.polisemia,
+  addSheet(
+    workbook,
+    DOUBT_SHEETS.polisemia,
     [
       { titulo: 'grupo', ancho: 7 },
       { titulo: 'damana (como está escrita)', ancho: 26 },
@@ -185,13 +185,13 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
       { titulo: '¿Está bien? (sí / no)', ancho: 12, amarilla: true },
       { titulo: 'Explicación. Si solo cambia la tilde: ¿qué indica la tilde?', ancho: 50, amarilla: true },
     ],
-    informe.polisemia.flatMap((grupo, i) =>
-      grupo.sentidos.map((s): Celda[] => [
+    report.polisemia.flatMap((group, i) =>
+      group.sentidos.map((s): Cell[] => [
         i + 1,
         s.damana,
         s.espanol,
         s.fuente ?? '',
-        grupo.soloTilde ? 'solo cambia la tilde' : '',
+        group.soloTilde ? 'solo cambia la tilde' : '',
         '',
         '',
       ]),
@@ -199,9 +199,9 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
   );
 
   // 4. Entries to clarify
-  agregarHoja(
-    libro,
-    HOJAS_DUDAS.dudosas,
+  addSheet(
+    workbook,
+    DOUBT_SHEETS.dudosas,
     [
       { titulo: 'español', ancho: 24 },
       { titulo: 'damana', ancho: 26 },
@@ -211,21 +211,21 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
       { titulo: 'Forma correcta en damana', ancho: 26, amarilla: true },
       { titulo: 'Explicación', ancho: 44, amarilla: true },
     ],
-    informe.dudosas.map((d): Celda[] => [
+    report.dudosas.map((d): Cell[] => [
       d.entrada.espanol,
       d.entrada.damana,
       d.entrada.notas ?? '',
       d.entrada.fuente ?? '',
-      [...d.motivos.map((m) => TEXTO_MOTIVO[m]), d.pista].filter(Boolean).join(' '),
+      [...d.motivos.map((m) => REASON_TEXT[m]), d.pista].filter(Boolean).join(' '),
       '',
       '',
     ]),
   );
 
   // 5. Endings
-  agregarHoja(
-    libro,
-    HOJAS_DUDAS.terminaciones,
+  addSheet(
+    workbook,
+    DOUBT_SHEETS.terminaciones,
     [
       { titulo: 'terminación', ancho: 13 },
       { titulo: 'en cuántas palabras aparece', ancho: 11 },
@@ -237,8 +237,8 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
       { titulo: 'oración en español', ancho: 46 },
       { titulo: '¿Qué le agrega la terminación a la palabra?', ancho: 44, amarilla: true },
     ],
-    informe.terminaciones.flatMap((t) =>
-      t.ejemplos.map((e): Celda[] => [
+    report.terminaciones.flatMap((t) =>
+      t.ejemplos.map((e): Cell[] => [
         `-${t.terminacion}`,
         t.raices,
         t.yaSabemos,
@@ -252,5 +252,5 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
     ),
   );
 
-  return libro;
+  return workbook;
 }

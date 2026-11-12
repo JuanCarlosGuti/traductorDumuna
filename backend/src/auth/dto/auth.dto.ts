@@ -17,7 +17,7 @@ export class LoginDto {
   password!: string;
 }
 
-export class SesionDto {
+export class SessionDto {
   @ApiProperty({ description: 'Token de sesión; va en la cabecera Authorization: Bearer' })
   token!: string;
 
@@ -28,7 +28,7 @@ export class SesionDto {
   duracionDias!: number;
 }
 
-export class EstadoAuthDto {
+export class AuthStatusDto {
   @ApiProperty({
     description:
       'false cuando el servidor no tiene credenciales configuradas y la API está abierta (solo desarrollo local)',
@@ -36,7 +36,7 @@ export class EstadoAuthDto {
   activa!: boolean;
 }
 
-export class UsuarioDto {
+export class UserDto {
   @ApiProperty()
   usuario!: string;
 }

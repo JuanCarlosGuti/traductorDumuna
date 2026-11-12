@@ -1,19 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { Calificacion } from '../sm2';
+import { Grade } from '../sm2';
 
-export class RespuestaSrsDto {
+export class SrsAnswerDto {
   @ApiProperty({ description: 'La palabra de la tarjeta respondida', example: 'nʉnka' })
   @IsString()
   @IsNotEmpty()
   palabra!: string;
 
-  @ApiProperty({ enum: Calificacion })
-  @IsEnum(Calificacion)
-  calificacion!: Calificacion;
+  @ApiProperty({ enum: Grade })
+  @IsEnum(Grade)
+  calificacion!: Grade;
 }
 
-export class TarjetaSrsDto {
+export class SrsCardDto {
   @ApiProperty({ description: 'Palabra o expresión damana (anverso)' })
   palabra!: string;
 
@@ -30,9 +30,9 @@ export class TarjetaSrsDto {
   repeticiones!: number;
 }
 
-export class EstadoSrsDto {
-  @ApiProperty({ type: TarjetaSrsDto, nullable: true, description: 'null si no queda nada por repasar' })
-  tarjeta!: TarjetaSrsDto | null;
+export class SrsStatusDto {
+  @ApiProperty({ type: SrsCardDto, nullable: true, description: 'null si no queda nada por repasar' })
+  tarjeta!: SrsCardDto | null;
 
   @ApiProperty({ description: 'Tarjetas ya vistas cuya revisión venció' })
   pendientes!: number;
@@ -41,7 +41,7 @@ export class EstadoSrsDto {
   nuevas!: number;
 }
 
-export class ProgresoActualizadoDto {
+export class UpdatedProgressDto {
   @ApiProperty()
   palabra!: string;
 

@@ -1,20 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CorpusRepository } from './corpus.repository';
-import { LemaDto, TablaConjugacionDto } from './dto/consulta.dto';
+import { LemmaDto, ConjugationTableDto } from './dto/consulta.dto';
 
 @Injectable()
-export class GramaticaService {
+export class GrammarService {
   constructor(private readonly repo: CorpusRepository) {}
 
-  lemas(): LemaDto[] {
-    return this.repo.listarLemas();
+  lemmas(): LemmaDto[] {
+    return this.repo.listLemmas();
   }
 
-  tablaDe(lema: string): TablaConjugacionDto {
-    const conjugaciones = this.repo.conjugacionesDe(lema);
-    if (conjugaciones.length === 0) {
-      throw new NotFoundException(`No hay conjugaciones para el lema "${lema}"`);
+  tableOf(lemma: string): ConjugationTableDto {
+    const conjugations = this.repo.conjugationsOf(lemma);
+    if (conjugations.length === 0) {
+      throw new NotFoundException(`No hay conjugaciones para el lema "${lemma}"`);
     }
-    return { lema, conjugaciones };
+    return { lema: lemma, conjugaciones: conjugations };
   }
 }

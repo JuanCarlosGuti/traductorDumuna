@@ -6,34 +6,34 @@ import {
   OnApplicationShutdown,
 } from '@nestjs/common';
 import Database from 'better-sqlite3';
-import { CONEXION_DB, OpcionesDatabase } from './database.constants';
-import { ejecutarMigraciones } from './migraciones';
+import { DB_CONNECTION, DatabaseOptions } from './database.constants';
+import { runMigrations } from './migraciones';
 
 @Global()
 @Module({})
 export class DatabaseModule implements OnApplicationShutdown {
-  static forRoot(opciones: OpcionesDatabase): DynamicModule {
+  static forRoot(options: DatabaseOptions): DynamicModule {
     return {
       module: DatabaseModule,
       providers: [
         {
-          provide: CONEXION_DB,
+          provide: DB_CONNECTION,
           useFactory: (): Database.Database => {
-            const db = new Database(opciones.rutaDb);
-            if (opciones.rutaDb !== ':memory:') {
+            const db = new Database(options.rutaDb);
+            if (options.rutaDb !== ':memory:') {
               db.pragma('journal_mode = WAL');
             }
-            ejecutarMigraciones(db);
+            runMigrations(db);
             return db;
           },
         },
       ],
-      exports: [CONEXION_DB],
+      exports: [DB_CONNECTION],
     };
   }
 
   constructor(
-    @Inject(CONEXION_DB) private readonly db: Database.Database,
+    @Inject(DB_CONNECTION) private readonly db: Database.Database,
   ) {}
 
   onApplicationShutdown(): void {

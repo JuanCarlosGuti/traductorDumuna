@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class PendienteDto {
+export class PendingItemDto {
   @ApiProperty({ description: 'rowid en la tabla pendientes (el id exportado es pend_<rowid>)' })
   id!: number;
 

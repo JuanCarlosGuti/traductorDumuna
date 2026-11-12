@@ -1,11 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { configurarApp } from './configurar-app';
+import { configureApp } from './configurar-app';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  configurarApp(app);
+  configureApp(app);
 
   // Render puts a proxy in front: without this req.ip would always be the
   // proxy's and the login attempt limit would apply to everyone at
@@ -26,9 +26,9 @@ async function bootstrap(): Promise<void> {
 
   // Configurable via env to coexist with other apps on the same machine (e.g. another
   // project using 3000) and for deployments where the platform assigns the port.
-  const puerto = Number(process.env.PORT) || 3000;
-  await app.listen(puerto);
-  console.log(`Backend escuchando en http://localhost:${puerto} (docs en /api/docs)`);
+  const port = Number(process.env.PORT) || 3000;
+  await app.listen(port);
+  console.log(`Backend escuchando en http://localhost:${port} (docs en /api/docs)`);
 }
 
 void bootstrap();

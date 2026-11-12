@@ -1,73 +1,73 @@
 import {
-  construirInforme,
-  esCoincidenciaExacta,
-  evaluarPrueba,
-  nombreBaseInforme,
-  pruebaFallida,
-  renderizarMarkdown,
-  resumir,
-  textoComparable,
+  buildReport,
+  isExactMatch,
+  evaluateTest,
+  reportBaseName,
+  failedTest,
+  renderMarkdown,
+  summarize,
+  comparableText,
 } from './evaluador';
 
 describe('exact match', () => {
   it('ignores capitals, punctuation and extra spaces, but not ʉ or ñ', () => {
-    expect(textoComparable('  Nʉnka   shkua. ')).toBe('nʉnka shkua');
-    expect(esCoincidenciaExacta('Nʉnka shkua.', 'nʉnka shkua')).toBe(true);
-    expect(esCoincidenciaExacta('nunka shkua', 'nʉnka shkua')).toBe(false);
-    expect(esCoincidenciaExacta('ningui', 'ñingui')).toBe(false);
+    expect(comparableText('  Nʉnka   shkua. ')).toBe('nʉnka shkua');
+    expect(isExactMatch('Nʉnka shkua.', 'nʉnka shkua')).toBe(true);
+    expect(isExactMatch('nunka shkua', 'nʉnka shkua')).toBe(false);
+    expect(isExactMatch('ningui', 'ñingui')).toBe(false);
   });
 });
 
-describe('evaluarPrueba and summary', () => {
-  const prueba = { espanol: 'mi mamá cocina', damanaEsperado: 'ranzhe abu dugwa', ambito: 'familia' };
+describe('evaluateTest and summary', () => {
+  const testCase = { espanol: 'mi mamá cocina', damanaEsperado: 'ranzhe abu dugwa', ambito: 'familia' };
 
   it('computes exact, chrF and the proportion of words without an equivalent', () => {
-    const exacta = evaluarPrueba(prueba, { traduccion: 'Ranzhe abu dugwa.', palabrasSinEquivalente: [], confianza: 0.9 });
-    expect(exacta.exacta).toBe(true);
-    expect(exacta.chrf).toBeGreaterThan(0.99);
-    expect(exacta.proporcionSinEquivalente).toBe(0);
+    const exact = evaluateTest(testCase, { traduccion: 'Ranzhe abu dugwa.', palabrasSinEquivalente: [], confianza: 0.9 });
+    expect(exact.exacta).toBe(true);
+    expect(exact.chrf).toBeGreaterThan(0.99);
+    expect(exact.proporcionSinEquivalente).toBe(0);
 
-    const parcial = evaluarPrueba(prueba, { traduccion: 'ranzhe [mamá] dugwa', palabrasSinEquivalente: ['mamá'], confianza: 0.4 });
-    expect(parcial.exacta).toBe(false);
-    expect(parcial.chrf).toBeGreaterThan(0.3);
-    expect(parcial.chrf).toBeLessThan(1);
-    expect(parcial.proporcionSinEquivalente).toBeCloseTo(1 / 3, 10);
+    const partial = evaluateTest(testCase, { traduccion: 'ranzhe [mamá] dugwa', palabrasSinEquivalente: ['mamá'], confianza: 0.4 });
+    expect(partial.exacta).toBe(false);
+    expect(partial.chrf).toBeGreaterThan(0.3);
+    expect(partial.chrf).toBeLessThan(1);
+    expect(partial.proporcionSinEquivalente).toBeCloseTo(1 / 3, 10);
   });
 
   it('a failed test counts as 0 and is not skipped', () => {
-    const fallida = pruebaFallida(prueba, 'timeout');
-    expect(fallida).toMatchObject({ exacta: false, chrf: 0, proporcionSinEquivalente: 1, error: 'timeout' });
+    const failed = failedTest(testCase, 'timeout');
+    expect(failed).toMatchObject({ exacta: false, chrf: 0, proporcionSinEquivalente: 1, error: 'timeout' });
   });
 
   it('summarizes by scope and in total', () => {
-    const pruebas = [
-      evaluarPrueba(prueba, { traduccion: 'ranzhe abu dugwa', palabrasSinEquivalente: [], confianza: 1 }),
-      evaluarPrueba({ ...prueba, ambito: 'comida', espanol: 'como yuca', damanaEsperado: 'irrugwa zhant' }, { traduccion: '[yuca] zhant', palabrasSinEquivalente: ['yuca'], confianza: 0.2 }),
-      pruebaFallida({ ...prueba, ambito: 'comida' }, 'error'),
+    const testCases = [
+      evaluateTest(testCase, { traduccion: 'ranzhe abu dugwa', palabrasSinEquivalente: [], confianza: 1 }),
+      evaluateTest({ ...testCase, ambito: 'comida', espanol: 'como yuca', damanaEsperado: 'irrugwa zhant' }, { traduccion: '[yuca] zhant', palabrasSinEquivalente: ['yuca'], confianza: 0.2 }),
+      failedTest({ ...testCase, ambito: 'comida' }, 'error'),
     ];
-    const informe = construirInforme(pruebas, { fecha: new Date('2026-10-03T14:30:00.000Z'), proveedor: 'compatible', modelo: 'openai/gpt-oss-120b' });
-    expect(informe.total).toMatchObject({ ambito: 'TOTAL', pruebas: 3, exactas: 1, errores: 1 });
-    expect(informe.total.porcentajeExactas).toBeCloseTo(33.33, 1);
-    expect(informe.porAmbito.map((r) => r.ambito)).toEqual(['comida', 'familia']);
-    const familia = informe.porAmbito.find((r) => r.ambito === 'familia')!;
-    expect(familia).toMatchObject({ pruebas: 1, exactas: 1, porcentajeExactas: 100, porcentajeSinEquivalente: 0 });
-    const comida = resumir(pruebas.filter((p) => p.ambito === 'comida'), 'comida');
+    const report = buildReport(testCases, { fecha: new Date('2026-10-03T14:30:00.000Z'), proveedor: 'compatible', modelo: 'openai/gpt-oss-120b' });
+    expect(report.total).toMatchObject({ ambito: 'TOTAL', pruebas: 3, exactas: 1, errores: 1 });
+    expect(report.total.porcentajeExactas).toBeCloseTo(33.33, 1);
+    expect(report.porAmbito.map((r) => r.ambito)).toEqual(['comida', 'familia']);
+    const family = report.porAmbito.find((r) => r.ambito === 'familia')!;
+    expect(family).toMatchObject({ pruebas: 1, exactas: 1, porcentajeExactas: 100, porcentajeSinEquivalente: 0 });
+    const comida = summarize(testCases.filter((p) => p.ambito === 'comida'), 'comida');
     expect(comida.porcentajeSinEquivalente).toBeCloseTo(75, 5); // (0.5 + 1) / 2
   });
 
   it('renders the report in Markdown with the per-scope table and the detail', () => {
-    const informe = construirInforme(
-      [evaluarPrueba(prueba, { traduccion: 'ranzhe abu dugwa', palabrasSinEquivalente: [], confianza: 1 })],
+    const report = buildReport(
+      [evaluateTest(testCase, { traduccion: 'ranzhe abu dugwa', palabrasSinEquivalente: [], confianza: 1 })],
       { fecha: new Date('2026-10-03T14:30:00.000Z'), proveedor: 'compatible', modelo: 'm' },
     );
-    const md = renderizarMarkdown(informe);
+    const md = renderMarkdown(report);
     expect(md).toContain('| ámbito | pruebas | exactas | chrF medio | sin equivalente | errores |');
     expect(md).toContain('| familia | 1 | 1 (100.0 %) |');
     expect(md).toContain('**mi mamá cocina** (familia)');
   });
 
   it('the report name carries date, time and sanitized model', () => {
-    expect(nombreBaseInforme(new Date('2026-10-03T14:30:00.000Z'), 'openai/gpt-oss-120b')).toBe('2026-10-03_1430_openai-gpt-oss-120b');
-    expect(nombreBaseInforme(new Date('2026-10-03T14:30:00.000Z'), null)).toBe('2026-10-03_1430_sin-modelo');
+    expect(reportBaseName(new Date('2026-10-03T14:30:00.000Z'), 'openai/gpt-oss-120b')).toBe('2026-10-03_1430_openai-gpt-oss-120b');
+    expect(reportBaseName(new Date('2026-10-03T14:30:00.000Z'), null)).toBe('2026-10-03_1430_sin-modelo');
   });
 });

@@ -13,50 +13,50 @@ export interface ConfigAuth {
   duracionDias: number;
 }
 
-const DIAS_POR_DEFECTO = 30;
+const DEFAULT_DAYS = 30;
 
 /**
  * Reads the credentials from the environment. If they are missing, authentication is
  * disabled… except in production, where that would be a public API without
  * anyone noticing: there we prefer startup to fail visibly.
  */
-export function leerConfigAuth(
+export function readAuthConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): ConfigAuth {
-  const usuario = (env.AUTH_USUARIO ?? '').trim();
+  const user = (env.AUTH_USUARIO ?? '').trim();
   const password = env.AUTH_PASSWORD ?? '';
-  const secreto = env.AUTH_JWT_SECRET ?? '';
+  const secret = env.AUTH_JWT_SECRET ?? '';
   // RENDER is set by the platform itself. It is checked in addition to NODE_ENV because
   // NODE_ENV=production cannot be set on Render: it would make `npm ci`
   // skip the devDependencies and the build would be left without compilers.
-  const produccion = env.NODE_ENV === 'production' || env.RENDER === 'true';
-  const activa = usuario.length > 0 && password.length > 0;
+  const production = env.NODE_ENV === 'production' || env.RENDER === 'true';
+  const active = user.length > 0 && password.length > 0;
 
-  if (produccion) {
-    if (!activa) {
+  if (production) {
+    if (!active) {
       throw new Error(
         'Faltan AUTH_USUARIO y/o AUTH_PASSWORD. En producción la API no ' +
           'puede quedar abierta: configúralas en el panel de Render.',
       );
     }
-    if (secreto.length === 0) {
+    if (secret.length === 0) {
       throw new Error(
         'Falta AUTH_JWT_SECRET: sin él no se pueden firmar las sesiones.',
       );
     }
-  } else if (!activa) {
+  } else if (!active) {
     new Logger('Auth').warn(
       'Sin AUTH_USUARIO/AUTH_PASSWORD: la API queda ABIERTA (desarrollo local).',
     );
   }
 
   return {
-    activa,
-    usuario,
+    activa: active,
+    usuario: user,
     password,
     // Locally it is generated on the fly: sessions do not survive a restart,
     // which does not matter for development.
-    secreto: secreto || randomBytes(32).toString('hex'),
-    duracionDias: Number(env.AUTH_DIAS_SESION) || DIAS_POR_DEFECTO,
+    secreto: secret || randomBytes(32).toString('hex'),
+    duracionDias: Number(env.AUTH_DIAS_SESION) || DEFAULT_DAYS,
   };
 }

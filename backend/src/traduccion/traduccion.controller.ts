@@ -7,18 +7,18 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import {
-  EstadoTraductorDto,
-  RespuestaTraduccionDto,
-  TraducirDto,
-  ValidacionGuardadaDto,
-  ValidarTraduccionDto,
+  TranslatorStatusDto,
+  TranslationResponseDto,
+  TranslateDto,
+  SavedValidationDto,
+  ValidateTranslationDto,
 } from './dto/traduccion.dto';
-import { TraduccionService } from './traduccion.service';
+import { TranslationService } from './traduccion.service';
 
 @ApiTags('traduccion')
 @Controller('traducir')
-export class TraduccionController {
-  constructor(private readonly traduccion: TraduccionService) {}
+export class TranslationController {
+  constructor(private readonly translation: TranslationService) {}
 
   @Get('estado')
   @ApiOperation({
@@ -26,11 +26,11 @@ export class TraduccionController {
     description:
       'Motores: ANTHROPIC_API_KEY → Claude (prioridad); TRADUCTOR_BASE_URL + TRADUCTOR_MODELO → API compatible OpenAI (Ollama, Gemini, Groq, Hugging Face). Sin nada configurado: disponible=false.',
   })
-  @ApiOkResponse({ type: EstadoTraductorDto })
-  estado(): EstadoTraductorDto {
-    const config = this.traduccion.configuracion();
+  @ApiOkResponse({ type: TranslatorStatusDto })
+  status(): TranslatorStatusDto {
+    const config = this.translation.configuration();
     return {
-      disponible: this.traduccion.disponible(),
+      disponible: this.translation.available(),
       proveedor: config.proveedor,
       modelo: config.proveedor ? config.modelo : null,
     };
@@ -42,11 +42,11 @@ export class TraduccionController {
     description:
       'El prompt lleva, en este orden: reglas gramaticales aplicables, diccionario palabra por palabra (exacta → sin tildes → singular → prefijo), nombres propios, y ejemplos por similitud con cupos por dominio (hasta 6 cotidianos, 4 de gramática, 4 bíblicos —2 si hay cotidianos suficientes—, máximo 14). Devuelve glosa, palabras sin equivalente (se registran en pendientes), reglas aplicadas y confianza, más todo el apoyo usado.',
   })
-  @ApiOkResponse({ type: RespuestaTraduccionDto })
+  @ApiOkResponse({ type: TranslationResponseDto })
   @ApiServiceUnavailableResponse({ description: 'Ningún motor configurado (codigo: SIN_PROVEEDOR)' })
   @ApiBadGatewayResponse({ description: 'Error del proveedor o respuesta no parseable' })
-  traducir(@Body() dto: TraducirDto): Promise<RespuestaTraduccionDto> {
-    return this.traduccion.traducir(dto);
+  translate(@Body() dto: TranslateDto): Promise<TranslationResponseDto> {
+    return this.translation.translate(dto);
   }
 
   @Post('validar')
@@ -55,8 +55,8 @@ export class TraduccionController {
     description:
       'Botones «esta traducción es correcta» y «corregir» de la vista: el par queda en la tabla validadas, futura fuente cotidiana de máxima confianza.',
   })
-  @ApiOkResponse({ type: ValidacionGuardadaDto })
-  validar(@Body() dto: ValidarTraduccionDto): ValidacionGuardadaDto {
-    return this.traduccion.validar(dto);
+  @ApiOkResponse({ type: SavedValidationDto })
+  validate(@Body() dto: ValidateTranslationDto): SavedValidationDto {
+    return this.translation.validate(dto);
   }
 }

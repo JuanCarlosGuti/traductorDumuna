@@ -1,6 +1,6 @@
-import { FuenteCorpus } from '../consulta/consulta.enums';
+import { CorpusSource } from '../consulta/consulta.enums';
 
-export type NivelApoyo = 'bueno' | 'parcial' | 'revisar';
+export type SupportLevel = 'bueno' | 'parcial' | 'revisar';
 
 /**
  * Thresholds on the MEAN of the K retrieval scores. The score of the
@@ -18,12 +18,12 @@ export type NivelApoyo = 'bueno' | 'parcial' | 'revisar';
  * Levels are derived on the fly from what is logged in `traducciones`, they are not
  * stored: that way, recalibrating these thresholds also reinterprets the history.
  */
-export const UMBRAL_REVISAR = 0.2;
-export const UMBRAL_BUENO = 0.32;
+export const REVIEW_THRESHOLD = 0.2;
+export const GOOD_THRESHOLD = 0.32;
 
-export interface SenalesApoyo {
+export interface SupportSignals {
   puntajeMedio: number;
-  fuenteTop: FuenteCorpus | null;
+  fuenteTop: CorpusSource | null;
   ejemplosRecuperados: number;
   /**
    * Examples that come from sentences or phrases, i.e. from the language in use.
@@ -33,8 +33,8 @@ export interface SenalesApoyo {
   ejemplosEnContexto?: number | null;
 }
 
-export interface Apoyo {
-  nivel: NivelApoyo;
+export interface Support {
+  nivel: SupportLevel;
   /** Reasons why it was flagged «revisar»; empty at the other levels. */
   motivos: string[];
 }
@@ -44,20 +44,20 @@ export interface Apoyo {
  * to count it; in old records, which lack it, the original
  * heuristic is kept so as not to reinterpret the history blindly.
  */
-function sinContexto(senales: SenalesApoyo): boolean {
-  return senales.ejemplosEnContexto == null
-    ? senales.fuenteTop === FuenteCorpus.conjugaciones
-    : senales.ejemplosEnContexto === 0 && senales.ejemplosRecuperados > 0;
+function withoutContext(signals: SupportSignals): boolean {
+  return signals.ejemplosEnContexto == null
+    ? signals.fuenteTop === CorpusSource.conjugaciones
+    : signals.ejemplosEnContexto === 0 && signals.ejemplosRecuperados > 0;
 }
 
-export function evaluarApoyo(senales: SenalesApoyo): Apoyo {
-  const motivos: string[] = [];
+export function evaluateSupport(signals: SupportSignals): Support {
+  const reasons: string[] = [];
 
-  if (senales.ejemplosRecuperados === 0) {
-    motivos.push('sin_ejemplos');
+  if (signals.ejemplosRecuperados === 0) {
+    reasons.push('sin_ejemplos');
   }
-  if (senales.puntajeMedio < UMBRAL_REVISAR) {
-    motivos.push('similitud_baja');
+  if (signals.puntajeMedio < REVIEW_THRESHOLD) {
+    reasons.push('similitud_baja');
   }
   // All the support is entries from the conjugations table: they confirm the
   // verb form, but none shows real usage. (The vocabulary does not
@@ -68,11 +68,11 @@ export function evaluarApoyo(senales: SenalesApoyo): Apoyo {
   // leads with its own conjugation (exact match) but brings
   // six sentences and phrases with the verb underneath. There the support is NOT
   // dictionary-only, and the old warning was wrong.
-  if (sinContexto(senales)) {
-    motivos.push('apoyo_solo_de_diccionario');
+  if (withoutContext(signals)) {
+    reasons.push('apoyo_solo_de_diccionario');
   }
 
-  if (motivos.length > 0) return { nivel: 'revisar', motivos };
-  if (senales.puntajeMedio < UMBRAL_BUENO) return { nivel: 'parcial', motivos: [] };
+  if (reasons.length > 0) return { nivel: 'revisar', motivos: reasons };
+  if (signals.puntajeMedio < GOOD_THRESHOLD) return { nivel: 'parcial', motivos: [] };
   return { nivel: 'bueno', motivos: [] };
 }

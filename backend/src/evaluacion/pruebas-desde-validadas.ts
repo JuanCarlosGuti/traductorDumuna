@@ -1,32 +1,32 @@
 import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ejecutarMigraciones } from '../database/migraciones';
-import { PruebaTraduccion } from '../importador/elicitacion';
-import { ARCHIVO_PRUEBAS, escribirPruebas } from '../importador/pruebas-csv';
-import { resolverDirDatos, rutaDbPorDefecto } from '../importador/rutas-datos';
-import { Validada, ValidadasRepository } from '../traduccion/validadas.repository';
+import { runMigrations } from '../database/migraciones';
+import { TranslationTest } from '../importador/elicitacion';
+import { TESTS_FILE, writeTests } from '../importador/pruebas-csv';
+import { resolveDataDir, defaultDbPath } from '../importador/rutas-datos';
+import { ValidatedPair, ValidatedRepository } from '../traduccion/validadas.repository';
 
 /** Scope under which they enter the CSV, to see them separately in the report. */
-export const AMBITO_VALIDADAS = 'validadas';
+export const VALIDATED_SCOPE = 'validadas';
 
 /**
  * Validated pairs → rows of pruebas_traduccion.csv. The pair already comes with the
  * Spanish and the Damana in place whatever the direction in which it was
- * translated (TraduccionService.validar places them), and the evaluation always
+ * translated (TranslationService.validar places them), and the evaluation always
  * translates Spanish → Damana. Pairs with an empty side are discarded.
  */
-export function pruebasDesdeValidadas(validadas: Validada[]): PruebaTraduccion[] {
-  return validadas
+export function testsFromValidated(validatedPairs: ValidatedPair[]): TranslationTest[] {
+  return validatedPairs
     .map((v) => ({
       espanol: v.espanol.trim(),
       damanaEsperado: v.damana.trim(),
-      ambito: AMBITO_VALIDADAS,
+      ambito: VALIDATED_SCOPE,
     }))
     .filter((p) => p.espanol.length > 0 && p.damanaEsperado.length > 0);
 }
 
-export interface ResultadoExportacion {
+export interface ExportResult {
   /** Validated pairs that were in the database. */
   validadas: number;
   /** How many entered the CSV as new (repeated ones are not duplicated). */
@@ -36,35 +36,35 @@ export interface ResultadoExportacion {
 }
 
 /**
- * Idempotent: escribirPruebas merges by normalized Spanish/Damana pair,
+ * Idempotent: writeTests merges by normalized Spanish/Damana pair,
  * so running it twice — or validating the same pair twice — does not repeat
  * rows, and it never deletes tests that were already there (from the importer or by hand).
  */
-export function exportarValidadasAPruebas(
+export function exportValidatedToTests(
   db: Database.Database,
-  dirDatos: string,
-): ResultadoExportacion {
-  const validadas = new ValidadasRepository(db).listar();
-  const resultado = escribirPruebas(dirDatos, pruebasDesdeValidadas(validadas));
-  return { validadas: validadas.length, ...resultado };
+  dataDir: string,
+): ExportResult {
+  const validatedPairs = new ValidatedRepository(db).listAll();
+  const result = writeTests(dataDir, testsFromValidated(validatedPairs));
+  return { validadas: validatedPairs.length, ...result };
 }
 
 function main(): void {
-  const dirDatos = resolverDirDatos();
-  const rutaDb = rutaDbPorDefecto();
-  if (!fs.existsSync(rutaDb)) {
-    console.error(`No existe ${rutaDb}. Ejecuta antes: npm run importar`);
+  const dataDir = resolveDataDir();
+  const dbPath = defaultDbPath();
+  if (!fs.existsSync(dbPath)) {
+    console.error(`No existe ${dbPath}. Ejecuta antes: npm run importar`);
     process.exit(1);
   }
   // Same opening as the app (database.module.ts): migrations are
   // idempotent and guarantee that the validadas table exists.
-  const db = new Database(rutaDb);
+  const db = new Database(dbPath);
   try {
-    ejecutarMigraciones(db);
-    const r = exportarValidadasAPruebas(db, dirDatos);
+    runMigrations(db);
+    const r = exportValidatedToTests(db, dataDir);
     console.log(
       `${r.validadas} pares validados en la base; ${r.agregadas} nuevos añadidos a ` +
-        `${path.join(dirDatos, ARCHIVO_PRUEBAS)} (${r.total} pruebas en total).`,
+        `${path.join(dataDir, TESTS_FILE)} (${r.total} pruebas en total).`,
     );
     if (r.validadas === 0) {
       console.log(

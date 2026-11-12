@@ -1,27 +1,27 @@
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DatabaseModule } from '../database/database.module';
-import { ImportadorModule } from './importador.module';
-import { ImportadorService } from './importador.service';
-import { resolverDirDatos, rutaDbPorDefecto } from './rutas-datos';
+import { ImporterModule } from './importador.module';
+import { ImporterService } from './importador.service';
+import { resolveDataDir, defaultDbPath } from './rutas-datos';
 
 // Own CLI module: the importer does not drag in HTTP controllers.
 @Module({
   imports: [
-    DatabaseModule.forRoot({ rutaDb: rutaDbPorDefecto() }),
-    ImportadorModule,
+    DatabaseModule.forRoot({ rutaDb: defaultDbPath() }),
+    ImporterModule,
   ],
 })
-class ImportarCliModule {}
+class ImportCliModule {}
 
 async function main(): Promise<void> {
-  const app = await NestFactory.createApplicationContext(ImportarCliModule, {
+  const app = await NestFactory.createApplicationContext(ImportCliModule, {
     logger: ['error', 'warn'],
   });
 
-  const dirDatos = resolverDirDatos();
-  console.log(`Importando corpus desde: ${dirDatos}`);
-  const stats = await app.get(ImportadorService).importarTodo(dirDatos);
+  const dataDir = resolveDataDir();
+  console.log(`Importando corpus desde: ${dataDir}`);
+  const stats = await app.get(ImporterService).importAll(dataDir);
   const e = stats.elicitacion;
 
   console.log('\n=== Importación completada ===');

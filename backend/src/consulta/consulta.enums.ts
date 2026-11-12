@@ -1,9 +1,9 @@
-export enum Idioma {
+export enum Language {
   damana = 'damana',
   espanol = 'espanol',
 }
 
-export enum FuenteCorpus {
+export enum CorpusSource {
   oraciones = 'oraciones',
   frases = 'frases',
   vocabulario = 'vocabulario',
@@ -16,7 +16,7 @@ export enum FuenteCorpus {
  * examples (elicitation with speakers, phrases from meetings) take priority
  * when available; conjugations are the «grammar» domain.
  */
-export enum DominioCorpus {
+export enum CorpusDomain {
   biblico = 'biblico',
   cotidiano = 'cotidiano',
   gramatica = 'gramatica',

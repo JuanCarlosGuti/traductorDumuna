@@ -9,23 +9,23 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { FuenteCorpus, Idioma } from '../consulta.enums';
+import { CorpusSource, Language } from '../consulta.enums';
 
-export class BuscarQueryDto {
+export class SearchQueryDto {
   @ApiProperty({ description: 'Palabra a buscar (insensible a mayúsculas y tildes; ʉ ≠ u, ñ ≠ n)', example: 'nʉnka' })
   @IsString()
   @IsNotEmpty()
   q!: string;
 
-  @ApiPropertyOptional({ enum: Idioma, default: Idioma.damana, description: 'Idioma en el que se busca' })
+  @ApiPropertyOptional({ enum: Language, default: Language.damana, description: 'Idioma en el que se busca' })
   @IsOptional()
-  @IsEnum(Idioma)
-  idioma: Idioma = Idioma.damana;
+  @IsEnum(Language)
+  idioma: Language = Language.damana;
 
-  @ApiPropertyOptional({ enum: FuenteCorpus, description: 'Restringir a una fuente del corpus' })
+  @ApiPropertyOptional({ enum: CorpusSource, description: 'Restringir a una fuente del corpus' })
   @IsOptional()
-  @IsEnum(FuenteCorpus)
-  fuente?: FuenteCorpus;
+  @IsEnum(CorpusSource)
+  fuente?: CorpusSource;
 
   @ApiPropertyOptional({ default: 100, minimum: 1, maximum: 1000, description: 'Máximo de concordancias devueltas' })
   @IsOptional()
@@ -36,7 +36,7 @@ export class BuscarQueryDto {
   limite = 100;
 }
 
-export class FrecuenciasQueryDto {
+export class FrequenciesQueryDto {
   @ApiPropertyOptional({ default: 500, minimum: 1, maximum: 10000, description: 'Máximo de palabras devueltas' })
   @IsOptional()
   @Type(() => Number)
@@ -46,9 +46,9 @@ export class FrecuenciasQueryDto {
   limite = 500;
 }
 
-export class ConcordanciaDto {
-  @ApiProperty({ enum: FuenteCorpus })
-  fuente!: FuenteCorpus;
+export class ConcordanceDto {
+  @ApiProperty({ enum: CorpusSource })
+  fuente!: CorpusSource;
 
   @ApiProperty({ description: 'rowid de la fila en su tabla de origen' })
   id!: number;
@@ -69,12 +69,12 @@ export class ConcordanciaDto {
   puntaje!: number | null;
 }
 
-export class RespuestaBusquedaDto {
+export class SearchResponseDto {
   @ApiProperty()
   consulta!: string;
 
-  @ApiProperty({ enum: Idioma })
-  idioma!: Idioma;
+  @ApiProperty({ enum: Language })
+  idioma!: Language;
 
   @ApiProperty({
     enum: ['concordancia', 'similitud'],
@@ -85,19 +85,19 @@ export class RespuestaBusquedaDto {
   @ApiProperty({ description: 'Total de ocurrencias encontradas (puede superar a las devueltas si excede el límite)' })
   total!: number;
 
-  @ApiProperty({ type: [ConcordanciaDto] })
-  resultados!: ConcordanciaDto[];
+  @ApiProperty({ type: [ConcordanceDto] })
+  resultados!: ConcordanceDto[];
 }
 
-export class FrecuenciaFuenteDto {
-  @ApiProperty({ enum: FuenteCorpus })
-  fuente!: FuenteCorpus;
+export class SourceFrequencyDto {
+  @ApiProperty({ enum: CorpusSource })
+  fuente!: CorpusSource;
 
   @ApiProperty()
   frecuencia!: number;
 }
 
-export class TraduccionCandidataDto {
+export class CandidateTranslationDto {
   @ApiProperty({ description: 'Palabra española normalizada que co-ocurre en los textos paralelos' })
   palabra!: string;
 
@@ -105,7 +105,7 @@ export class TraduccionCandidataDto {
   coocurrencias!: number;
 }
 
-export class EntradaVocabularioFichaDto {
+export class WordCardVocabularyEntryDto {
   @ApiProperty({ description: 'Traducción directa registrada en el vocabulario' })
   espanol!: string;
 
@@ -119,7 +119,7 @@ export class EntradaVocabularioFichaDto {
   fuente!: string | null;
 }
 
-export class FormaVerbalDto {
+export class VerbFormDto {
   @ApiProperty({ example: 'nujkunananka', description: 'La forma conjugada completa en la que aparece la palabra' })
   damana!: string;
 
@@ -130,36 +130,36 @@ export class FormaVerbalDto {
   lema!: string;
 }
 
-export class FichaPalabraDto {
+export class WordCardDto {
   @ApiProperty({ description: 'La palabra en forma normalizada' })
   palabra!: string;
 
   @ApiProperty({
-    type: [EntradaVocabularioFichaDto],
+    type: [WordCardVocabularyEntryDto],
     description: 'Traducciones directas: entradas de vocabulario cuyo damana coincide con la palabra',
   })
-  entradasVocabulario!: EntradaVocabularioFichaDto[];
+  entradasVocabulario!: WordCardVocabularyEntryDto[];
 
   @ApiProperty({
-    type: [FormaVerbalDto],
+    type: [VerbFormDto],
     description: 'Si la palabra es una forma conjugada, su glosa y lema',
   })
-  formasVerbales!: FormaVerbalDto[];
+  formasVerbales!: VerbFormDto[];
 
   @ApiProperty()
   frecuenciaTotal!: number;
 
-  @ApiProperty({ type: [FrecuenciaFuenteDto] })
-  frecuenciaPorFuente!: FrecuenciaFuenteDto[];
+  @ApiProperty({ type: [SourceFrequencyDto] })
+  frecuenciaPorFuente!: SourceFrequencyDto[];
 
-  @ApiProperty({ type: [ConcordanciaDto], description: 'Primeras 10 concordancias' })
-  concordancias!: ConcordanciaDto[];
+  @ApiProperty({ type: [ConcordanceDto], description: 'Primeras 10 concordancias' })
+  concordancias!: ConcordanceDto[];
 
-  @ApiProperty({ type: [TraduccionCandidataDto], description: '10 palabras españolas que más co-ocurren en los textos paralelos (traducciones candidatas estadísticas, sin stopwords)' })
-  traduccionesCandidatas!: TraduccionCandidataDto[];
+  @ApiProperty({ type: [CandidateTranslationDto], description: '10 palabras españolas que más co-ocurren en los textos paralelos (traducciones candidatas estadísticas, sin stopwords)' })
+  traduccionesCandidatas!: CandidateTranslationDto[];
 }
 
-export class FrecuenciaDto {
+export class FrequencyDto {
   @ApiProperty()
   palabra!: string;
 
@@ -179,7 +179,7 @@ export class FrecuenciaDto {
   categoria!: string | null;
 }
 
-export class VocabularioDto {
+export class VocabularyDto {
   @ApiProperty({ description: 'rowid en la tabla vocabulario' })
   id!: number;
 
@@ -199,7 +199,7 @@ export class VocabularioDto {
   fuente!: string | null;
 }
 
-export class FraseDto {
+export class PhraseDto {
   @ApiProperty({ description: 'rowid en la tabla frases' })
   id!: number;
 
@@ -219,7 +219,7 @@ export class FraseDto {
   dominio!: 'biblico' | 'cotidiano' | 'gramatica';
 }
 
-export class LemaDto {
+export class LemmaDto {
   @ApiProperty({ example: 'tener' })
   lema!: string;
 
@@ -227,7 +227,7 @@ export class LemaDto {
   formas!: number;
 }
 
-export class ConjugacionDto {
+export class ConjugationDto {
   @ApiProperty({ description: 'rowid en la tabla conjugaciones' })
   id!: number;
 
@@ -247,15 +247,15 @@ export class ConjugacionDto {
   notas!: string | null;
 }
 
-export class TablaConjugacionDto {
+export class ConjugationTableDto {
   @ApiProperty()
   lema!: string;
 
-  @ApiProperty({ type: [ConjugacionDto] })
-  conjugaciones!: ConjugacionDto[];
+  @ApiProperty({ type: [ConjugationDto] })
+  conjugaciones!: ConjugationDto[];
 }
 
-export class NombrePropioDto {
+export class ProperNameDto {
   @ApiProperty({ description: 'rowid en la tabla nombres_propios' })
   id!: number;
 

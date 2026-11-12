@@ -1,17 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Database } from 'better-sqlite3';
-import { CONEXION_DB } from '../database/database.constants';
-import { DominioCorpus, FuenteCorpus } from './consulta.enums';
+import { DB_CONNECTION } from '../database/database.constants';
+import { CorpusDomain, CorpusSource } from './consulta.enums';
 import {
-  ConjugacionDto,
-  FraseDto,
-  LemaDto,
-  NombrePropioDto,
-  VocabularioDto,
+  ConjugationDto,
+  PhraseDto,
+  LemmaDto,
+  ProperNameDto,
+  VocabularyDto,
 } from './dto/consulta.dto';
-import { Disparador, ReglaGramatical } from './reglas';
+import { Trigger, GrammarRule } from './reglas';
 
-export interface FilaTexto {
+export interface TextRow {
   id: number;
   referencia: string;
   textoDamana: string;
@@ -19,10 +19,10 @@ export interface FilaTexto {
   /** Sentences only: 'aprobado' | 'revisar' (alignment quality). */
   estado?: string;
   /** Language register of the fragment (biblical, everyday, grammar). */
-  dominio: DominioCorpus;
+  dominio: CorpusDomain;
 }
 
-export interface FrecuenciaPalabra {
+export interface WordFrequency {
   palabra: string;
   frecuencia: number;
   originales: string[];
@@ -30,26 +30,26 @@ export interface FrecuenciaPalabra {
 
 @Injectable()
 export class CorpusRepository {
-  constructor(@Inject(CONEXION_DB) private readonly db: Database) {}
+  constructor(@Inject(DB_CONNECTION) private readonly db: Database) {}
 
-  listarVocabulario(): VocabularioDto[] {
+  listVocabulary(): VocabularyDto[] {
     return this.db
       .prepare(
         'SELECT rowid AS id, espanol, damana, categoria, notas, fuente FROM vocabulario ORDER BY rowid',
       )
-      .all() as VocabularioDto[];
+      .all() as VocabularyDto[];
   }
 
-  listarFrases(): FraseDto[] {
+  listPhrases(): PhraseDto[] {
     return this.db
       .prepare(
         'SELECT rowid AS id, fuente, damana, espanol, notas, dominio FROM frases ORDER BY rowid',
       )
-      .all() as FraseDto[];
+      .all() as PhraseDto[];
   }
 
   /** Grammar rules from reglas_damana.xlsx, with their trigger. */
-  listarReglas(): ReglaGramatical[] {
+  listRules(): GrammarRule[] {
     return (
       this.db
         .prepare(
@@ -67,11 +67,11 @@ export class CorpusRepository {
       ejemploRegla: f.ejemplo_regla,
       traduccionEjemplo: f.traduccion_ejemplo,
       notas: f.notas,
-      disparador: (f.disparador as Disparador | null) ?? null,
+      disparador: (f.disparador as Trigger | null) ?? null,
     }));
   }
 
-  listarNombresPropios(): NombrePropioDto[] {
+  listProperNames(): ProperNameDto[] {
     return (
       this.db
         .prepare(
@@ -95,16 +95,16 @@ export class CorpusRepository {
   }
 
   /** Verb lemmas with their number of conjugated forms. */
-  listarLemas(): LemaDto[] {
+  listLemmas(): LemmaDto[] {
     return this.db
       .prepare(
         'SELECT lema, COUNT(*) AS formas FROM conjugaciones GROUP BY lema ORDER BY lema',
       )
-      .all() as LemaDto[];
+      .all() as LemmaDto[];
   }
 
   /** Conjugations whose Damana form contains the word (via tokens). */
-  conjugacionesConPalabra(palabraNormalizada: string): ConjugacionDto[] {
+  conjugationsWithWord(normalizedWord: string): ConjugationDto[] {
     return this.db
       .prepare(
         `SELECT DISTINCT c.rowid AS id, c.damana, c.espanol, c.lema, c.fuente, c.notas
@@ -114,34 +114,34 @@ export class CorpusRepository {
          WHERE t.palabra_normalizada = ?
          ORDER BY c.lema, c.rowid`,
       )
-      .all(palabraNormalizada) as ConjugacionDto[];
+      .all(normalizedWord) as ConjugationDto[];
   }
 
   /**
    * Conjugated forms grouped by lemma, to link together the
    * different persons of the same verb (nʉjkasheshisha / naijkasheshisha…).
    */
-  formasPorLema(): { lema: string; damana: string }[] {
+  formsByLemma(): { lema: string; damana: string }[] {
     return this.db
       .prepare('SELECT lema, damana FROM conjugaciones ORDER BY lema, rowid')
       .all() as { lema: string; damana: string }[];
   }
 
-  listarConjugaciones(): ConjugacionDto[] {
+  listConjugations(): ConjugationDto[] {
     return this.db
       .prepare(
         'SELECT rowid AS id, damana, espanol, lema, fuente, notas FROM conjugaciones ORDER BY rowid',
       )
-      .all() as ConjugacionDto[];
+      .all() as ConjugationDto[];
   }
 
-  conjugacionesDe(lema: string): ConjugacionDto[] {
+  conjugationsOf(lemma: string): ConjugationDto[] {
     return this.db
       .prepare(
         `SELECT rowid AS id, damana, espanol, lema, fuente, notas
          FROM conjugaciones WHERE lema = ? ORDER BY rowid`,
       )
-      .all(lema) as ConjugacionDto[];
+      .all(lemma) as ConjugationDto[];
   }
 
   /**
@@ -149,9 +149,9 @@ export class CorpusRepository {
    * concordance and retrieval. In sentences the reference marks those with
    * doubtful alignment with «(revisar)».
    */
-  textosDe(fuente: FuenteCorpus): FilaTexto[] {
-    switch (fuente) {
-      case FuenteCorpus.oraciones:
+  textsOf(source: CorpusSource): TextRow[] {
+    switch (source) {
+      case CorpusSource.oraciones:
         return (
           this.db
             .prepare(
@@ -164,9 +164,9 @@ export class CorpusRepository {
           textoDamana: f.damana,
           textoEspanol: f.espanol ?? '',
           estado: f.estado,
-          dominio: f.dominio as DominioCorpus,
+          dominio: f.dominio as CorpusDomain,
         }));
-      case FuenteCorpus.frases:
+      case CorpusSource.frases:
         return (
           this.db
             .prepare(
@@ -178,9 +178,9 @@ export class CorpusRepository {
           referencia: f.fuente ? `frase ${f.id} (${f.fuente})` : `frase ${f.id}`,
           textoDamana: f.damana,
           textoEspanol: f.espanol ?? '',
-          dominio: f.dominio as DominioCorpus,
+          dominio: f.dominio as CorpusDomain,
         }));
-      case FuenteCorpus.vocabulario:
+      case CorpusSource.vocabulario:
         return (
           this.db
             .prepare('SELECT rowid AS id, espanol, damana FROM vocabulario ORDER BY rowid')
@@ -190,9 +190,9 @@ export class CorpusRepository {
           referencia: `vocabulario ${f.id}`,
           textoDamana: f.damana,
           textoEspanol: f.espanol,
-          dominio: DominioCorpus.cotidiano,
+          dominio: CorpusDomain.cotidiano,
         }));
-      case FuenteCorpus.conjugaciones:
+      case CorpusSource.conjugaciones:
         return (
           this.db
             .prepare('SELECT rowid AS id, damana, espanol, lema FROM conjugaciones ORDER BY rowid')
@@ -202,45 +202,45 @@ export class CorpusRepository {
           referencia: `conjugación ${f.id} (${f.lema})`,
           textoDamana: f.damana,
           textoEspanol: f.espanol,
-          dominio: DominioCorpus.gramatica,
+          dominio: CorpusDomain.gramatica,
         }));
     }
   }
 
-  frecuenciaPorFuente(
-    palabraNormalizada: string,
-  ): { fuente: FuenteCorpus; frecuencia: number }[] {
+  frequencyBySource(
+    normalizedWord: string,
+  ): { fuente: CorpusSource; frecuencia: number }[] {
     return this.db
       .prepare(
         `SELECT tabla_origen AS fuente, COUNT(*) AS frecuencia
          FROM tokens_damana WHERE palabra_normalizada = ?
          GROUP BY tabla_origen ORDER BY tabla_origen`,
       )
-      .all(palabraNormalizada) as { fuente: FuenteCorpus; frecuencia: number }[];
+      .all(normalizedWord) as { fuente: CorpusSource; frecuencia: number }[];
   }
 
-  origenesDe(
-    palabraNormalizada: string,
-  ): { fuente: FuenteCorpus; id: number }[] {
+  originsOf(
+    normalizedWord: string,
+  ): { fuente: CorpusSource; id: number }[] {
     return this.db
       .prepare(
         `SELECT DISTINCT tabla_origen AS fuente, id_origen AS id
          FROM tokens_damana WHERE palabra_normalizada = ?`,
       )
-      .all(palabraNormalizada) as { fuente: FuenteCorpus; id: number }[];
+      .all(normalizedWord) as { fuente: CorpusSource; id: number }[];
   }
 
-  textoEspanolDe(fuente: FuenteCorpus, id: number): string {
-    const columna: Record<FuenteCorpus, string> = {
-      [FuenteCorpus.oraciones]: 'oraciones',
-      [FuenteCorpus.frases]: 'frases',
-      [FuenteCorpus.vocabulario]: 'vocabulario',
-      [FuenteCorpus.conjugaciones]: 'conjugaciones',
+  spanishTextOf(source: CorpusSource, id: number): string {
+    const column: Record<CorpusSource, string> = {
+      [CorpusSource.oraciones]: 'oraciones',
+      [CorpusSource.frases]: 'frases',
+      [CorpusSource.vocabulario]: 'vocabulario',
+      [CorpusSource.conjugaciones]: 'conjugaciones',
     };
-    const fila = this.db
-      .prepare(`SELECT espanol FROM ${columna[fuente]} WHERE rowid = ?`)
+    const row = this.db
+      .prepare(`SELECT espanol FROM ${column[source]} WHERE rowid = ?`)
       .get(id) as { espanol: string | null } | undefined;
-    return fila?.espanol ?? '';
+    return row?.espanol ?? '';
   }
 
   /**
@@ -249,7 +249,7 @@ export class CorpusRepository {
    * heuristic). The ',' separator is safe: the tokenizer never produces
    * commas inside a word.
    */
-  frecuenciasConOriginales(): FrecuenciaPalabra[] {
+  frequenciesWithOriginals(): WordFrequency[] {
     return (
       this.db
         .prepare(

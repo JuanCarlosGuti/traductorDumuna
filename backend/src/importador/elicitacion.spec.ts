@@ -1,14 +1,14 @@
 import {
-  esFilaDePrueba,
-  FilaElicitacion,
-  fundirPorId,
-  hashEstable,
-  interpretarFila,
-  planificarElicitacion,
-  PROPORCION_PRUEBA,
+  isTestRow,
+  ElicitationRow,
+  mergeById,
+  stableHash,
+  parseRow,
+  planElicitation,
+  TEST_PROPORTION,
 } from './elicitacion';
 
-const fila = (parcial: Partial<FilaElicitacion>): FilaElicitacion => ({
+const row = (partial: Partial<ElicitationRow>): ElicitationRow => ({
   id: '1',
   ambito: 'otro',
   palabraEs: '',
@@ -18,31 +18,31 @@ const fila = (parcial: Partial<FilaElicitacion>): FilaElicitacion => ({
   variante: '',
   notas: '',
   archivo: 'lote1.xlsx',
-  ...parcial,
+  ...partial,
 });
 
 describe('test reservation (1 in 10, stable by id)', () => {
   it('the hash is deterministic and different for different ids', () => {
-    expect(hashEstable('42')).toBe(hashEstable('42'));
-    expect(hashEstable('42')).not.toBe(hashEstable('43'));
+    expect(stableHash('42')).toBe(stableHash('42'));
+    expect(stableHash('42')).not.toBe(stableHash('43'));
   });
 
   it('reserves roughly 10 % of the ids', () => {
     const ids = Array.from({ length: 2000 }, (_, i) => String(i + 1));
-    const reservadas = ids.filter(esFilaDePrueba).length;
-    expect(reservadas / ids.length).toBeGreaterThan(0.07);
-    expect(reservadas / ids.length).toBeLessThan(0.13);
-    expect(PROPORCION_PRUEBA).toBe(10);
+    const reserved = ids.filter(isTestRow).length;
+    expect(reserved / ids.length).toBeGreaterThan(0.07);
+    expect(reserved / ids.length).toBeLessThan(0.13);
+    expect(TEST_PROPORTION).toBe(10);
   });
 
   it('ignores spaces around the id', () => {
-    expect(esFilaDePrueba(' 7 ')).toBe(esFilaDePrueba('7'));
+    expect(isTestRow(' 7 ')).toBe(isTestRow('7'));
   });
 });
 
-describe('interpretarFila', () => {
+describe('parseRow', () => {
   it('normalizes ü and u+ only in the Damana columns and lowercases the scope', () => {
-    const f = interpretarFila(
+    const f = parseRow(
       {
         id: ' 12 ',
         ambito: 'Familia',
@@ -64,17 +64,17 @@ describe('interpretarFila', () => {
   });
 
   it('without id or word returns null; without scope uses «otro»', () => {
-    expect(interpretarFila({ id: '', palabra_es: '' }, 'x')).toBeNull();
-    expect(interpretarFila({ id: '3', palabra_es: 'ñame' }, 'x')!.ambito).toBe('otro');
+    expect(parseRow({ id: '', palabra_es: '' }, 'x')).toBeNull();
+    expect(parseRow({ id: '3', palabra_es: 'ñame' }, 'x')!.ambito).toBe('otro');
   });
 });
 
-describe('fundirPorId', () => {
+describe('mergeById', () => {
   it('with the same id the last occurrence wins and the repetition is counted', () => {
-    const r = fundirPorId([
-      fila({ id: '5', palabraEs: 'vecina', archivo: 'lote1.xlsx' }),
-      fila({ id: '5', palabraEs: 'vecina', palabraDm: 'anzhirru', archivo: 'lote2.xlsx' }),
-      fila({ id: '6', palabraEs: 'agua' }),
+    const r = mergeById([
+      row({ id: '5', palabraEs: 'vecina', archivo: 'lote1.xlsx' }),
+      row({ id: '5', palabraEs: 'vecina', palabraDm: 'anzhirru', archivo: 'lote2.xlsx' }),
+      row({ id: '6', palabraEs: 'agua' }),
     ]);
     expect(r.repetidos).toBe(1);
     expect(r.filas).toHaveLength(2);
@@ -82,13 +82,13 @@ describe('fundirPorId', () => {
   });
 });
 
-describe('planificarElicitacion', () => {
-  const idNormal = Array.from({ length: 100 }, (_, i) => String(i + 1)).find((id) => !esFilaDePrueba(id))!;
-  const idPrueba = Array.from({ length: 100 }, (_, i) => String(i + 1)).find(esFilaDePrueba)!;
+describe('planElicitation', () => {
+  const idNormal = Array.from({ length: 100 }, (_, i) => String(i + 1)).find((id) => !isTestRow(id))!;
+  const testId = Array.from({ length: 100 }, (_, i) => String(i + 1)).find(isTestRow)!;
 
   it('a complete row produces vocabulary + sentence and closes the word', () => {
-    const plan = planificarElicitacion([
-      fila({ id: idNormal, ambito: 'comida', palabraEs: 'yuca', palabraDm: 'Irrugwa', ejemploEs: 'Como yuca.', ejemploDm: 'irrugwa zhant', variante: 'pasado', notas: 'ok' }),
+    const plan = planElicitation([
+      row({ id: idNormal, ambito: 'comida', palabraEs: 'yuca', palabraDm: 'Irrugwa', ejemploEs: 'Como yuca.', ejemploDm: 'irrugwa zhant', variante: 'pasado', notas: 'ok' }),
     ]);
     expect(plan.vocabulario).toEqual([
       { espanol: 'yuca', damana: 'Irrugwa', categoria: 'comida', notas: 'variante: pasado · ok', fuente: 'elicitacion' },
@@ -102,8 +102,8 @@ describe('planificarElicitacion', () => {
   });
 
   it('the reserved row goes to tests (not to sentences) but its word does go to the vocabulary', () => {
-    const plan = planificarElicitacion([
-      fila({ id: idPrueba, ambito: 'casa', palabraEs: 'casa', palabraDm: 'Urraga', ejemploEs: 'Mi casa.', ejemploDm: 'ranzhe urraga' }),
+    const plan = planElicitation([
+      row({ id: testId, ambito: 'casa', palabraEs: 'casa', palabraDm: 'Urraga', ejemploEs: 'Mi casa.', ejemploDm: 'ranzhe urraga' }),
     ]);
     expect(plan.pruebas).toEqual([{ espanol: 'Mi casa.', damanaEsperado: 'ranzhe urraga', ambito: 'casa' }]);
     expect(plan.oraciones).toEqual([]);
@@ -111,9 +111,9 @@ describe('planificarElicitacion', () => {
   });
 
   it('without palabra_dm or ejemplo_dm it stays pending, with the Spanish example as context', () => {
-    const plan = planificarElicitacion([
-      fila({ id: '1', palabraEs: 'vecina', ejemploEs: 'Mi vecina cocina.' }),
-      fila({ id: '2', palabraEs: 'hola', palabraDm: 'Zungui', ejemploEs: 'Hola, ¿cómo estás?' }),
+    const plan = planElicitation([
+      row({ id: '1', palabraEs: 'vecina', ejemploEs: 'Mi vecina cocina.' }),
+      row({ id: '2', palabraEs: 'hola', palabraDm: 'Zungui', ejemploEs: 'Hola, ¿cómo estás?' }),
     ]);
     expect(plan.pendientes).toEqual([
       { palabra: 'vecina', contexto: 'Mi vecina cocina.' },
@@ -124,8 +124,8 @@ describe('planificarElicitacion', () => {
   });
 
   it('keeps ʉ and ñ in what it produces', () => {
-    const plan = planificarElicitacion([
-      fila({ id: idNormal, palabraEs: 'año', palabraDm: 'kʉgui', ejemploEs: 'Este año.', ejemploDm: 'ima kʉgui ñingui' }),
+    const plan = planElicitation([
+      row({ id: idNormal, palabraEs: 'año', palabraDm: 'kʉgui', ejemploEs: 'Este año.', ejemploDm: 'ima kʉgui ñingui' }),
     ]);
     expect(plan.vocabulario[0]).toMatchObject({ espanol: 'año', damana: 'kʉgui' });
     expect(plan.oraciones[0].damana).toBe('ima kʉgui ñingui');

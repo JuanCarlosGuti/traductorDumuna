@@ -1,57 +1,57 @@
-import { aDistanciaUno, esqueletoOrtografico, reglasQueDistinguen } from './esqueleto';
+import { atDistanceOne, spellingSkeleton, distinguishingRules } from './esqueleto';
 
-describe('esqueletoOrtografico (only to detect spelling doubts)', () => {
+describe('spellingSkeleton (only to detect spelling doubts)', () => {
   it('merges u and ʉ, which the rest of the app keeps apart', () => {
-    expect(esqueletoOrtografico('nʉnka')).toBe(esqueletoOrtografico('nunka'));
-    expect(esqueletoOrtografico('Kʉgui')).toBe(esqueletoOrtografico('kugui'));
+    expect(spellingSkeleton('nʉnka')).toBe(spellingSkeleton('nunka'));
+    expect(spellingSkeleton('Kʉgui')).toBe(spellingSkeleton('kugui'));
   });
 
   it('merges gw/gu, kw/ku, y/i and -ndzina/-nyina', () => {
-    expect(esqueletoOrtografico('Dugwa')).toBe(esqueletoOrtografico('dugua'));
-    expect(esqueletoOrtografico('Kwima')).toBe(esqueletoOrtografico('Kuima'));
-    expect(esqueletoOrtografico('Shaye')).toBe(esqueletoOrtografico('Shaie'));
-    expect(esqueletoOrtografico('terruandzina')).toBe(esqueletoOrtografico('terruanyina'));
+    expect(spellingSkeleton('Dugwa')).toBe(spellingSkeleton('dugua'));
+    expect(spellingSkeleton('Kwima')).toBe(spellingSkeleton('Kuima'));
+    expect(spellingSkeleton('Shaye')).toBe(spellingSkeleton('Shaie'));
+    expect(spellingSkeleton('terruandzina')).toBe(spellingSkeleton('terruanyina'));
   });
 
   it('merges lone h and j but respects sh, zh and ch', () => {
-    expect(esqueletoOrtografico('shihka')).toBe(esqueletoOrtografico('shijka'));
-    expect(esqueletoOrtografico('zhama')).not.toBe(esqueletoOrtografico('zjama'));
-    expect(esqueletoOrtografico('sha')).toBe('sha');
+    expect(spellingSkeleton('shihka')).toBe(spellingSkeleton('shijka'));
+    expect(spellingSkeleton('zhama')).not.toBe(spellingSkeleton('zjama'));
+    expect(spellingSkeleton('sha')).toBe('sha');
   });
 
   it('keeps the ñ: ñingui and ningui are NOT merged', () => {
-    expect(esqueletoOrtografico('ñingui')).not.toBe(esqueletoOrtografico('ningui'));
-    expect(esqueletoOrtografico('Ñi')).toBe('ñi');
+    expect(spellingSkeleton('ñingui')).not.toBe(spellingSkeleton('ningui'));
+    expect(spellingSkeleton('Ñi')).toBe('ñi');
   });
 
   it('ignores capitals and accents like normalizar()', () => {
-    expect(esqueletoOrtografico('Akó')).toBe(esqueletoOrtografico('ako'));
+    expect(spellingSkeleton('Akó')).toBe(spellingSkeleton('ako'));
   });
 });
 
-describe('reglasQueDistinguen', () => {
+describe('distinguishingRules', () => {
   it('names the alternation that separates the forms', () => {
-    expect(reglasQueDistinguen(['nʉnka', 'nunka'])).toEqual(['u / ʉ']);
-    expect(reglasQueDistinguen(['dugwa', 'dugua'])).toEqual(['w / u']);
-    expect(reglasQueDistinguen(['shkandzina', 'shkanyina'])).toEqual(['ndzina / nyina']);
-    expect(reglasQueDistinguen(['naya', 'naia'])).toEqual(['y / i']);
+    expect(distinguishingRules(['nʉnka', 'nunka'])).toEqual(['u / ʉ']);
+    expect(distinguishingRules(['dugwa', 'dugua'])).toEqual(['w / u']);
+    expect(distinguishingRules(['shkandzina', 'shkanyina'])).toEqual(['ndzina / nyina']);
+    expect(distinguishingRules(['naya', 'naia'])).toEqual(['y / i']);
   });
 
   it('there can be several at once', () => {
-    expect(reglasQueDistinguen(['bʉgui', 'bugwi', 'bugui'])).toEqual(['u / ʉ', 'w / u']);
+    expect(distinguishingRules(['bʉgui', 'bugwi', 'bugui'])).toEqual(['u / ʉ', 'w / u']);
   });
 });
 
-describe('aDistanciaUno', () => {
+describe('atDistanceOne', () => {
   it('one letter changed, extra or missing', () => {
-    expect(aDistanciaUno('kunkushina', 'kunkujshina')).toBe(true);
-    expect(aDistanciaUno('pastoores', 'pastores')).toBe(true);
-    expect(aDistanciaUno('ñingui', 'ningui')).toBe(true);
+    expect(atDistanceOne('kunkushina', 'kunkujshina')).toBe(true);
+    expect(atDistanceOne('pastoores', 'pastores')).toBe(true);
+    expect(atDistanceOne('ñingui', 'ningui')).toBe(true);
   });
 
   it('equal ones or ones with two differences do not count', () => {
-    expect(aDistanciaUno('nʉnka', 'nʉnka')).toBe(false);
-    expect(aDistanciaUno('urraga', 'urragamba')).toBe(false);
-    expect(aDistanciaUno('abisha', 'apeshi')).toBe(false);
+    expect(atDistanceOne('nʉnka', 'nʉnka')).toBe(false);
+    expect(atDistanceOne('urraga', 'urragamba')).toBe(false);
+    expect(atDistanceOne('abisha', 'apeshi')).toBe(false);
   });
 });

@@ -7,14 +7,14 @@ import {
 import Database from 'better-sqlite3';
 import { CorpusRepository } from '../consulta/corpus.repository';
 import { RetrievalService } from '../consulta/retrieval.service';
-import { ejecutarMigraciones } from '../database/migraciones';
-import { PendientesRepository } from '../pendientes/pendientes.repository';
-import { ConfigTraductor, MODELO_CLAUDE } from './config-traductor.provider';
-import { DireccionTraduccion } from './dto/traduccion.dto';
-import { normalizarRespuestaModelo, palabrasEntreCorchetes } from './prompt';
-import { TraduccionesRepository } from './traducciones.repository';
-import { extraerJson, REINTENTOS_429, reloj, TraduccionService } from './traduccion.service';
-import { ValidadasRepository } from './validadas.repository';
+import { runMigrations } from '../database/migraciones';
+import { PendingRepository } from '../pendientes/pendientes.repository';
+import { TranslatorConfig, CLAUDE_MODEL } from './config-traductor.provider';
+import { TranslationDirection } from './dto/traduccion.dto';
+import { normalizeModelResponse, bracketedWords } from './prompt';
+import { TranslationsRepository } from './traducciones.repository';
+import { extractJson, RETRIES_429, clock, TranslationService } from './traduccion.service';
+import { ValidatedRepository } from './validadas.repository';
 
 const JSON_TRADUCCION = JSON.stringify({
   traduccion: 'el agua',
@@ -25,33 +25,33 @@ const JSON_TRADUCCION = JSON.stringify({
   explicacion_breve: 'por el diccionario',
 });
 
-describe('extraerJson (tolerant parsing)', () => {
-  const esperado = { traduccion: 'agua', palabras_sin_equivalente: [], explicacion_breve: 'x' };
-  const jsonPlano = JSON.stringify(esperado);
+describe('extractJson (tolerant parsing)', () => {
+  const expected = { traduccion: 'agua', palabras_sin_equivalente: [], explicacion_breve: 'x' };
+  const plainJson = JSON.stringify(expected);
 
   it('parses pure JSON', () => {
-    expect(extraerJson(jsonPlano)).toEqual(esperado);
+    expect(extractJson(plainJson)).toEqual(expected);
   });
 
   it('tolerates fenced ```json blocks and surrounding text', () => {
-    expect(extraerJson('```json\n' + jsonPlano + '\n```')).toEqual(esperado);
-    expect(extraerJson('Aquí tienes: ' + jsonPlano + ' ¡Saludos!')).toEqual(esperado);
+    expect(extractJson('```json\n' + plainJson + '\n```')).toEqual(expected);
+    expect(extractJson('Aquí tienes: ' + plainJson + ' ¡Saludos!')).toEqual(expected);
   });
 
   it('keeps ʉ and ñ inside the JSON', () => {
-    const r = extraerJson('{"traduccion": "nʉnka ñingui", "palabras_sin_equivalente": ["kʉnʉnka"]}');
+    const r = extractJson('{"traduccion": "nʉnka ñingui", "palabras_sin_equivalente": ["kʉnʉnka"]}');
     expect(r.traduccion).toBe('nʉnka ñingui');
     expect(r.palabras_sin_equivalente).toEqual(['kʉnʉnka']);
   });
 
   it('throws if there is no JSON', () => {
-    expect(() => extraerJson('no tengo nada que ofrecer')).toThrow();
+    expect(() => extractJson('no tengo nada que ofrecer')).toThrow();
   });
 });
 
-describe('normalizarRespuestaModelo', () => {
+describe('normalizeModelResponse', () => {
   it('accepts the gloss keys in both directions and clamps the confidence', () => {
-    const r = normalizarRespuestaModelo({
+    const r = normalizeModelResponse({
       traduccion: 'Ranzhe abu dugwa [vecina]',
       glosa: [
         { palabra_es: 'mi', segmento_dm: 'Ranzhe' },
@@ -71,48 +71,48 @@ describe('normalizarRespuestaModelo', () => {
   });
 
   it('adds the words in square brackets to sin_equivalente even if the model does not list them', () => {
-    expect(palabrasEntreCorchetes('abu [vecina] nuka [ñame]')).toEqual(['vecina', 'ñame']);
-    const r = normalizarRespuestaModelo({ traduccion: 'abu [vecina]', palabras_sin_equivalente: [] });
+    expect(bracketedWords('abu [vecina] nuka [ñame]')).toEqual(['vecina', 'ñame']);
+    const r = normalizeModelResponse({ traduccion: 'abu [vecina]', palabras_sin_equivalente: [] });
     expect(r.palabrasSinEquivalente).toEqual(['vecina']);
     expect(r.confianza).toBe(0);
     expect(r.glosa).toEqual([]);
   });
 });
 
-const CONFIG_ANTHROPIC: ConfigTraductor = { proveedor: 'anthropic', modelo: MODELO_CLAUDE };
-const CONFIG_COMPATIBLE: ConfigTraductor = {
+const CONFIG_ANTHROPIC: TranslatorConfig = { proveedor: 'anthropic', modelo: CLAUDE_MODEL };
+const CONFIG_COMPATIBLE: TranslatorConfig = {
   proveedor: 'compatible',
   modelo: 'openai/gpt-oss-120b',
   baseUrl: 'https://api.groq.com/openai/v1',
   apiKey: 'clave-prueba',
 };
-const CONFIG_VACIA: ConfigTraductor = { proveedor: null, modelo: '' };
+const EMPTY_CONFIG: TranslatorConfig = { proveedor: null, modelo: '' };
 
-describe('TraduccionService', () => {
+describe('TranslationService', () => {
   let db: Database.Database;
   const fetchOriginal = global.fetch;
 
-  function crearServicio(
-    cliente: unknown,
-    config: ConfigTraductor,
-    registro?: TraduccionesRepository,
-  ): TraduccionService {
+  function createService(
+    client: unknown,
+    config: TranslatorConfig,
+    logEntry?: TranslationsRepository,
+  ): TranslationService {
     const repo = new CorpusRepository(db);
-    return new TraduccionService(
-      cliente as Anthropic | null,
+    return new TranslationService(
+      client as Anthropic | null,
       config,
       new RetrievalService(repo),
-      registro ?? new TraduccionesRepository(db),
-      new PendientesRepository(db),
-      new ValidadasRepository(db),
+      logEntry ?? new TranslationsRepository(db),
+      new PendingRepository(db),
+      new ValidatedRepository(db),
     );
   }
 
-  const filasRegistradas = () => db.prepare('SELECT * FROM traducciones ORDER BY rowid').all() as any[];
-  const pendientes = () => db.prepare('SELECT palabra, idioma, contexto, veces_pedida FROM pendientes ORDER BY palabra').all() as any[];
+  const loggedRows = () => db.prepare('SELECT * FROM traducciones ORDER BY rowid').all() as any[];
+  const pendingItems = () => db.prepare('SELECT palabra, idioma, contexto, veces_pedida FROM pendientes ORDER BY palabra').all() as any[];
 
-  function clienteFalso(
-    textoRespuesta: string,
+  function fakeClient(
+    responseText: string,
     stopReason = 'end_turn',
     usage?: Record<string, number | null>,
   ) {
@@ -120,7 +120,7 @@ describe('TraduccionService', () => {
       messages: {
         create: jest.fn().mockResolvedValue({
           stop_reason: stopReason,
-          content: [{ type: 'text', text: textoRespuesta }],
+          content: [{ type: 'text', text: responseText }],
           ...(usage ? { usage } : {}),
         }),
       },
@@ -128,15 +128,15 @@ describe('TraduccionService', () => {
   }
 
   /** The system prompt travels as blocks (prompt cache): their text is joined. */
-  const sistemaDe = (params: any): string =>
+  const systemOf = (params: any): string =>
     (params.system as { text: string }[]).map((b) => b.text).join('\n');
 
-  const dmAEs = (texto: string) => ({ texto, direccion: DireccionTraduccion.damana_a_espanol });
-  const esADm = (texto: string) => ({ texto, direccion: DireccionTraduccion.espanol_a_damana });
+  const dmToEs = (text: string) => ({ texto: text, direccion: TranslationDirection.damana_a_espanol });
+  const esADm = (text: string) => ({ texto: text, direccion: TranslationDirection.espanol_a_damana });
 
   beforeEach(() => {
     db = new Database(':memory:');
-    ejecutarMigraciones(db);
+    runMigrations(db);
     db.prepare(
       `INSERT INTO frases (fuente, damana, espanol, notas, dominio)
        VALUES ('Prueba', 'nʉnka gontka', 'hizo el agua', NULL, 'cotidiano')`,
@@ -170,16 +170,16 @@ describe('TraduccionService', () => {
   });
 
   it('with no provider configured it answers 503 with instructions', async () => {
-    const servicio = crearServicio(null, CONFIG_VACIA);
-    await expect(servicio.traducir(dmAEs('nʉnka'))).rejects.toThrow(ServiceUnavailableException);
-    expect(servicio.disponible()).toBe(false);
+    const service = createService(null, EMPTY_CONFIG);
+    await expect(service.translate(dmToEs('nʉnka'))).rejects.toThrow(ServiceUnavailableException);
+    expect(service.available()).toBe(false);
   });
 
   describe('anthropic provider', () => {
     it('builds the prompt in sections with dictionary and examples, and requests structured output', async () => {
-      const cliente = clienteFalso(JSON_TRADUCCION);
-      const servicio = crearServicio(cliente, CONFIG_ANTHROPIC);
-      const r = await servicio.traducir(dmAEs('nʉnka gontka'));
+      const client = fakeClient(JSON_TRADUCCION);
+      const service = createService(client, CONFIG_ANTHROPIC);
+      const r = await service.translate(dmToEs('nʉnka gontka'));
 
       expect(r.traduccion).toBe('el agua');
       expect(r.glosa).toEqual([{ origen: 'nʉnka', destino: 'el agua' }]);
@@ -189,19 +189,19 @@ describe('TraduccionService', () => {
         expect.objectContaining({ palabra: 'nʉnka', espanol: 'agua', damana: 'nʉnka', coincidencia: 'exacta' }),
       ]);
 
-      const params = cliente.messages.create.mock.calls[0][0];
-      expect(params.model).toBe(MODELO_CLAUDE);
+      const params = client.messages.create.mock.calls[0][0];
+      expect(params.model).toBe(CLAUDE_MODEL);
       expect(params.output_config.format.type).toBe('json_schema');
       expect(params.output_config.format.schema.required).toContain('palabras_sin_equivalente');
       // claude-opus-5-5 rejects temperature with a 400: it is never sent. The
       // effort only goes if it was configured.
       expect(params.temperature).toBeUndefined();
       expect(params.output_config.effort).toBeUndefined();
-      expect(sistemaDe(params)).toContain('traductor');
-      expect(sistemaDe(params)).toContain('palabra_dm');
-      expect(sistemaDe(params)).toContain('artículos');
-      const usuario: string = params.messages[0].content;
-      for (const seccion of [
+      expect(systemOf(params)).toContain('traductor');
+      expect(systemOf(params)).toContain('palabra_dm');
+      expect(systemOf(params)).toContain('artículos');
+      const user: string = params.messages[0].content;
+      for (const section of [
         '=== REGLAS GRAMATICALES ===',
         '=== DICCIONARIO DE ESTA FRASE ===',
         '=== EJEMPLOS COTIDIANOS ===',
@@ -209,15 +209,15 @@ describe('TraduccionService', () => {
         '=== EJEMPLOS DEL CORPUS BÍBLICO ===',
         '=== FRASE A TRADUCIR ===',
       ]) {
-        expect(usuario).toContain(seccion);
+        expect(user).toContain(section);
       }
-      expect(usuario).toContain('nʉnka → agua');
-      expect(usuario).toContain('hizo el agua');
-      expect(usuario).not.toContain('zhiguana');
+      expect(user).toContain('nʉnka → agua');
+      expect(user).toContain('hizo el agua');
+      expect(user).not.toContain('zhiguana');
     });
 
     it('Spanish → Damana: «mi mamá cocina en la casa» uses the dictionary, detects possessive and includes -nzhe', async () => {
-      const cliente = clienteFalso(
+      const client = fakeClient(
         JSON.stringify({
           traduccion: 'Ranzhe abu urragamba dugwa',
           glosa: [
@@ -232,8 +232,8 @@ describe('TraduccionService', () => {
           explicacion_breve: 'diccionario + regla',
         }),
       );
-      const servicio = crearServicio(cliente, CONFIG_ANTHROPIC);
-      const r = await servicio.traducir(esADm('mi mamá cocina en la casa'));
+      const service = createService(client, CONFIG_ANTHROPIC);
+      const r = await service.translate(esADm('mi mamá cocina en la casa'));
 
       expect(r.diccionario.find((a) => a.palabra === 'mamá')).toMatchObject({ damana: 'Abu', coincidencia: 'exacta' });
       expect(r.diccionario.find((a) => a.palabra === 'cocina')).toMatchObject({ damana: 'Dugua', coincidencia: 'posible' });
@@ -245,43 +245,43 @@ describe('TraduccionService', () => {
       expect(r.reglasAplicadas).toEqual(['-nzhe (posesivo)']);
       expect(r.glosa[1]).toEqual({ origen: 'mamá', destino: 'abu' });
 
-      const params = cliente.messages.create.mock.calls[0][0];
-      expect(sistemaDe(params)).toContain('palabra_es');
-      const usuario: string = params.messages[0].content;
-      expect(usuario).toContain('Rasgos detectados en la frase: posesivo');
-      expect(usuario).toContain('- -nzhe — posesivo');
-      expect(usuario).toContain('- mamá → Abu (mamá) [exacta');
-      expect(usuario).toContain('Dirección: del español al damana.');
+      const params = client.messages.create.mock.calls[0][0];
+      expect(systemOf(params)).toContain('palabra_es');
+      const user: string = params.messages[0].content;
+      expect(user).toContain('Rasgos detectados en la frase: posesivo');
+      expect(user).toContain('- -nzhe — posesivo');
+      expect(user).toContain('- mamá → Abu (mamá) [exacta');
+      expect(user).toContain('Dirección: del español al damana.');
     });
 
     it('negation without a rule in the corpus: the prompt says so and offers the negative dictionary form only if there is a «no»', async () => {
-      const cliente = clienteFalso(JSON_TRADUCCION);
-      const r = await crearServicio(cliente, CONFIG_ANTHROPIC).traducir(esADm('no quiero agua'));
+      const client = fakeClient(JSON_TRADUCCION);
+      const r = await createService(client, CONFIG_ANTHROPIC).translate(esADm('no quiero agua'));
       expect(r.disparadores).toEqual(['negacion']);
       expect(r.reglas).toEqual([]); // the test database only has -nzhe (possessive)
       expect(r.diccionario).toContainEqual(
         expect.objectContaining({ palabra: 'No quiero', damana: 'Nandunun', coincidencia: 'frase' }),
       );
-      const params = cliente.messages.create.mock.calls[0][0];
-      expect(sistemaDe(params)).toContain('La negación');
-      const usuario: string = params.messages[0].content;
-      expect(usuario).toContain('Rasgos detectados en la frase: negacion.');
-      expect(usuario).toContain('- negacion: rasgo detectado, pero el corpus no tiene regla registrada');
-      expect(usuario).toContain('No quiero → Nandunun');
-      expect(usuario).not.toContain('(ninguna regla aplicable)');
+      const params = client.messages.create.mock.calls[0][0];
+      expect(systemOf(params)).toContain('La negación');
+      const user: string = params.messages[0].content;
+      expect(user).toContain('Rasgos detectados en la frase: negacion.');
+      expect(user).toContain('- negacion: rasgo detectado, pero el corpus no tiene regla registrada');
+      expect(user).toContain('No quiero → Nandunun');
+      expect(user).not.toContain('(ninguna regla aplicable)');
 
       // Affirmative: no feature, no warning, no negated form in the dictionary.
-      const cliente2 = clienteFalso(JSON_TRADUCCION);
-      const r2 = await crearServicio(cliente2, CONFIG_ANTHROPIC).traducir(esADm('quiero agua'));
+      const client2 = fakeClient(JSON_TRADUCCION);
+      const r2 = await createService(client2, CONFIG_ANTHROPIC).translate(esADm('quiero agua'));
       expect(r2.disparadores).toEqual([]);
       expect(r2.diccionario.map((a) => a.damana)).not.toContain('Nandunun');
-      expect(cliente2.messages.create.mock.calls[0][0].messages[0].content).not.toContain('Nandunun');
+      expect(client2.messages.create.mock.calls[0][0].messages[0].content).not.toContain('Nandunun');
     });
 
     it('marks the system prompt for the prompt cache (cache_control ephemeral)', async () => {
-      const cliente = clienteFalso(JSON_TRADUCCION);
-      await crearServicio(cliente, CONFIG_ANTHROPIC).traducir(dmAEs('nʉnka'));
-      const params = cliente.messages.create.mock.calls[0][0];
+      const client = fakeClient(JSON_TRADUCCION);
+      await createService(client, CONFIG_ANTHROPIC).translate(dmToEs('nʉnka'));
+      const params = client.messages.create.mock.calls[0][0];
       expect(params.system).toEqual([
         {
           type: 'text',
@@ -294,21 +294,21 @@ describe('TraduccionService', () => {
     });
 
     it('with ANTHROPIC_ESFUERZO configured it sends output_config.effort', async () => {
-      const cliente = clienteFalso(JSON_TRADUCCION);
-      await crearServicio(cliente, { ...CONFIG_ANTHROPIC, esfuerzo: 'low' }).traducir(dmAEs('nʉnka'));
-      expect(cliente.messages.create.mock.calls[0][0].output_config.effort).toBe('low');
+      const client = fakeClient(JSON_TRADUCCION);
+      await createService(client, { ...CONFIG_ANTHROPIC, esfuerzo: 'low' }).translate(dmToEs('nʉnka'));
+      expect(client.messages.create.mock.calls[0][0].output_config.effort).toBe('low');
     });
 
     it('proper names travel with the corpus spelling', async () => {
-      const cliente = clienteFalso(JSON_TRADUCCION);
-      const servicio = crearServicio(cliente, CONFIG_ANTHROPIC);
-      const r = await servicio.traducir(esADm('Jehova hizo el agua'));
+      const client = fakeClient(JSON_TRADUCCION);
+      const service = createService(client, CONFIG_ANTHROPIC);
+      const r = await service.translate(esADm('Jehova hizo el agua'));
       expect(r.nombresPropios).toEqual([{ enTexto: 'Jehova', espanol: 'Jehová', damana: 'Jehová' }]);
-      expect(cliente.messages.create.mock.calls[0][0].messages[0].content).toContain('Nombres propios:');
+      expect(client.messages.create.mock.calls[0][0].messages[0].content).toContain('Nombres propios:');
     });
 
     it('records each word without an equivalent as pending (with the context sentence) and accumulates requests', async () => {
-      const respuesta = JSON.stringify({
+      const response = JSON.stringify({
         traduccion: 'Ranzhe [vecina] dugwa',
         glosa: [],
         palabras_sin_equivalente: ['vecina'],
@@ -316,17 +316,17 @@ describe('TraduccionService', () => {
         confianza: 0.4,
         explicacion_breve: '',
       });
-      const servicio = crearServicio(clienteFalso(respuesta), CONFIG_ANTHROPIC);
-      const r = await servicio.traducir(esADm('mi vecina cocina'));
+      const service = createService(fakeClient(response), CONFIG_ANTHROPIC);
+      const r = await service.translate(esADm('mi vecina cocina'));
       expect(r.palabrasSinEquivalente).toEqual(['vecina']);
-      await servicio.traducir(esADm('la vecina llegó'));
-      expect(pendientes()).toEqual([
+      await service.translate(esADm('la vecina llegó'));
+      expect(pendingItems()).toEqual([
         { palabra: 'vecina', idioma: 'espanol', contexto: 'mi vecina cocina', veces_pedida: 2 },
       ]);
     });
 
     it('in the Damana → Spanish direction pending items are stored as Damana words', async () => {
-      const respuesta = JSON.stringify({
+      const response = JSON.stringify({
         traduccion: 'hizo [kʉzhigui]',
         glosa: [],
         palabras_sin_equivalente: ['kʉzhigui'],
@@ -334,15 +334,15 @@ describe('TraduccionService', () => {
         confianza: 0.3,
         explicacion_breve: '',
       });
-      const servicio = crearServicio(clienteFalso(respuesta), CONFIG_ANTHROPIC);
-      await servicio.traducir(dmAEs('kʉzhigui gontka'));
-      expect(pendientes()).toEqual([
+      const service = createService(fakeClient(response), CONFIG_ANTHROPIC);
+      await service.translate(dmToEs('kʉzhigui gontka'));
+      expect(pendingItems()).toEqual([
         { palabra: 'kʉzhigui', idioma: 'damana', contexto: 'kʉzhigui gontka', veces_pedida: 1 },
       ]);
     });
 
     it('articles and function words are shown but not recorded as pending', async () => {
-      const respuesta = JSON.stringify({
+      const response = JSON.stringify({
         traduccion: '[La] lema [está] [cara]',
         glosa: [],
         palabras_sin_equivalente: ['La', 'está', 'cara'],
@@ -350,14 +350,14 @@ describe('TraduccionService', () => {
         confianza: 0.3,
         explicacion_breve: '',
       });
-      const servicio = crearServicio(clienteFalso(respuesta), CONFIG_ANTHROPIC);
-      const r = await servicio.traducir(esADm('La carne está cara'));
+      const service = createService(fakeClient(response), CONFIG_ANTHROPIC);
+      const r = await service.translate(esADm('La carne está cara'));
       expect(r.palabrasSinEquivalente).toEqual(['La', 'está', 'cara']);
-      expect(pendientes().map((p) => p.palabra)).toEqual(['cara']);
+      expect(pendingItems().map((p) => p.palabra)).toEqual(['cara']);
     });
 
     it('with registrar: false it leaves no trace (neither translations nor pending items): evaluation mode', async () => {
-      const respuesta = JSON.stringify({
+      const response = JSON.stringify({
         traduccion: '[vecina]',
         glosa: [],
         palabras_sin_equivalente: ['vecina'],
@@ -365,114 +365,114 @@ describe('TraduccionService', () => {
         confianza: 0.2,
         explicacion_breve: '',
       });
-      const servicio = crearServicio(clienteFalso(respuesta), CONFIG_ANTHROPIC);
-      await servicio.traducir(esADm('mi vecina'), { registrar: false });
-      expect(filasRegistradas()).toEqual([]);
-      expect(pendientes()).toEqual([]);
+      const service = createService(fakeClient(response), CONFIG_ANTHROPIC);
+      await service.translate(esADm('mi vecina'), { registrar: false });
+      expect(loggedRows()).toEqual([]);
+      expect(pendingItems()).toEqual([]);
     });
 
     it('returns the support level; without examples it flags «revisar»', async () => {
-      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
-      const bien = await servicio.traducir(dmAEs('nʉnka gontka'));
-      expect(bien.apoyo.nivel).not.toBe('revisar');
-      const mal = await servicio.traducir(dmAEs('zzzz qqqq'));
-      expect(mal.apoyo.nivel).toBe('revisar');
-      expect(mal.apoyo.motivos).toContain('sin_ejemplos');
+      const service = createService(fakeClient(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      const good = await service.translate(dmToEs('nʉnka gontka'));
+      expect(good.apoyo.nivel).not.toBe('revisar');
+      const bad = await service.translate(dmToEs('zzzz qqqq'));
+      expect(bad.apoyo.nivel).toBe('revisar');
+      expect(bad.apoyo.motivos).toContain('sin_ejemplos');
     });
 
     it('logs the translation with support signals, confidence, rules and gloss (case with ʉ)', async () => {
-      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC);
-      const r = await servicio.traducir(dmAEs('nʉnka gontka'));
+      const service = createService(fakeClient(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      const r = await service.translate(dmToEs('nʉnka gontka'));
 
-      const filas = filasRegistradas();
-      expect(filas).toHaveLength(1);
-      expect(filas[0]).toMatchObject({
+      const rows = loggedRows();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
         texto: 'nʉnka gontka',
         traduccion: 'el agua',
         direccion: 'damana_a_espanol',
-        modelo: MODELO_CLAUDE,
+        modelo: CLAUDE_MODEL,
         confianza: 0.8,
       });
-      expect(filas[0].ejemplos_recuperados).toBe(r.ejemplos.length);
-      expect(filas[0].puntaje_top).toBeCloseTo(Math.max(...r.ejemplos.map((e) => e.puntaje)), 10);
-      expect(filas[0].puntaje_medio).toBeCloseTo(
+      expect(rows[0].ejemplos_recuperados).toBe(r.ejemplos.length);
+      expect(rows[0].puntaje_top).toBeCloseTo(Math.max(...r.ejemplos.map((e) => e.puntaje)), 10);
+      expect(rows[0].puntaje_medio).toBeCloseTo(
         r.ejemplos.reduce((s, e) => s + e.puntaje, 0) / r.ejemplos.length,
         10,
       );
-      expect(JSON.parse(filas[0].vocabulario_usado)).toEqual([{ espanol: 'agua', damana: 'nʉnka' }]);
-      expect(JSON.parse(filas[0].glosa)).toEqual([{ origen: 'nʉnka', destino: 'el agua' }]);
-      expect(JSON.parse(filas[0].reglas_aplicadas)).toEqual([]);
+      expect(JSON.parse(rows[0].vocabulario_usado)).toEqual([{ espanol: 'agua', damana: 'nʉnka' }]);
+      expect(JSON.parse(rows[0].glosa)).toEqual([{ origen: 'nʉnka', destino: 'el agua' }]);
+      expect(JSON.parse(rows[0].reglas_aplicadas)).toEqual([]);
     });
 
     it('stores input, output and cache tokens and the duration; without usage they stay null', async () => {
-      const conUso = clienteFalso(JSON_TRADUCCION, 'end_turn', {
+      const withUsage = fakeClient(JSON_TRADUCCION, 'end_turn', {
         input_tokens: 1200,
         output_tokens: 300,
         cache_read_input_tokens: 700,
         cache_creation_input_tokens: 0,
       });
-      await crearServicio(conUso, CONFIG_ANTHROPIC).traducir(dmAEs('nʉnka ñingui'));
-      const [fila] = filasRegistradas();
-      expect(fila).toMatchObject({
+      await createService(withUsage, CONFIG_ANTHROPIC).translate(dmToEs('nʉnka ñingui'));
+      const [row] = loggedRows();
+      expect(row).toMatchObject({
         tokens_entrada: 1200,
         tokens_salida: 300,
         tokens_cache_leidos: 700,
         tokens_cache_creados: 0,
       });
-      expect(fila.duracion_ms).toBeGreaterThanOrEqual(0);
+      expect(row.duracion_ms).toBeGreaterThanOrEqual(0);
 
-      await crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC).traducir(dmAEs('nʉnka'));
-      const [, sinUso] = filasRegistradas();
-      expect(sinUso).toMatchObject({
+      await createService(fakeClient(JSON_TRADUCCION), CONFIG_ANTHROPIC).translate(dmToEs('nʉnka'));
+      const [, withoutUsage] = loggedRows();
+      expect(withoutUsage).toMatchObject({
         tokens_entrada: null,
         tokens_salida: null,
         tokens_cache_leidos: null,
         tokens_cache_creados: null,
       });
-      expect(sinUso.duracion_ms).toBeGreaterThanOrEqual(0);
+      expect(withoutUsage.duracion_ms).toBeGreaterThanOrEqual(0);
     });
 
     it('SAFETY: if logging fails, the translation is still delivered', async () => {
-      const registroRoto = {
-        registrar: jest.fn(() => {
+      const brokenLog = {
+        record: jest.fn(() => {
           throw new Error('disco lleno');
         }),
-      } as unknown as TraduccionesRepository;
-      const servicio = crearServicio(clienteFalso(JSON_TRADUCCION), CONFIG_ANTHROPIC, registroRoto);
-      const r = await servicio.traducir(dmAEs('nʉnka gontka'));
+      } as unknown as TranslationsRepository;
+      const service = createService(fakeClient(JSON_TRADUCCION), CONFIG_ANTHROPIC, brokenLog);
+      const r = await service.translate(dmToEs('nʉnka gontka'));
       expect(r.traduccion).toBe('el agua');
-      expect(registroRoto.registrar).toHaveBeenCalled();
-      expect(filasRegistradas()).toHaveLength(0);
+      expect(brokenLog.record).toHaveBeenCalled();
+      expect(loggedRows()).toHaveLength(0);
     });
 
     it('tolerates the response wrapped in ```json', async () => {
-      const servicio = crearServicio(
-        clienteFalso('Aquí está:\n```json\n' + JSON_TRADUCCION.replace('el agua', 'hizo ñingui') + '\n```'),
+      const service = createService(
+        fakeClient('Aquí está:\n```json\n' + JSON_TRADUCCION.replace('el agua', 'hizo ñingui') + '\n```'),
         CONFIG_ANTHROPIC,
       );
-      const r = await servicio.traducir(dmAEs('gontka ñingui'));
+      const r = await service.translate(dmToEs('gontka ñingui'));
       expect(r.traduccion).toBe('hizo ñingui');
     });
 
     it('response without JSON → 502; safety refusal → 502', async () => {
       await expect(
-        crearServicio(clienteFalso('lo siento, no puedo'), CONFIG_ANTHROPIC).traducir(dmAEs('nʉnka')),
+        createService(fakeClient('lo siento, no puedo'), CONFIG_ANTHROPIC).translate(dmToEs('nʉnka')),
       ).rejects.toThrow(BadGatewayException);
       await expect(
-        crearServicio(clienteFalso('', 'refusal'), CONFIG_ANTHROPIC).traducir(dmAEs('nʉnka')),
+        createService(fakeClient('', 'refusal'), CONFIG_ANTHROPIC).translate(dmToEs('nʉnka')),
       ).rejects.toThrow(/rechazó/);
     });
 
     it('SDK timeout → 504; invalid key → 502 with a message about the key', async () => {
-      const conTimeout = {
+      const withTimeout = {
         messages: {
           create: jest.fn().mockRejectedValue(new Anthropic.APIConnectionTimeoutError({ message: 'timeout' })),
         },
       };
-      await expect(crearServicio(conTimeout, CONFIG_ANTHROPIC).traducir(dmAEs('nʉnka'))).rejects.toThrow(
+      await expect(createService(withTimeout, CONFIG_ANTHROPIC).translate(dmToEs('nʉnka'))).rejects.toThrow(
         GatewayTimeoutException,
       );
-      const sinClave = {
+      const withoutKey = {
         messages: {
           create: jest.fn().mockRejectedValue(
             new Anthropic.AuthenticationError(
@@ -484,7 +484,7 @@ describe('TraduccionService', () => {
           ),
         },
       };
-      await expect(crearServicio(sinClave, CONFIG_ANTHROPIC).traducir(dmAEs('nʉnka'))).rejects.toThrow(
+      await expect(createService(withoutKey, CONFIG_ANTHROPIC).translate(dmToEs('nʉnka'))).rejects.toThrow(
         /ANTHROPIC_API_KEY no es válida/,
       );
     });
@@ -492,17 +492,17 @@ describe('TraduccionService', () => {
 
   describe('validar («es correcta» / «corregir» buttons)', () => {
     it('stores the pair with the Spanish and the Damana in place according to the direction', () => {
-      const servicio = crearServicio(null, CONFIG_VACIA);
-      const r1 = servicio.validar({
+      const service = createService(null, EMPTY_CONFIG);
+      const r1 = service.validate({
         texto: 'mi mamá cocina',
-        direccion: DireccionTraduccion.espanol_a_damana,
+        direccion: TranslationDirection.espanol_a_damana,
         traduccion: 'Ranzhe abu dugwa',
         origen: 'confirmada',
         traduccionModelo: 'Ranzhe abu dugwa',
       });
-      const r2 = servicio.validar({
+      const r2 = service.validate({
         texto: 'nʉnka gontka',
-        direccion: DireccionTraduccion.damana_a_espanol,
+        direccion: TranslationDirection.damana_a_espanol,
         traduccion: 'hizo el agua',
         origen: 'corregida',
         traduccionModelo: 'el agua',
@@ -517,34 +517,34 @@ describe('TraduccionService', () => {
   });
 
   describe('OpenAI-compatible provider (Groq, Ollama, Gemini...)', () => {
-    const respuestaOk = (contenido: string) => ({
+    const okResponse = (content: string) => ({
       ok: true,
       status: 200,
       json: async () => ({
-        choices: [{ message: { content: contenido } }],
+        choices: [{ message: { content: content } }],
         usage: { prompt_tokens: 2500, completion_tokens: 120 },
       }),
     });
 
     it('calls {base}/chat/completions with Bearer, system/user and response_format json_object', async () => {
-      const fetchFalso = jest.fn().mockResolvedValue(respuestaOk('```json\n' + JSON_TRADUCCION + '\n```'));
-      global.fetch = fetchFalso as unknown as typeof fetch;
+      const fakeFetch = jest.fn().mockResolvedValue(okResponse('```json\n' + JSON_TRADUCCION + '\n```'));
+      global.fetch = fakeFetch as unknown as typeof fetch;
 
-      const r = await crearServicio(null, CONFIG_COMPATIBLE).traducir(dmAEs('nʉnka gontka'));
+      const r = await createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka gontka'));
       expect(r.traduccion).toBe('el agua');
-      const [url, opciones] = fetchFalso.mock.calls[0];
+      const [url, options] = fakeFetch.mock.calls[0];
       expect(url).toBe('https://api.groq.com/openai/v1/chat/completions');
-      expect(opciones.headers.authorization).toBe('Bearer clave-prueba');
-      const cuerpo = JSON.parse(opciones.body);
-      expect(cuerpo.model).toBe('openai/gpt-oss-120b');
-      expect(cuerpo.response_format).toEqual({ type: 'json_object' });
-      expect(cuerpo.temperature).toBe(0.2); // low by default: same sentence, same translation
-      expect(cuerpo.messages[0].role).toBe('system');
-      expect(cuerpo.messages[1].role).toBe('user');
-      expect(cuerpo.messages[1].content).toContain('=== FRASE A TRADUCIR ===');
-      expect(cuerpo.messages[1].content).toContain('nʉnka gontka');
+      expect(options.headers.authorization).toBe('Bearer clave-prueba');
+      const bodyData = JSON.parse(options.body);
+      expect(bodyData.model).toBe('openai/gpt-oss-120b');
+      expect(bodyData.response_format).toEqual({ type: 'json_object' });
+      expect(bodyData.temperature).toBe(0.2); // low by default: same sentence, same translation
+      expect(bodyData.messages[0].role).toBe('system');
+      expect(bodyData.messages[1].role).toBe('user');
+      expect(bodyData.messages[1].content).toContain('=== FRASE A TRADUCIR ===');
+      expect(bodyData.messages[1].content).toContain('nʉnka gontka');
       // OpenAI-style usage: prompt/completion; it does not report cache → null
-      expect(filasRegistradas()[0]).toMatchObject({
+      expect(loggedRows()[0]).toMatchObject({
         tokens_entrada: 2500,
         tokens_salida: 120,
         tokens_cache_leidos: null,
@@ -553,68 +553,68 @@ describe('TraduccionService', () => {
     });
 
     it('the configured temperature is sent as is, even 0', async () => {
-      const fetchFalso = jest.fn().mockResolvedValue(respuestaOk(JSON_TRADUCCION));
-      global.fetch = fetchFalso as unknown as typeof fetch;
-      await crearServicio(null, { ...CONFIG_COMPATIBLE, temperatura: 0 }).traducir(dmAEs('ñingui'));
-      expect(JSON.parse(fetchFalso.mock.calls[0][1].body).temperature).toBe(0);
+      const fakeFetch = jest.fn().mockResolvedValue(okResponse(JSON_TRADUCCION));
+      global.fetch = fakeFetch as unknown as typeof fetch;
+      await createService(null, { ...CONFIG_COMPATIBLE, temperatura: 0 }).translate(dmToEs('ñingui'));
+      expect(JSON.parse(fakeFetch.mock.calls[0][1].body).temperature).toBe(0);
     });
 
     it('if the provider rejects response_format (400) it retries without it', async () => {
-      const fetchFalso = jest
+      const fakeFetch = jest
         .fn()
         .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({}) })
-        .mockResolvedValueOnce(respuestaOk(JSON_TRADUCCION));
-      global.fetch = fetchFalso as unknown as typeof fetch;
+        .mockResolvedValueOnce(okResponse(JSON_TRADUCCION));
+      global.fetch = fakeFetch as unknown as typeof fetch;
 
-      const r = await crearServicio(null, CONFIG_COMPATIBLE).traducir(dmAEs('nʉnka'));
+      const r = await createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'));
       expect(r.traduccion).toBe('el agua');
-      expect(fetchFalso).toHaveBeenCalledTimes(2);
-      expect(JSON.parse(fetchFalso.mock.calls[1][1].body).response_format).toBeUndefined();
+      expect(fakeFetch).toHaveBeenCalledTimes(2);
+      expect(JSON.parse(fakeFetch.mock.calls[1][1].body).response_format).toBeUndefined();
     });
 
     it('on 429 it waits for what Retry-After asks and retries; if it persists it gives up with 429', async () => {
-      const dormir = jest.spyOn(reloj, 'dormir').mockResolvedValue();
+      const sleep = jest.spyOn(clock, 'dormir').mockResolvedValue();
       try {
-        const fetchFalso = jest
+        const fakeFetch = jest
           .fn()
           .mockResolvedValueOnce({ ok: false, status: 429, headers: new Headers({ 'retry-after': '7' }), json: async () => ({}) })
-          .mockResolvedValueOnce(respuestaOk(JSON_TRADUCCION));
-        global.fetch = fetchFalso as unknown as typeof fetch;
-        const r = await crearServicio(null, CONFIG_COMPATIBLE).traducir(dmAEs('nʉnka'));
+          .mockResolvedValueOnce(okResponse(JSON_TRADUCCION));
+        global.fetch = fakeFetch as unknown as typeof fetch;
+        const r = await createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'));
         expect(r.traduccion).toBe('el agua');
-        expect(dormir).toHaveBeenCalledWith(7000);
-        expect(fetchFalso).toHaveBeenCalledTimes(2);
+        expect(sleep).toHaveBeenCalledWith(7000);
+        expect(fakeFetch).toHaveBeenCalledTimes(2);
 
-        const siempre429 = jest
+        const always429 = jest
           .fn()
           .mockResolvedValue({ ok: false, status: 429, headers: new Headers(), json: async () => ({}) });
-        global.fetch = siempre429 as unknown as typeof fetch;
-        await expect(crearServicio(null, CONFIG_COMPATIBLE).traducir(dmAEs('nʉnka'))).rejects.toThrow(/límite de uso/);
-        expect(siempre429).toHaveBeenCalledTimes(REINTENTOS_429 + 1);
+        global.fetch = always429 as unknown as typeof fetch;
+        await expect(createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'))).rejects.toThrow(/límite de uso/);
+        expect(always429).toHaveBeenCalledTimes(RETRIES_429 + 1);
       } finally {
-        dormir.mockRestore();
+        sleep.mockRestore();
       }
     });
 
     it('without apiKey it sends no authorization header (Ollama case)', async () => {
-      const fetchFalso = jest.fn().mockResolvedValue(respuestaOk(JSON_TRADUCCION));
-      global.fetch = fetchFalso as unknown as typeof fetch;
-      await crearServicio(null, { ...CONFIG_COMPATIBLE, apiKey: undefined }).traducir(dmAEs('nʉnka'));
-      expect(fetchFalso.mock.calls[0][1].headers.authorization).toBeUndefined();
+      const fakeFetch = jest.fn().mockResolvedValue(okResponse(JSON_TRADUCCION));
+      global.fetch = fakeFetch as unknown as typeof fetch;
+      await createService(null, { ...CONFIG_COMPATIBLE, apiKey: undefined }).translate(dmToEs('nʉnka'));
+      expect(fakeFetch.mock.calls[0][1].headers.authorization).toBeUndefined();
     });
 
     it('401 → 502 about TRADUCTOR_API_KEY; 404 → 502 mentioning the model', async () => {
       global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({}) }) as unknown as typeof fetch;
-      await expect(crearServicio(null, CONFIG_COMPATIBLE).traducir(dmAEs('nʉnka'))).rejects.toThrow(/TRADUCTOR_API_KEY/);
+      await expect(createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'))).rejects.toThrow(/TRADUCTOR_API_KEY/);
       global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) }) as unknown as typeof fetch;
-      await expect(crearServicio(null, CONFIG_COMPATIBLE).traducir(dmAEs('nʉnka'))).rejects.toThrow(/gpt-oss-120b/);
+      await expect(createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'))).rejects.toThrow(/gpt-oss-120b/);
     });
 
     it('connection refused → 504; response without choices → 502', async () => {
       global.fetch = jest.fn().mockRejectedValue(new TypeError('fetch failed')) as unknown as typeof fetch;
-      await expect(crearServicio(null, CONFIG_COMPATIBLE).traducir(dmAEs('nʉnka'))).rejects.toThrow(GatewayTimeoutException);
+      await expect(createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'))).rejects.toThrow(GatewayTimeoutException);
       global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ raro: true }) }) as unknown as typeof fetch;
-      await expect(crearServicio(null, CONFIG_COMPATIBLE).traducir(dmAEs('nʉnka'))).rejects.toThrow(BadGatewayException);
+      await expect(createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'))).rejects.toThrow(BadGatewayException);
     });
   });
 });

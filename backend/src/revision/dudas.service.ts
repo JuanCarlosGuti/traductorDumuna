@@ -1,96 +1,96 @@
-import { normalizar } from '../comun/texto/normalizador';
-import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { FuenteCorpus } from '../consulta/consulta.enums';
+import { normalize } from '../comun/texto/normalizador';
+import { tokenizeDamana } from '../comun/texto/tokenizador';
+import { CorpusSource } from '../consulta/consulta.enums';
 import { CorpusRepository } from '../consulta/corpus.repository';
 import {
-  detectarEntradasDudosas,
-  detectarParecidas,
-  detectarPolisemia,
-  detectarSinonimos,
-  detectarTerminaciones,
-  detectarVariantes,
-  EntradaDudosa,
-  EntradaLexica,
-  FormaVista,
-  GrupoEscritura,
-  GrupoPolisemia,
-  GrupoSinonimos,
-  RaizConocida,
-  TerminacionCandidata,
+  detectDoubtfulEntries,
+  detectLookalikes,
+  detectPolysemy,
+  detectSynonyms,
+  detectEndings,
+  detectVariants,
+  DoubtfulEntry,
+  LexicalEntry,
+  SeenForm,
+  SpellingGroup,
+  PolysemyGroup,
+  SynonymGroup,
+  KnownRoot,
+  CandidateEnding,
   TokenCorpus,
 } from './dudas';
 
 /** Everything worth clarifying with speakers, ready to go into Excel. */
-export interface InformeDudas {
-  escritura: GrupoEscritura[];
-  sinonimos: GrupoSinonimos[];
-  polisemia: GrupoPolisemia[];
-  dudosas: EntradaDudosa[];
-  terminaciones: TerminacionCandidata[];
+export interface DoubtsReport {
+  escritura: SpellingGroup[];
+  sinonimos: SynonymGroup[];
+  polisemia: PolysemyGroup[];
+  dudosas: DoubtfulEntry[];
+  terminaciones: CandidateEnding[];
 }
 
 /** Example sentences are chosen short so they fit in a cell. */
-const LARGO_MAXIMO_EJEMPLO = 160;
-const MAXIMO_SIGNIFICADOS = 3;
+const MAX_EXAMPLE_LENGTH = 160;
+const MAX_MEANINGS = 3;
 
 /**
  * Walks the imported corpus and builds the doubts report. Read-only: it does not
  * fix or delete anything. The speakers' answers are applied
  * later, by hand or with a step of their own, when they come back.
  */
-export class DudasService {
+export class DoubtsService {
   constructor(private readonly repo: CorpusRepository) {}
 
-  generar(): InformeDudas {
-    const entradas: EntradaLexica[] = this.repo.listarVocabulario().map((v) => ({
+  generate(): DoubtsReport {
+    const entries: LexicalEntry[] = this.repo.listVocabulary().map((v) => ({
       espanol: v.espanol,
       damana: v.damana,
       categoria: v.categoria,
       notas: v.notas,
       fuente: v.fuente,
     }));
-    const tokens = this.tokensDelCorpus();
-    const formas = this.formasVistas(entradas, tokens);
+    const tokens = this.corpusTokens();
+    const forms = this.seenForms(entries, tokens);
 
-    const sinonimos = detectarSinonimos(entradas);
-    for (const grupo of sinonimos) {
-      for (const opcion of grupo.opciones) {
-        const partes = tokenizarDamana(opcion.damana);
-        opcion.frecuencia =
-          partes.length === 1 ? (tokens.get(partes[0].normalizada)?.frecuencia ?? 0) : null;
+    const synonyms = detectSynonyms(entries);
+    for (const group of synonyms) {
+      for (const option of group.opciones) {
+        const parts = tokenizeDamana(option.damana);
+        option.frecuencia =
+          parts.length === 1 ? (tokens.get(parts[0].normalizada)?.frecuencia ?? 0) : null;
       }
     }
 
     return {
-      escritura: [...detectarVariantes(formas), ...detectarParecidas(formas)],
-      sinonimos,
-      polisemia: detectarPolisemia(entradas),
-      dudosas: detectarEntradasDudosas(entradas),
-      terminaciones: detectarTerminaciones(
-        this.raicesConocidas(entradas),
+      escritura: [...detectVariants(forms), ...detectLookalikes(forms)],
+      sinonimos: synonyms,
+      polisemia: detectPolysemy(entries),
+      dudosas: detectDoubtfulEntries(entries),
+      terminaciones: detectEndings(
+        this.knownRoots(entries),
         tokens,
-        this.terminacionesConocidas(entradas),
+        this.knownEndings(entries),
       ),
     };
   }
 
   /** Each word of sentences and phrases with its frequency and a short example sentence. */
-  private tokensDelCorpus(): Map<string, TokenCorpus> {
+  private corpusTokens(): Map<string, TokenCorpus> {
     const tokens = new Map<string, TokenCorpus>();
-    for (const fuente of [FuenteCorpus.oraciones, FuenteCorpus.frases]) {
-      for (const fila of this.repo.textosDe(fuente)) {
-        const sirveDeEjemplo =
-          fila.estado !== 'revisar' &&
-          fila.textoEspanol.trim().length > 0 &&
-          fila.textoDamana.length <= LARGO_MAXIMO_EJEMPLO;
-        for (const t of tokenizarDamana(fila.textoDamana)) {
+    for (const source of [CorpusSource.oraciones, CorpusSource.frases]) {
+      for (const row of this.repo.textsOf(source)) {
+        const worksAsExample =
+          row.estado !== 'revisar' &&
+          row.textoEspanol.trim().length > 0 &&
+          row.textoDamana.length <= MAX_EXAMPLE_LENGTH;
+        for (const t of tokenizeDamana(row.textoDamana)) {
           const info = tokens.get(t.normalizada) ?? { frecuencia: 0 };
           info.frecuencia++;
           if (
-            sirveDeEjemplo &&
-            (!info.ejemplo || fila.textoDamana.length < info.ejemplo.damana.length)
+            worksAsExample &&
+            (!info.ejemplo || row.textoDamana.length < info.ejemplo.damana.length)
           ) {
-            info.ejemplo = { damana: fila.textoDamana.trim(), espanol: fila.textoEspanol.trim() };
+            info.ejemplo = { damana: row.textoDamana.trim(), espanol: row.textoEspanol.trim() };
           }
           tokens.set(t.normalizada, info);
         }
@@ -100,60 +100,60 @@ export class DudasService {
   }
 
   /** Corpus forms plus those from the vocabulary and the conjugations, with what they mean. */
-  private formasVistas(entradas: EntradaLexica[], tokens: Map<string, TokenCorpus>): FormaVista[] {
-    const formas = new Map<string, FormaVista>();
-    for (const [forma, info] of tokens) {
-      formas.set(forma, { forma, frecuencia: info.frecuencia, significados: [], ejemplo: info.ejemplo });
+  private seenForms(entries: LexicalEntry[], tokens: Map<string, TokenCorpus>): SeenForm[] {
+    const forms = new Map<string, SeenForm>();
+    for (const [form, info] of tokens) {
+      forms.set(form, { forma: form, frecuencia: info.frecuencia, significados: [], ejemplo: info.ejemplo });
     }
-    const anotar = (damana: string, espanol: string) => {
-      const partes = tokenizarDamana(damana);
-      if (partes.length !== 1) return;
-      const clave = partes[0].normalizada;
-      const forma = formas.get(clave) ?? { forma: clave, frecuencia: 0, significados: [] };
-      const significado = espanol.trim();
+    const note = (damana: string, spanish: string) => {
+      const parts = tokenizeDamana(damana);
+      if (parts.length !== 1) return;
+      const key = parts[0].normalizada;
+      const form = forms.get(key) ?? { forma: key, frecuencia: 0, significados: [] };
+      const meaning = spanish.trim();
       if (
-        significado &&
-        forma.significados.length < MAXIMO_SIGNIFICADOS &&
-        !forma.significados.includes(significado)
+        meaning &&
+        form.significados.length < MAX_MEANINGS &&
+        !form.significados.includes(meaning)
       ) {
-        forma.significados.push(significado);
+        form.significados.push(meaning);
       }
-      formas.set(clave, forma);
+      forms.set(key, form);
     };
-    for (const e of entradas) anotar(e.damana, e.espanol);
-    for (const c of this.repo.listarConjugaciones()) anotar(c.damana, c.espanol);
-    return [...formas.values()];
+    for (const e of entries) note(e.damana, e.espanol);
+    for (const c of this.repo.listConjugations()) note(c.damana, c.espanol);
+    return [...forms.values()];
   }
 
-  private raicesConocidas(entradas: EntradaLexica[]): RaizConocida[] {
-    const raices: RaizConocida[] = [];
-    for (const e of entradas) {
-      const partes = tokenizarDamana(e.damana);
-      if (partes.length === 1) {
-        raices.push({ raiz: partes[0].normalizada, significado: e.espanol.trim() });
+  private knownRoots(entries: LexicalEntry[]): KnownRoot[] {
+    const roots: KnownRoot[] = [];
+    for (const e of entries) {
+      const parts = tokenizeDamana(e.damana);
+      if (parts.length === 1) {
+        roots.push({ raiz: parts[0].normalizada, significado: e.espanol.trim() });
       }
     }
-    return raices;
+    return roots;
   }
 
   /** What we already know about an ending: a rule, or an entry that is that particle. */
-  private terminacionesConocidas(entradas: EntradaLexica[]): Map<string, string> {
-    const conocidas = new Map<string, string>();
-    for (const e of entradas) {
-      for (const alternativa of e.damana.split('/')) {
-        const partes = tokenizarDamana(alternativa);
-        if (partes.length === 1 && !conocidas.has(partes[0].normalizada)) {
-          conocidas.set(
-            partes[0].normalizada,
+  private knownEndings(entries: LexicalEntry[]): Map<string, string> {
+    const known = new Map<string, string>();
+    for (const e of entries) {
+      for (const alternative of e.damana.split('/')) {
+        const parts = tokenizeDamana(alternative);
+        if (parts.length === 1 && !known.has(parts[0].normalizada)) {
+          known.set(
+            parts[0].normalizada,
             `hay una palabra suelta igual: «${e.espanol.trim()}» (puede no tener relación)`,
           );
         }
       }
     }
-    for (const regla of this.repo.listarReglas()) {
-      const clave = normalizar(regla.forma).replace(/^-+/, '').trim();
-      if (clave) conocidas.set(clave, `regla anotada: ${regla.significado ?? ''}`.trim());
+    for (const rule of this.repo.listRules()) {
+      const key = normalize(rule.forma).replace(/^-+/, '').trim();
+      if (key) known.set(key, `regla anotada: ${rule.significado ?? ''}`.trim());
     }
-    return conocidas;
+    return known;
   }
 }

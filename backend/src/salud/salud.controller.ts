@@ -7,10 +7,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Database } from 'better-sqlite3';
-import { Publico } from '../auth/publico.decorator';
-import { CONEXION_DB } from '../database/database.constants';
+import { Public } from '../auth/publico.decorator';
+import { DB_CONNECTION } from '../database/database.constants';
 
-export class EstadoSaludDto {
+export class HealthStatusDto {
   @ApiProperty({ example: 'ok' })
   estado!: 'ok';
 }
@@ -24,25 +24,25 @@ export class EstadoSaludDto {
  */
 @ApiTags('salud')
 @Controller('salud')
-export class SaludController {
-  constructor(@Inject(CONEXION_DB) private readonly db: Database) {}
+export class HealthController {
+  constructor(@Inject(DB_CONNECTION) private readonly db: Database) {}
 
-  @Publico()
+  @Public()
   @Get()
   @ApiOperation({
     summary: 'Salud del servicio (sin sesión)',
     description: '200 si la base tiene corpus; 503 si está vacía o no responde.',
   })
-  @ApiOkResponse({ type: EstadoSaludDto })
+  @ApiOkResponse({ type: HealthStatusDto })
   @ApiServiceUnavailableResponse({ description: 'La base no tiene corpus (estado: sin_corpus)' })
-  estado(): EstadoSaludDto {
-    let palabras = 0;
+  status(): HealthStatusDto {
+    let words = 0;
     try {
-      palabras = (this.db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get() as { n: number }).n;
+      words = (this.db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get() as { n: number }).n;
     } catch {
-      palabras = 0;
+      words = 0;
     }
-    if (palabras === 0) {
+    if (words === 0) {
       throw new ServiceUnavailableException({
         estado: 'sin_corpus',
         message: 'La base no tiene corpus: falta npm run importar.',

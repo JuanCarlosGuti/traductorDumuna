@@ -4,11 +4,11 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import request from 'supertest';
-import { configurarApp } from '../src/configurar-app';
-import { ConsultaModule } from '../src/consulta/consulta.module';
+import { configureApp } from '../src/configurar-app';
+import { QueryModule } from '../src/consulta/consulta.module';
 import { DatabaseModule } from '../src/database/database.module';
-import { ImportadorModule } from '../src/importador/importador.module';
-import { ImportadorService } from '../src/importador/importador.service';
+import { ImporterModule } from '../src/importador/importador.module';
+import { ImporterService } from '../src/importador/importador.service';
 
 const BOM = String.fromCharCode(0xfeff);
 
@@ -56,14 +56,14 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         DatabaseModule.forRoot({ rutaDb: ':memory:' }),
-        ImportadorModule,
-        ConsultaModule,
+        ImporterModule,
+        QueryModule,
       ],
     }).compile();
     app = moduleRef.createNestApplication();
-    configurarApp(app);
+    configureApp(app);
     await app.init();
-    await app.get(ImportadorService).importarTodo(dirTmp);
+    await app.get(ImporterService).importAll(dirTmp);
   });
 
   afterAll(async () => {
@@ -78,17 +78,17 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
         .query({ q: 'nʉnka' })
         .expect(200);
       expect(res.body.total).toBe(4); // 2 sentences, 1 phrase, 1 vocabulary
-      const oracion = res.body.resultados[0];
-      expect(oracion.fuente).toBe('oraciones');
-      expect(oracion.referencia).toBe('oración 1');
-      expect(oracion.fragmento).toContain('<mark>nʉnka</mark>');
-      expect(oracion.textoParalelo).toContain('Jehová hizo el agua');
-      const fuentes = res.body.resultados.map((r: any) => r.fuente);
-      expect(fuentes).toContain('frases');
-      expect(fuentes).toContain('vocabulario');
+      const sentence = res.body.resultados[0];
+      expect(sentence.fuente).toBe('oraciones');
+      expect(sentence.referencia).toBe('oración 1');
+      expect(sentence.fragmento).toContain('<mark>nʉnka</mark>');
+      expect(sentence.textoParalelo).toContain('Jehová hizo el agua');
+      const sources = res.body.resultados.map((r: any) => r.fuente);
+      expect(sources).toContain('frases');
+      expect(sources).toContain('vocabulario');
       // the sentence with doubtful alignment is flagged
-      const referencias = res.body.resultados.map((r: any) => r.referencia);
-      expect(referencias).toContain('oración 2 (revisar)');
+      const references = res.body.resultados.map((r: any) => r.referencia);
+      expect(references).toContain('oración 2 (revisar)');
     });
 
     it('never degrades ʉ to u: searching nunka finds nothing', async () => {
@@ -110,20 +110,20 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
     });
 
     it('filters by source, conjugations included', async () => {
-      const frases = await request(app.getHttpServer())
+      const phrases = await request(app.getHttpServer())
         .get('/api/buscar')
         .query({ q: 'nʉnka', fuente: 'frases' })
         .expect(200);
-      expect(frases.body.total).toBe(1);
-      expect(frases.body.resultados[0].referencia).toBe('frase 1 (Prueba)');
+      expect(phrases.body.total).toBe(1);
+      expect(phrases.body.resultados[0].referencia).toBe('frase 1 (Prueba)');
 
-      const conjugaciones = await request(app.getHttpServer())
+      const conjugations = await request(app.getHttpServer())
         .get('/api/buscar')
         .query({ q: 'nujkunʉnanka', fuente: 'conjugaciones' })
         .expect(200);
-      expect(conjugaciones.body.total).toBe(1);
-      expect(conjugaciones.body.resultados[0].referencia).toBe('conjugación 1 (tener)');
-      expect(conjugaciones.body.resultados[0].textoParalelo).toBe('yo tuve');
+      expect(conjugations.body.total).toBe(1);
+      expect(conjugations.body.resultados[0].referencia).toBe('conjugación 1 (tener)');
+      expect(conjugations.body.resultados[0].textoParalelo).toBe('yo tuve');
     });
 
     it('a multi-word phrase searches by similarity with score and highlighting', async () => {
@@ -133,12 +133,12 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
         .expect(200);
       expect(res.body.modo).toBe('similitud');
       expect(res.body.total).toBeGreaterThan(0);
-      const primero = res.body.resultados[0];
-      expect(primero.referencia).toBe('oración 1');
-      expect(primero.puntaje).toBeGreaterThan(0);
-      expect(primero.fragmento).toContain('<mark>Jehová</mark>');
-      expect(primero.fragmento).toContain('<mark>agua</mark>');
-      expect(primero.textoParalelo).toContain('Jehovága');
+      const firstItem = res.body.resultados[0];
+      expect(firstItem.referencia).toBe('oración 1');
+      expect(firstItem.puntaje).toBeGreaterThan(0);
+      expect(firstItem.fragmento).toContain('<mark>Jehová</mark>');
+      expect(firstItem.fragmento).toContain('<mark>agua</mark>');
+      expect(firstItem.textoParalelo).toContain('Jehovága');
     });
 
     it('validates idioma and q: 400 for invalid values', async () => {
@@ -172,9 +172,9 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
       expect(res.body.concordancias.length).toBeLessThanOrEqual(10);
       expect(res.body.concordancias[0].fragmento).toContain('<mark>nʉnka</mark>');
       expect(res.body.traduccionesCandidatas[0].palabra).toBe('agua');
-      const candidatas = res.body.traduccionesCandidatas.map((c: any) => c.palabra);
-      expect(candidatas).not.toContain('el');
-      expect(candidatas).not.toContain('del');
+      const candidateWords = res.body.traduccionesCandidatas.map((c: any) => c.palabra);
+      expect(candidateWords).not.toContain('el');
+      expect(candidateWords).not.toContain('del');
     });
 
     it('404 for words outside the corpus', async () => {
@@ -187,9 +187,9 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
       const res = await request(app.getHttpServer())
         .get('/api/frecuencias')
         .expect(200);
-      const palabras = res.body.map((f: any) => f.palabra);
-      expect(palabras).toContain('nʉnka');
-      expect(palabras).not.toContain('jehovaga'); // only 'Jehovága'
+      const words = res.body.map((f: any) => f.palabra);
+      expect(words).toContain('nʉnka');
+      expect(words).not.toContain('jehovaga'); // only 'Jehovága'
       expect(res.body[0]).toEqual({
         palabra: 'nʉnka',
         frecuencia: 4,

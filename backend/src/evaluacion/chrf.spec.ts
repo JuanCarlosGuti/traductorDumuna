@@ -1,13 +1,13 @@
-import { chrF, ngramas, prepararTexto } from './chrf';
+import { chrF, ngrams, prepareText } from './chrf';
 
 describe('chrF (own implementation)', () => {
   it('prepares the text: NFC, lowercase, no spaces or punctuation', () => {
-    expect(prepararTexto('Nʉnka  Shkua.')).toBe('nʉnkashkua');
-    expect(prepararTexto('¿Nʉnka, shkua?')).toBe('nʉnkashkua');
+    expect(prepareText('Nʉnka  Shkua.')).toBe('nʉnkashkua');
+    expect(prepareText('¿Nʉnka, shkua?')).toBe('nʉnkashkua');
   });
 
   it('counts character n-grams', () => {
-    const g = ngramas('abab', 2);
+    const g = ngrams('abab', 2);
     expect(g.get('ab')).toBe(2);
     expect(g.get('ba')).toBe(1);
   });
@@ -23,9 +23,9 @@ describe('chrF (own implementation)', () => {
   });
 
   it('ʉ ≠ u: replacing ʉ with u lowers the score', () => {
-    const conU = chrF('nunka shkua gontka', 'nʉnka shkua gontka');
-    expect(conU).toBeLessThan(1);
-    expect(conU).toBeGreaterThan(0.6); // but it is still similar
+    const withU = chrF('nunka shkua gontka', 'nʉnka shkua gontka');
+    expect(withU).toBeLessThan(1);
+    expect(withU).toBeGreaterThan(0.6); // but it is still similar
   });
 
   it('ñ ≠ n: ñingui and ningui are not equal', () => {
@@ -33,11 +33,11 @@ describe('chrF (own implementation)', () => {
   });
 
   it('a partial translation scores in between and recall weighs more (beta = 2)', () => {
-    const corta = chrF('nʉnka', 'nʉnka shkua gontka'); // precise but incomplete
-    const larga = chrF('nʉnka shkua gontka ñingui tua', 'nʉnka shkua gontka'); // complete with extra
-    expect(corta).toBeGreaterThan(0);
-    expect(corta).toBeLessThan(1);
-    expect(larga).toBeGreaterThan(corta);
+    const shortText = chrF('nʉnka', 'nʉnka shkua gontka'); // precise but incomplete
+    const longText = chrF('nʉnka shkua gontka ñingui tua', 'nʉnka shkua gontka'); // complete with extra
+    expect(shortText).toBeGreaterThan(0);
+    expect(shortText).toBeLessThan(1);
+    expect(longText).toBeGreaterThan(shortText);
   });
 
   it('empties: both empty → 1, only one → 0', () => {

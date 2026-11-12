@@ -1,8 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Provider } from '@nestjs/common';
-import { timeoutModeloMs } from './config-traductor.provider';
+import { modelTimeoutMs } from './config-traductor.provider';
 
-export const CLIENTE_ANTHROPIC = 'CLIENTE_ANTHROPIC';
+export const ANTHROPIC_CLIENT = 'CLIENTE_ANTHROPIC';
 
 /**
  * Official @anthropic-ai/sdk client, or null if there is no ANTHROPIC_API_KEY.
@@ -10,13 +10,13 @@ export const CLIENTE_ANTHROPIC = 'CLIENTE_ANTHROPIC';
  * OpenAI-compatible provider (see config-traductor.provider.ts) or answer
  * 503 with instructions.
  */
-export const clienteAnthropicProvider: Provider = {
-  provide: CLIENTE_ANTHROPIC,
+export const anthropicClientProvider: Provider = {
+  provide: ANTHROPIC_CLIENT,
   useFactory: (): Anthropic | null =>
     process.env.ANTHROPIC_API_KEY
       ? new Anthropic({
           // TypeScript SDK timeout: in milliseconds
-          timeout: timeoutModeloMs(),
+          timeout: modelTimeoutMs(),
           maxRetries: 1,
         })
       : null,

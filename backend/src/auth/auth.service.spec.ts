@@ -1,22 +1,22 @@
 import { JwtService } from '@nestjs/jwt';
 import { ConfigAuth } from './auth.config';
-import { AuthService, BLOQUEO_MS, MAX_INTENTOS } from './auth.service';
+import { AuthService, BLOCK_MS, MAX_ATTEMPTS } from './auth.service';
 
-const CONTRASENA = 'ñandú-ʉnkua-2026';
+const PASSWORD_VALUE = 'ñandú-ʉnkua-2026';
 
 const config: ConfigAuth = {
   activa: true,
   usuario: 'juan',
-  password: CONTRASENA,
+  password: PASSWORD_VALUE,
   secreto: 'secreto-de-prueba-suficientemente-largo',
   duracionDias: 30,
 };
 
 describe('AuthService', () => {
-  let servicio: AuthService;
+  let service: AuthService;
 
   beforeEach(() => {
-    servicio = new AuthService(
+    service = new AuthService(
       config,
       new JwtService({
         secret: config.secreto,
@@ -26,74 +26,74 @@ describe('AuthService', () => {
   });
 
   it('accepts the correct credentials, with ʉ and ñ in the password', () => {
-    expect(servicio.verificar('juan', CONTRASENA)).toBe(true);
+    expect(service.verify('juan', PASSWORD_VALUE)).toBe(true);
   });
 
   it('rejects the password with u where ʉ goes: they are different letters', () => {
-    expect(servicio.verificar('juan', 'ñandú-unkua-2026')).toBe(false);
+    expect(service.verify('juan', 'ñandú-unkua-2026')).toBe(false);
   });
 
   it('rejects the password with n where ñ goes', () => {
-    expect(servicio.verificar('juan', 'nandú-ʉnkua-2026')).toBe(false);
+    expect(service.verify('juan', 'nandú-ʉnkua-2026')).toBe(false);
   });
 
   it('rejects a wrong user even if the password is right', () => {
-    expect(servicio.verificar('otro', CONTRASENA)).toBe(false);
+    expect(service.verify('otro', PASSWORD_VALUE)).toBe(false);
   });
 
   it('the issued token can be verified and carries the user', () => {
-    const token = servicio.emitirToken('juan');
-    expect(servicio.usuarioDelToken(token)).toBe('juan');
+    const token = service.issueToken('juan');
+    expect(service.userFromToken(token)).toBe('juan');
   });
 
   it('a tampered token is not valid', () => {
-    const token = servicio.emitirToken('juan');
-    expect(servicio.usuarioDelToken(token.slice(0, -3) + 'aaa')).toBeNull();
+    const token = service.issueToken('juan');
+    expect(service.userFromToken(token.slice(0, -3) + 'aaa')).toBeNull();
   });
 
   it('a token signed with another secret is not valid', () => {
-    const intruso = new AuthService(
+    const intruder = new AuthService(
       config,
       new JwtService({ secret: 'otro-secreto-distinto' }),
     );
-    expect(servicio.usuarioDelToken(intruso.emitirToken('juan'))).toBeNull();
+    expect(service.userFromToken(intruder.issueToken('juan'))).toBeNull();
   });
 
   it('an expired token is not valid', () => {
-    const efimero = new AuthService(
+    const ephemeral = new AuthService(
       config,
       new JwtService({ secret: config.secreto, signOptions: { expiresIn: '-1s' } }),
     );
-    expect(servicio.usuarioDelToken(efimero.emitirToken('juan'))).toBeNull();
+    expect(service.userFromToken(ephemeral.issueToken('juan'))).toBeNull();
   });
 
   describe('attempt limit', () => {
     const IP = '203.0.113.7';
 
     it('blocks after the attempts are used up', () => {
-      for (let i = 0; i < MAX_INTENTOS; i++) servicio.registrarFallo(IP, 1000);
-      expect(servicio.bloqueado(IP, 1000)).toBe(true);
+      for (let i = 0; i < MAX_ATTEMPTS; i++) service.recordFailure(IP, 1000);
+      expect(service.blocked(IP, 1000)).toBe(true);
     });
 
     it('does not block before they are used up', () => {
-      for (let i = 0; i < MAX_INTENTOS - 1; i++) servicio.registrarFallo(IP, 1000);
-      expect(servicio.bloqueado(IP, 1000)).toBe(false);
+      for (let i = 0; i < MAX_ATTEMPTS - 1; i++) service.recordFailure(IP, 1000);
+      expect(service.blocked(IP, 1000)).toBe(false);
     });
 
     it('the block expires by itself', () => {
-      for (let i = 0; i < MAX_INTENTOS; i++) servicio.registrarFallo(IP, 1000);
-      expect(servicio.bloqueado(IP, 1000 + BLOQUEO_MS + 1)).toBe(false);
+      for (let i = 0; i < MAX_ATTEMPTS; i++) service.recordFailure(IP, 1000);
+      expect(service.blocked(IP, 1000 + BLOCK_MS + 1)).toBe(false);
     });
 
     it('a successful login clears previous failures', () => {
-      for (let i = 0; i < MAX_INTENTOS; i++) servicio.registrarFallo(IP, 1000);
-      servicio.olvidarFallos(IP);
-      expect(servicio.bloqueado(IP, 1000)).toBe(false);
+      for (let i = 0; i < MAX_ATTEMPTS; i++) service.recordFailure(IP, 1000);
+      service.forgetFailures(IP);
+      expect(service.blocked(IP, 1000)).toBe(false);
     });
 
     it('the block is per IP: it does not lock everyone else out', () => {
-      for (let i = 0; i < MAX_INTENTOS; i++) servicio.registrarFallo(IP, 1000);
-      expect(servicio.bloqueado('198.51.100.4', 1000)).toBe(false);
+      for (let i = 0; i < MAX_ATTEMPTS; i++) service.recordFailure(IP, 1000);
+      expect(service.blocked('198.51.100.4', 1000)).toBe(false);
     });
   });
 });

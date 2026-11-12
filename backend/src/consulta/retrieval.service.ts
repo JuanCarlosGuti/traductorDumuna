@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { normalizar } from '../comun/texto/normalizador';
-import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { DominioCorpus, FuenteCorpus, Idioma } from './consulta.enums';
+import { normalize } from '../comun/texto/normalizador';
+import { tokenizeDamana } from '../comun/texto/tokenizador';
+import { CorpusDomain, CorpusSource, Language } from './consulta.enums';
 import { CorpusRepository } from './corpus.repository';
-import { AcepcionEncontrada, IndiceDiccionario } from './diccionario';
-import { NombrePropioDto } from './dto/consulta.dto';
-import { Disparador, ReglaGramatical, seleccionarReglas } from './reglas';
+import { FoundSense, DictionaryIndex } from './diccionario';
+import { ProperNameDto } from './dto/consulta.dto';
+import { Trigger, GrammarRule, selectRules } from './reglas';
 
 export const K_FRAGMENTOS = 8;
 
@@ -14,14 +14,14 @@ export const K_FRAGMENTOS = 8;
  * same lemma) are worth less than a direct match: they are useful, but
  * use a different conjugation from the one that was asked about.
  */
-export const PESO_LEMA = 0.6;
+export const LEMMA_WEIGHT = 0.6;
 
 /**
  * Cap on sibling forms added to the query for each detected
  * verb. «tener» has 72 forms: adding them all would drown a three-word
  * query.
  */
-export const MAX_FORMAS_HERMANAS = 8;
+export const MAX_SIBLING_FORMS = 8;
 
 /**
  * Pairs whose Damana side is identical to the Spanish one: in the corpus they are
@@ -32,49 +32,49 @@ export const MAX_FORMAS_HERMANAS = 8;
  * They are only excluded from the retrieval index: they stay in the CSV, in the database and
  * in search/concordance.
  */
-export function esParSinTraduccion(damana: string, espanol: string): boolean {
-  const ladoDamana = normalizar(damana.trim());
-  return ladoDamana.length > 0 && ladoDamana === normalizar(espanol.trim());
+export function isUntranslatedPair(damana: string, spanish: string): boolean {
+  const damanaSide = normalize(damana.trim());
+  return damanaSide.length > 0 && damanaSide === normalize(spanish.trim());
 }
 
 /** Sentences with doubtful alignment (estado='revisar') take part in
  *  retrieval but with half the similarity score. */
-export const PESO_REVISAR = 0.5;
+export const REVIEW_WEIGHT = 0.5;
 
 /**
  * Example quotas per domain for the translator prompt. Everyday
  * ones take priority: when there are enough, biblical ones drop to 2 so
  * that the religious register does not drag the translation along.
  */
-export const CUPO_COTIDIANO = 6;
-export const CUPO_GRAMATICA = 4;
-export const CUPO_BIBLICO = 4;
-export const CUPO_BIBLICO_REDUCIDO = 2;
-export const COTIDIANOS_SUFICIENTES = 4;
-export const MAX_EJEMPLOS = 14;
+export const EVERYDAY_QUOTA = 6;
+export const GRAMMAR_QUOTA = 4;
+export const BIBLICAL_QUOTA = 4;
+export const REDUCED_BIBLICAL_QUOTA = 2;
+export const ENOUGH_EVERYDAY = 4;
+export const MAX_EXAMPLES = 14;
 /** Candidates requested from TF-IDF before splitting by domain. */
-export const CANDIDATOS_CONTEXTO = 60;
+export const CONTEXT_CANDIDATES = 60;
 /** Jaccard of Damana tokens above which two examples are «almost equal». */
-export const UMBRAL_CASI_IGUAL = 0.8;
+export const ALMOST_EQUAL_THRESHOLD = 0.8;
 
-const FUENTES_RETRIEVAL: FuenteCorpus[] = [
-  FuenteCorpus.oraciones,
-  FuenteCorpus.frases,
-  FuenteCorpus.conjugaciones,
+const RETRIEVAL_SOURCES: CorpusSource[] = [
+  CorpusSource.oraciones,
+  CorpusSource.frases,
+  CorpusSource.conjugaciones,
 ];
 
-export interface FragmentoCorpus {
-  fuente: FuenteCorpus;
-  dominio: DominioCorpus;
+export interface CorpusFragment {
+  fuente: CorpusSource;
+  dominio: CorpusDomain;
   id: number;
   referencia: string;
   damana: string;
   espanol: string;
-  /** 1 for reliable fragments; PESO_REVISAR for 'revisar' sentences. */
+  /** 1 for reliable fragments; REVIEW_WEIGHT for 'revisar' sentences. */
   peso: number;
 }
 
-export interface FragmentoRecuperado extends FragmentoCorpus {
+export interface RetrievedFragment extends CorpusFragment {
   puntaje: number;
   /**
    * Present when the fragment was retrieved thanks to another form of the same
@@ -83,7 +83,7 @@ export interface FragmentoRecuperado extends FragmentoCorpus {
   porLema?: string;
 }
 
-export interface NombrePropioEncontrado {
+export interface FoundProperName {
   /** How it was written in the input sentence. */
   enTexto: string;
   espanol: string;
@@ -91,12 +91,12 @@ export interface NombrePropioEncontrado {
 }
 
 /** Everything the translator needs to know from the corpus about a sentence. */
-export interface ContextoRecuperado {
-  diccionario: AcepcionEncontrada[];
-  nombresPropios: NombrePropioEncontrado[];
-  disparadores: Disparador[];
-  reglas: ReglaGramatical[];
-  ejemplos: FragmentoRecuperado[];
+export interface RetrievedContext {
+  diccionario: FoundSense[];
+  nombresPropios: FoundProperName[];
+  disparadores: Trigger[];
+  reglas: GrammarRule[];
+  ejemplos: RetrievedFragment[];
 }
 
 /**
@@ -104,79 +104,79 @@ export interface ContextoRecuperado {
  * tf = count of the term in the document, idf = ln(1 + N/(1+df)),
  * similarity = cosine between tf·idf vectors.
  */
-class IndiceTfIdf {
+class TfIdfIndex {
   private readonly idf = new Map<string, number>();
-  private readonly vectores: { pesos: Map<string, number>; norma: number }[] = [];
+  private readonly vectors: { pesos: Map<string, number>; norma: number }[] = [];
 
-  constructor(tokensPorDocumento: string[][]) {
-    const n = tokensPorDocumento.length;
+  constructor(tokensPerDocument: string[][]) {
+    const n = tokensPerDocument.length;
     const df = new Map<string, number>();
-    for (const tokens of tokensPorDocumento) {
-      for (const termino of new Set(tokens)) {
-        df.set(termino, (df.get(termino) ?? 0) + 1);
+    for (const tokens of tokensPerDocument) {
+      for (const term of new Set(tokens)) {
+        df.set(term, (df.get(term) ?? 0) + 1);
       }
     }
-    for (const [termino, frecuencia] of df) {
-      this.idf.set(termino, Math.log(1 + n / (1 + frecuencia)));
+    for (const [term, frequency] of df) {
+      this.idf.set(term, Math.log(1 + n / (1 + frequency)));
     }
-    for (const tokens of tokensPorDocumento) {
-      const pesos = this.vectorizar(tokens);
-      let suma = 0;
-      for (const peso of pesos.values()) suma += peso * peso;
-      this.vectores.push({ pesos, norma: Math.sqrt(suma) });
+    for (const tokens of tokensPerDocument) {
+      const weights = this.vectorize(tokens);
+      let sum = 0;
+      for (const weight of weights.values()) sum += weight * weight;
+      this.vectors.push({ pesos: weights, norma: Math.sqrt(sum) });
     }
   }
 
-  private vectorizar(tokens: string[]): Map<string, number> {
+  private vectorize(tokens: string[]): Map<string, number> {
     const tf = new Map<string, number>();
     for (const token of tokens) tf.set(token, (tf.get(token) ?? 0) + 1);
-    const pesos = new Map<string, number>();
-    for (const [termino, frecuencia] of tf) {
-      const idf = this.idf.get(termino);
-      if (idf !== undefined) pesos.set(termino, frecuencia * idf);
+    const weights = new Map<string, number>();
+    for (const [term, frequency] of tf) {
+      const idf = this.idf.get(term);
+      if (idf !== undefined) weights.set(term, frequency * idf);
     }
-    return pesos;
+    return weights;
   }
 
   /** Cosine similarity of the query with each document (0 if they share no terms). */
-  similitudes(tokensConsulta: string[]): number[] {
-    const consulta = this.vectorizar(tokensConsulta);
-    let normaConsulta = 0;
-    for (const peso of consulta.values()) normaConsulta += peso * peso;
-    normaConsulta = Math.sqrt(normaConsulta);
-    if (normaConsulta === 0) return this.vectores.map(() => 0);
+  similarities(queryTokens: string[]): number[] {
+    const queryText = this.vectorize(queryTokens);
+    let queryNorm = 0;
+    for (const weight of queryText.values()) queryNorm += weight * weight;
+    queryNorm = Math.sqrt(queryNorm);
+    if (queryNorm === 0) return this.vectors.map(() => 0);
 
-    return this.vectores.map(({ pesos, norma }) => {
+    return this.vectors.map(({ pesos: weights, norma }) => {
       if (norma === 0) return 0;
-      let producto = 0;
-      for (const [termino, peso] of consulta) {
-        const pesoDoc = pesos.get(termino);
-        if (pesoDoc !== undefined) producto += peso * pesoDoc;
+      let product = 0;
+      for (const [term, weight] of queryText) {
+        const docWeight = weights.get(term);
+        if (docWeight !== undefined) product += weight * docWeight;
       }
-      return producto / (norma * normaConsulta);
+      return product / (norma * queryNorm);
     });
   }
 }
 
-interface Indices {
-  fragmentos: FragmentoCorpus[];
-  porIdioma: Record<Idioma, IndiceTfIdf>;
+interface Indexes {
+  fragmentos: CorpusFragment[];
+  porIdioma: Record<Language, TfIdfIndex>;
   /** Conjugated form (normalized) → lemma it belongs to. */
   lemaDeForma: Map<string, string>;
   /** Lemma → its other forms that DO appear in the corpus. */
   formasDelLema: Map<string, string[]>;
 }
 
-const tokensNormalizados = (texto: string): string[] =>
-  tokenizarDamana(texto).map((t) => t.normalizada);
+const normalizedTokenList = (text: string): string[] =>
+  tokenizeDamana(text).map((t) => t.normalizada);
 
 function jaccard(a: string[], b: string[]): number {
   const A = new Set(a);
   const B = new Set(b);
   if (A.size === 0 && B.size === 0) return 1;
-  let interseccion = 0;
-  for (const x of A) if (B.has(x)) interseccion++;
-  return interseccion / (A.size + B.size - interseccion);
+  let intersection = 0;
+  for (const x of A) if (B.has(x)) intersection++;
+  return intersection / (A.size + B.size - intersection);
 }
 
 /**
@@ -184,14 +184,14 @@ function jaccard(a: string[], b: string[]): number {
  * normalizing or when the Damana shares almost all the words (the
  * same sentence with one comma of difference). Repeating them only wastes a slot.
  */
-export function esCasiIgual(
+export function isAlmostEqual(
   a: { damana: string; espanol: string },
   b: { damana: string; espanol: string },
 ): boolean {
-  if (normalizar(a.damana.trim()) === normalizar(b.damana.trim())) return true;
-  const espA = normalizar(a.espanol.trim());
-  if (espA.length > 0 && espA === normalizar(b.espanol.trim())) return true;
-  return jaccard(tokensNormalizados(a.damana), tokensNormalizados(b.damana)) >= UMBRAL_CASI_IGUAL;
+  if (normalize(a.damana.trim()) === normalize(b.damana.trim())) return true;
+  const spanishA = normalize(a.espanol.trim());
+  if (spanishA.length > 0 && spanishA === normalize(b.espanol.trim())) return true;
+  return jaccard(normalizedTokenList(a.damana), normalizedTokenList(b.damana)) >= ALMOST_EQUAL_THRESHOLD;
 }
 
 /**
@@ -201,29 +201,29 @@ export function esCasiIgual(
  * Returns everyday ones first, then grammar and finally biblical,
  * each group from highest to lowest similarity.
  */
-export function repartirPorDominio(candidatos: FragmentoRecuperado[]): FragmentoRecuperado[] {
-  const ordenados = [...candidatos].sort((a, b) => b.puntaje - a.puntaje);
-  const unicos: FragmentoRecuperado[] = [];
-  for (const candidato of ordenados) {
-    if (!unicos.some((u) => esCasiIgual(u, candidato))) unicos.push(candidato);
+export function splitByDomain(candidates: RetrievedFragment[]): RetrievedFragment[] {
+  const sorted = [...candidates].sort((a, b) => b.puntaje - a.puntaje);
+  const unique: RetrievedFragment[] = [];
+  for (const candidate of sorted) {
+    if (!unique.some((u) => isAlmostEqual(u, candidate))) unique.push(candidate);
   }
-  const del = (dominio: DominioCorpus, cupo: number) =>
-    unicos.filter((f) => f.dominio === dominio).slice(0, cupo);
+  const del = (domain: CorpusDomain, quota: number) =>
+    unique.filter((f) => f.dominio === domain).slice(0, quota);
 
-  const cotidianos = del(DominioCorpus.cotidiano, CUPO_COTIDIANO);
-  const gramatica = del(DominioCorpus.gramatica, CUPO_GRAMATICA);
-  const cupoBiblico =
-    cotidianos.length >= COTIDIANOS_SUFICIENTES ? CUPO_BIBLICO_REDUCIDO : CUPO_BIBLICO;
-  const biblicos = del(DominioCorpus.biblico, cupoBiblico);
-  return [...cotidianos, ...gramatica, ...biblicos].slice(0, MAX_EJEMPLOS);
+  const everyday = del(CorpusDomain.cotidiano, EVERYDAY_QUOTA);
+  const grammar = del(CorpusDomain.gramatica, GRAMMAR_QUOTA);
+  const biblicalQuota =
+    everyday.length >= ENOUGH_EVERYDAY ? REDUCED_BIBLICAL_QUOTA : BIBLICAL_QUOTA;
+  const biblical = del(CorpusDomain.biblico, biblicalQuota);
+  return [...everyday, ...grammar, ...biblical].slice(0, MAX_EXAMPLES);
 }
 
 @Injectable()
 export class RetrievalService {
-  private indices?: Indices;
-  private diccionario?: IndiceDiccionario;
-  private reglas?: ReglaGramatical[];
-  private nombresPropios?: NombrePropioDto[];
+  private indexes?: Indexes;
+  private dictionary?: DictionaryIndex;
+  private rules?: GrammarRule[];
+  private properNames?: ProperNameDto[];
 
   constructor(private readonly repo: CorpusRepository) {}
 
@@ -232,20 +232,20 @@ export class RetrievalService {
    * dictionary, proper names with their spelling, applicable rules
    * and similarity examples split by domain.
    */
-  recuperarContexto(texto: string, idioma: Idioma): ContextoRecuperado {
-    const seleccion = seleccionarReglas(texto, idioma, this.obtenerReglas());
+  retrieveContext(text: string, language: Language): RetrievedContext {
+    const selection = selectRules(text, language, this.getRules());
     return {
-      diccionario: this.obtenerDiccionario().buscar(texto, idioma),
-      nombresPropios: this.nombresPropiosEn(texto),
-      disparadores: seleccion.disparadores,
-      reglas: seleccion.reglas,
-      ejemplos: this.ejemplosPorDominio(texto, idioma),
+      diccionario: this.getDictionary().search(text, language),
+      nombresPropios: this.properNamesIn(text),
+      disparadores: selection.disparadores,
+      reglas: selection.reglas,
+      ejemplos: this.examplesByDomain(text, language),
     };
   }
 
   /** Similarity examples with per-domain quotas and no near-duplicates. */
-  ejemplosPorDominio(texto: string, idioma: Idioma): FragmentoRecuperado[] {
-    return repartirPorDominio(this.similares(texto, idioma, CANDIDATOS_CONTEXTO));
+  examplesByDomain(text: string, language: Language): RetrievedFragment[] {
+    return splitByDomain(this.similar(text, language, CONTEXT_CANDIDATES));
   }
 
   /**
@@ -253,19 +253,19 @@ export class RetrievalService {
    * their spellings (Spanish, Damana or «other spellings seen»), ignoring
    * accents and capitals.
    */
-  nombresPropiosEn(texto: string): NombrePropioEncontrado[] {
-    const nombres = this.obtenerNombresPropios();
-    const encontrados: NombrePropioEncontrado[] = [];
-    const vistos = new Set<string>();
-    for (const token of tokenizarDamana(texto)) {
-      for (const nombre of nombres) {
-        const grafias = [nombre.espanol, nombre.damana, ...nombre.otrasGrafias].map(normalizar);
-        if (!grafias.includes(token.normalizada) || vistos.has(nombre.damana)) continue;
-        vistos.add(nombre.damana);
-        encontrados.push({ enTexto: token.original, espanol: nombre.espanol, damana: nombre.damana });
+  properNamesIn(text: string): FoundProperName[] {
+    const names = this.getProperNames();
+    const found: FoundProperName[] = [];
+    const seenItems = new Set<string>();
+    for (const token of tokenizeDamana(text)) {
+      for (const name of names) {
+        const spellings = [name.espanol, name.damana, ...name.otrasGrafias].map(normalize);
+        if (!spellings.includes(token.normalizada) || seenItems.has(name.damana)) continue;
+        seenItems.add(name.damana);
+        found.push({ enTexto: token.original, espanol: name.espanol, damana: name.damana });
       }
     }
-    return encontrados;
+    return found;
   }
 
   /**
@@ -274,34 +274,34 @@ export class RetrievalService {
    * aligned sentence by sentence), phrases and conjugations. Sentences with
    * estado='revisar' take part with half the score.
    */
-  similares(texto: string, idioma: Idioma, k = K_FRAGMENTOS): FragmentoRecuperado[] {
-    const indices = this.obtenerIndices();
-    const tokens = tokensNormalizados(texto);
-    const directa = this.puntuar(tokens, idioma, indices);
+  similar(text: string, language: Language, k = K_FRAGMENTOS): RetrievedFragment[] {
+    const indexes = this.getIndexes();
+    const tokens = normalizedTokenList(text);
+    const direct = this.scoreAll(tokens, language, indexes);
 
     // Second pass: if the query carries verb forms, the search is
     // repeated adding the other persons of the same lemma. Only in Damana,
     // which is where lemmas relate forms.
-    const hermanas =
-      idioma === Idioma.damana
-        ? this.formasHermanas(tokens, indices)
+    const siblings =
+      language === Language.damana
+        ? this.siblingForms(tokens, indexes)
         : new Map<string, string>();
-    if (hermanas.size === 0) {
-      const soloDirecta = indices.fragmentos.map((fragmento, i) => ({
-        ...fragmento,
-        puntaje: directa[i],
+    if (siblings.size === 0) {
+      const directOnly = indexes.fragmentos.map((fragment, i) => ({
+        ...fragment,
+        puntaje: direct[i],
       }));
-      return this.mejores(soloDirecta, k);
+      return this.bestOnes(directOnly, k);
     }
 
-    const expandida = this.puntuar([...tokens, ...hermanas.keys()], idioma, indices);
-    return this.mejores(this.fusionar(directa, expandida, hermanas, indices), k);
+    const expanded = this.scoreAll([...tokens, ...siblings.keys()], language, indexes);
+    return this.bestOnes(this.merge(direct, expanded, siblings, indexes), k);
   }
 
-  private puntuar(tokens: string[], idioma: Idioma, indices: Indices): number[] {
-    return indices.porIdioma[idioma]
-      .similitudes(tokens)
-      .map((similitud, i) => similitud * indices.fragmentos[i].peso);
+  private scoreAll(tokens: string[], language: Language, indexes: Indexes): number[] {
+    return indexes.porIdioma[language]
+      .similarities(tokens)
+      .map((similarity, i) => similarity * indexes.fragmentos[i].peso);
   }
 
   /**
@@ -309,23 +309,23 @@ export class RetrievalService {
    * those that exist in the corpus (the rest would only add noise). Returns
    * form → lemma, to be able to mark where each example came from.
    */
-  private formasHermanas(tokens: string[], indices: Indices): Map<string, string> {
-    const hermanas = new Map<string, string>();
-    const enConsulta = new Set(tokens);
+  private siblingForms(tokens: string[], indexes: Indexes): Map<string, string> {
+    const siblings = new Map<string, string>();
+    const inQuery = new Set(tokens);
     for (const token of tokens) {
-      const lema = indices.lemaDeForma.get(token);
-      if (!lema) continue;
-      const formas = (indices.formasDelLema.get(lema) ?? [])
-        .filter((f) => !enConsulta.has(f))
-        .slice(0, MAX_FORMAS_HERMANAS);
-      for (const forma of formas) hermanas.set(forma, lema);
+      const lemma = indexes.lemaDeForma.get(token);
+      if (!lemma) continue;
+      const forms = (indexes.formasDelLema.get(lemma) ?? [])
+        .filter((f) => !inQuery.has(f))
+        .slice(0, MAX_SIBLING_FORMS);
+      for (const form of forms) siblings.set(form, lemma);
     }
-    return hermanas;
+    return siblings;
   }
 
   /**
    * Each fragment keeps its best score: the direct one, or the one from the
-   * expanded search discounted by PESO_LEMA. That way a real match
+   * expanded search discounted by LEMMA_WEIGHT. That way a real match
    * always beats a verbal relative.
    *
    * Conjugations are left out of the expansion: measured over 200
@@ -334,40 +334,40 @@ export class RetrievalService {
    * lee» teaches nothing — the glossary already goes separately in the prompt —; what
    * helps is seeing the verb inside a sentence.
    */
-  private fusionar(
-    directa: number[],
-    expandida: number[],
-    hermanas: Map<string, string>,
-    indices: Indices,
-  ): FragmentoRecuperado[] {
-    return indices.fragmentos.map((fragmento, i) => {
-      const puntajeLema =
-        fragmento.fuente === FuenteCorpus.conjugaciones ? 0 : expandida[i] * PESO_LEMA;
-      if (puntajeLema > directa[i]) {
+  private merge(
+    direct: number[],
+    expanded: number[],
+    siblings: Map<string, string>,
+    indexes: Indexes,
+  ): RetrievedFragment[] {
+    return indexes.fragmentos.map((fragment, i) => {
+      const lemmaScore =
+        fragment.fuente === CorpusSource.conjugaciones ? 0 : expanded[i] * LEMMA_WEIGHT;
+      if (lemmaScore > direct[i]) {
         return {
-          ...fragmento,
-          puntaje: puntajeLema,
-          porLema: this.lemaPresenteEn(fragmento, hermanas),
+          ...fragment,
+          puntaje: lemmaScore,
+          porLema: this.lemmaPresentIn(fragment, siblings),
         };
       }
-      return { ...fragmento, puntaje: directa[i] };
+      return { ...fragment, puntaje: direct[i] };
     });
   }
 
   /** Which sibling verb this fragment contains (for the warning). */
-  private lemaPresenteEn(
-    fragmento: FragmentoCorpus,
-    hermanas: Map<string, string>,
+  private lemmaPresentIn(
+    fragment: CorpusFragment,
+    siblings: Map<string, string>,
   ): string | undefined {
-    for (const token of tokenizarDamana(fragmento.damana)) {
-      const lema = hermanas.get(token.normalizada);
-      if (lema) return lema;
+    for (const token of tokenizeDamana(fragment.damana)) {
+      const lemma = siblings.get(token.normalizada);
+      if (lemma) return lemma;
     }
     return undefined;
   }
 
-  private mejores(puntuados: FragmentoRecuperado[], k: number): FragmentoRecuperado[] {
-    return puntuados
+  private bestOnes(scored: RetrievedFragment[], k: number): RetrievedFragment[] {
+    return scored
       .filter((f) => f.puntaje > 0)
       .sort((a, b) => b.puntaje - a.puntaje)
       .slice(0, k);
@@ -379,71 +379,71 @@ export class RetrievalService {
    * recorded conjugations, most do not show up in any sentence, and
    * adding them to the queries would be noise.
    */
-  private construirIndiceDeLemas(
-    fragmentos: FragmentoCorpus[],
-  ): Pick<Indices, 'lemaDeForma' | 'formasDelLema'> {
-    const enCorpus = new Set(fragmentos.flatMap((f) => tokensNormalizados(f.damana)));
-    const lemaDeForma = new Map<string, string>();
-    const formasDelLema = new Map<string, string[]>();
+  private buildLemmaIndex(
+    fragments: CorpusFragment[],
+  ): Pick<Indexes, 'lemaDeForma' | 'formasDelLema'> {
+    const inCorpus = new Set(fragments.flatMap((f) => normalizedTokenList(f.damana)));
+    const lemmaOfForm = new Map<string, string>();
+    const lemmaForms = new Map<string, string[]>();
 
-    for (const { lema, damana } of this.repo.formasPorLema()) {
-      for (const forma of tokensNormalizados(damana)) {
+    for (const { lema: lemma, damana } of this.repo.formsByLemma()) {
+      for (const form of normalizedTokenList(damana)) {
         // The first word is enough: multi-word forms carry the
         // verbal marker at the start (e.g. «nujkunanún nanka»).
-        if (!lemaDeForma.has(forma)) lemaDeForma.set(forma, lema);
-        if (!enCorpus.has(forma)) continue;
-        const formas = formasDelLema.get(lema) ?? [];
-        if (!formas.includes(forma)) formas.push(forma);
-        formasDelLema.set(lema, formas);
+        if (!lemmaOfForm.has(form)) lemmaOfForm.set(form, lemma);
+        if (!inCorpus.has(form)) continue;
+        const forms = lemmaForms.get(lemma) ?? [];
+        if (!forms.includes(form)) forms.push(form);
+        lemmaForms.set(lemma, forms);
         break;
       }
     }
-    return { lemaDeForma, formasDelLema };
+    return { lemaDeForma: lemmaOfForm, formasDelLema: lemmaForms };
   }
 
-  private obtenerIndices(): Indices {
-    if (!this.indices) {
-      const fragmentos: FragmentoCorpus[] = [];
-      for (const fuente of FUENTES_RETRIEVAL) {
-        for (const fila of this.repo.textosDe(fuente)) {
-          if (esParSinTraduccion(fila.textoDamana, fila.textoEspanol)) continue;
-          fragmentos.push({
-            fuente,
-            dominio: fila.dominio,
-            id: fila.id,
-            referencia: fila.referencia,
-            damana: fila.textoDamana,
-            espanol: fila.textoEspanol,
-            peso: fila.estado === 'revisar' ? PESO_REVISAR : 1,
+  private getIndexes(): Indexes {
+    if (!this.indexes) {
+      const fragments: CorpusFragment[] = [];
+      for (const source of RETRIEVAL_SOURCES) {
+        for (const row of this.repo.textsOf(source)) {
+          if (isUntranslatedPair(row.textoDamana, row.textoEspanol)) continue;
+          fragments.push({
+            fuente: source,
+            dominio: row.dominio,
+            id: row.id,
+            referencia: row.referencia,
+            damana: row.textoDamana,
+            espanol: row.textoEspanol,
+            peso: row.estado === 'revisar' ? REVIEW_WEIGHT : 1,
           });
         }
       }
-      this.indices = {
-        fragmentos,
+      this.indexes = {
+        fragmentos: fragments,
         porIdioma: {
-          [Idioma.damana]: new IndiceTfIdf(fragmentos.map((f) => tokensNormalizados(f.damana))),
-          [Idioma.espanol]: new IndiceTfIdf(fragmentos.map((f) => tokensNormalizados(f.espanol))),
+          [Language.damana]: new TfIdfIndex(fragments.map((f) => normalizedTokenList(f.damana))),
+          [Language.espanol]: new TfIdfIndex(fragments.map((f) => normalizedTokenList(f.espanol))),
         },
-        ...this.construirIndiceDeLemas(fragmentos),
+        ...this.buildLemmaIndex(fragments),
       };
     }
-    return this.indices;
+    return this.indexes;
   }
 
-  private obtenerDiccionario(): IndiceDiccionario {
-    if (!this.diccionario) {
-      this.diccionario = new IndiceDiccionario(this.repo.listarVocabulario());
+  private getDictionary(): DictionaryIndex {
+    if (!this.dictionary) {
+      this.dictionary = new DictionaryIndex(this.repo.listVocabulary());
     }
-    return this.diccionario;
+    return this.dictionary;
   }
 
-  private obtenerReglas(): ReglaGramatical[] {
-    if (!this.reglas) this.reglas = this.repo.listarReglas();
-    return this.reglas;
+  private getRules(): GrammarRule[] {
+    if (!this.rules) this.rules = this.repo.listRules();
+    return this.rules;
   }
 
-  private obtenerNombresPropios(): NombrePropioDto[] {
-    if (!this.nombresPropios) this.nombresPropios = this.repo.listarNombresPropios();
-    return this.nombresPropios;
+  private getProperNames(): ProperNameDto[] {
+    if (!this.properNames) this.properNames = this.repo.listProperNames();
+    return this.properNames;
   }
 }

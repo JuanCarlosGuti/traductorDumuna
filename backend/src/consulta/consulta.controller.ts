@@ -6,27 +6,27 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { BusquedaService } from './busqueda.service';
+import { SearchService } from './busqueda.service';
 import { CorpusRepository } from './corpus.repository';
 import {
-  BuscarQueryDto,
-  FichaPalabraDto,
-  FraseDto,
-  FrecuenciaDto,
-  FrecuenciasQueryDto,
-  RespuestaBusquedaDto,
-  VocabularioDto,
+  SearchQueryDto,
+  WordCardDto,
+  PhraseDto,
+  FrequencyDto,
+  FrequenciesQueryDto,
+  SearchResponseDto,
+  VocabularyDto,
 } from './dto/consulta.dto';
-import { FrecuenciasService } from './frecuencias.service';
-import { PalabraService } from './palabra.service';
+import { FrequenciesService } from './frecuencias.service';
+import { WordService } from './palabra.service';
 
 @ApiTags('consulta')
 @Controller()
-export class ConsultaController {
+export class QueryController {
   constructor(
-    private readonly busqueda: BusquedaService,
-    private readonly palabra: PalabraService,
-    private readonly frecuencias: FrecuenciasService,
+    private readonly searchService: SearchService,
+    private readonly word: WordService,
+    private readonly frequencies: FrequenciesService,
     private readonly repo: CorpusRepository,
   ) {}
 
@@ -36,9 +36,9 @@ export class ConsultaController {
     description:
       'Cada ocurrencia con su fragmento de contexto (±120 caracteres, cortando en límite de palabra, la palabra en <mark>), el texto paralelo del otro idioma y la referencia. ʉ ≠ u y ñ ≠ n; tildes y mayúsculas se ignoran.',
   })
-  @ApiOkResponse({ type: RespuestaBusquedaDto })
-  buscar(@Query() query: BuscarQueryDto): RespuestaBusquedaDto {
-    return this.busqueda.buscar({
+  @ApiOkResponse({ type: SearchResponseDto })
+  search(@Query() query: SearchQueryDto): SearchResponseDto {
+    return this.searchService.search({
       q: query.q,
       idioma: query.idioma,
       fuente: query.fuente,
@@ -53,10 +53,10 @@ export class ConsultaController {
       'Frecuencia total y por fuente, primeras 10 concordancias y las 10 palabras españolas que más co-ocurren en los textos paralelos (traducciones candidatas, sin stopwords).',
   })
   @ApiParam({ name: 'token', example: 'nʉnka' })
-  @ApiOkResponse({ type: FichaPalabraDto })
+  @ApiOkResponse({ type: WordCardDto })
   @ApiNotFoundResponse({ description: 'La palabra no aparece en el corpus' })
-  fichaPalabra(@Param('token') token: string): FichaPalabraDto {
-    return this.palabra.ficha(token);
+  buildWordCard(@Param('token') token: string): WordCardDto {
+    return this.word.wordCard(token);
   }
 
   @Get('frecuencias')
@@ -65,22 +65,22 @@ export class ConsultaController {
     description:
       'Excluye probables nombres propios (heurística: tokens que solo aparecen con mayúscula inicial en los originales).',
   })
-  @ApiOkResponse({ type: [FrecuenciaDto] })
-  listarFrecuencias(@Query() query: FrecuenciasQueryDto): FrecuenciaDto[] {
-    return this.frecuencias.listar(query.limite);
+  @ApiOkResponse({ type: [FrequencyDto] })
+  listFrequencies(@Query() query: FrequenciesQueryDto): FrequencyDto[] {
+    return this.frequencies.listAll(query.limite);
   }
 
   @Get('vocabulario')
   @ApiOperation({ summary: 'Listado completo del vocabulario' })
-  @ApiOkResponse({ type: [VocabularioDto] })
-  listarVocabulario(): VocabularioDto[] {
-    return this.repo.listarVocabulario();
+  @ApiOkResponse({ type: [VocabularyDto] })
+  listVocabulary(): VocabularyDto[] {
+    return this.repo.listVocabulary();
   }
 
   @Get('frases')
   @ApiOperation({ summary: 'Listado completo de las frases' })
-  @ApiOkResponse({ type: [FraseDto] })
-  listarFrases(): FraseDto[] {
-    return this.repo.listarFrases();
+  @ApiOkResponse({ type: [PhraseDto] })
+  listPhrases(): PhraseDto[] {
+    return this.repo.listPhrases();
   }
 }

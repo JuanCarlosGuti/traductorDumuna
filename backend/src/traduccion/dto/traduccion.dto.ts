@@ -1,25 +1,25 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
-import { DominioCorpus, FuenteCorpus } from '../../consulta/consulta.enums';
+import { CorpusDomain, CorpusSource } from '../../consulta/consulta.enums';
 
-export enum DireccionTraduccion {
+export enum TranslationDirection {
   damana_a_espanol = 'damana_a_espanol',
   espanol_a_damana = 'espanol_a_damana',
 }
 
-export class TraducirDto {
+export class TranslateDto {
   @ApiProperty({ description: 'Texto a traducir', example: 'mi mamá cocina en la casa' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(2000)
   texto!: string;
 
-  @ApiProperty({ enum: DireccionTraduccion })
-  @IsEnum(DireccionTraduccion)
-  direccion!: DireccionTraduccion;
+  @ApiProperty({ enum: TranslationDirection })
+  @IsEnum(TranslationDirection)
+  direccion!: TranslationDirection;
 }
 
-export class ParGlosaDto {
+export class GlossPairDto {
   @ApiProperty({ description: 'Palabra o grupo de palabras del texto original' })
   origen!: string;
 
@@ -27,7 +27,7 @@ export class ParGlosaDto {
   destino!: string;
 }
 
-export class AcepcionDto {
+export class SenseDto {
   @ApiProperty({ description: 'Palabra del texto de entrada que motivó la búsqueda' })
   palabra!: string;
 
@@ -48,7 +48,7 @@ export class AcepcionDto {
   coincidencia!: 'exacta' | 'sin_tildes' | 'sinonimo' | 'singular' | 'frase' | 'posible';
 }
 
-export class NombrePropioUsadoDto {
+export class UsedProperNameDto {
   @ApiProperty({ description: 'Cómo venía escrito en el texto' })
   enTexto!: string;
 
@@ -59,7 +59,7 @@ export class NombrePropioUsadoDto {
   damana!: string;
 }
 
-export class ReglaUsadaDto {
+export class UsedRuleDto {
   @ApiProperty({ example: '-ndzina' })
   forma!: string;
 
@@ -73,12 +73,12 @@ export class ReglaUsadaDto {
   disparador!: string | null;
 }
 
-export class FragmentoEjemploDto {
-  @ApiProperty({ enum: FuenteCorpus })
-  fuente!: FuenteCorpus;
+export class ExampleFragmentDto {
+  @ApiProperty({ enum: CorpusSource })
+  fuente!: CorpusSource;
 
-  @ApiProperty({ enum: DominioCorpus, description: 'biblico, cotidiano o gramatica' })
-  dominio!: DominioCorpus;
+  @ApiProperty({ enum: CorpusDomain, description: 'biblico, cotidiano o gramatica' })
+  dominio!: CorpusDomain;
 
   @ApiProperty({ example: 'frase 12 (Preguntas para conversar)' })
   referencia!: string;
@@ -93,7 +93,7 @@ export class FragmentoEjemploDto {
   puntaje!: number;
 }
 
-export class ApoyoDto {
+export class SupportDto {
   @ApiProperty({
     enum: ['bueno', 'parcial', 'revisar'],
     description:
@@ -108,12 +108,12 @@ export class ApoyoDto {
   motivos!: string[];
 }
 
-export class RespuestaTraduccionDto {
+export class TranslationResponseDto {
   @ApiProperty({ description: 'Las palabras sin equivalente van entre corchetes: [vecina]' })
   traduccion!: string;
 
-  @ApiProperty({ type: [ParGlosaDto], description: 'Glosa palabra por palabra' })
-  glosa!: ParGlosaDto[];
+  @ApiProperty({ type: [GlossPairDto], description: 'Glosa palabra por palabra' })
+  glosa!: GlossPairDto[];
 
   @ApiProperty({ type: [String], description: 'Palabras que el modelo no pudo traducir con el corpus; se registran en pendientes' })
   palabrasSinEquivalente!: string[];
@@ -127,26 +127,26 @@ export class RespuestaTraduccionDto {
   @ApiProperty()
   explicacionBreve!: string;
 
-  @ApiProperty({ type: ApoyoDto })
-  apoyo!: ApoyoDto;
+  @ApiProperty({ type: SupportDto })
+  apoyo!: SupportDto;
 
-  @ApiProperty({ type: [FragmentoEjemploDto], description: 'Ejemplos usados en el prompt, agrupables por dominio' })
-  ejemplos!: FragmentoEjemploDto[];
+  @ApiProperty({ type: [ExampleFragmentDto], description: 'Ejemplos usados en el prompt, agrupables por dominio' })
+  ejemplos!: ExampleFragmentDto[];
 
-  @ApiProperty({ type: [AcepcionDto], description: 'Acepciones del diccionario para las palabras de la frase' })
-  diccionario!: AcepcionDto[];
+  @ApiProperty({ type: [SenseDto], description: 'Acepciones del diccionario para las palabras de la frase' })
+  diccionario!: SenseDto[];
 
-  @ApiProperty({ type: [NombrePropioUsadoDto] })
-  nombresPropios!: NombrePropioUsadoDto[];
+  @ApiProperty({ type: [UsedProperNameDto] })
+  nombresPropios!: UsedProperNameDto[];
 
-  @ApiProperty({ type: [ReglaUsadaDto], description: 'Reglas que viajaron en el prompt' })
-  reglas!: ReglaUsadaDto[];
+  @ApiProperty({ type: [UsedRuleDto], description: 'Reglas que viajaron en el prompt' })
+  reglas!: UsedRuleDto[];
 
   @ApiProperty({ type: [String], description: 'Rasgos detectados en la frase: plural, posesivo, negacion, pregunta, pasado, futuro' })
   disparadores!: string[];
 }
 
-export class EstadoTraductorDto {
+export class TranslatorStatusDto {
   @ApiProperty({ description: 'false si no hay ningún motor de traducción configurado' })
   disponible!: boolean;
 
@@ -161,16 +161,16 @@ export class EstadoTraductorDto {
   modelo!: string | null;
 }
 
-export class ValidarTraduccionDto {
+export class ValidateTranslationDto {
   @ApiProperty({ description: 'Texto original que se tradujo' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(2000)
   texto!: string;
 
-  @ApiProperty({ enum: DireccionTraduccion })
-  @IsEnum(DireccionTraduccion)
-  direccion!: DireccionTraduccion;
+  @ApiProperty({ enum: TranslationDirection })
+  @IsEnum(TranslationDirection)
+  direccion!: TranslationDirection;
 
   @ApiProperty({ description: 'La traducción correcta (la del modelo si se confirma, la escrita a mano si se corrige)' })
   @IsString()
@@ -189,7 +189,7 @@ export class ValidarTraduccionDto {
   traduccionModelo?: string;
 }
 
-export class ValidacionGuardadaDto {
+export class SavedValidationDto {
   @ApiProperty()
   guardada!: boolean;
 

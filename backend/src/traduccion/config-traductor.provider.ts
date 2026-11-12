@@ -1,25 +1,25 @@
 import { Logger, Provider } from '@nestjs/common';
 
-export const CONFIG_TRADUCTOR = 'CONFIG_TRADUCTOR';
+export const TRANSLATOR_CONFIG = 'CONFIG_TRADUCTOR';
 
 /**
  * Default Claude model (Oct 2026). It can be changed without touching
  * code via ANTHROPIC_MODELO (e.g. claude-sonnet-5-5 to cut costs).
  */
-export const MODELO_CLAUDE = 'claude-opus-5-5';
+export const CLAUDE_MODEL = 'claude-opus-5-5';
 
 /** Timeout of the model call; can be extended with TRADUCTOR_TIMEOUT_MS
  *  (useful for local models such as Ollama, slower than an API). */
-export function timeoutModeloMs(): number {
-  const valor = Number(process.env.TRADUCTOR_TIMEOUT_MS);
-  return Number.isFinite(valor) && valor > 0 ? valor : 60_000;
+export function modelTimeoutMs(): number {
+  const value = Number(process.env.TRADUCTOR_TIMEOUT_MS);
+  return Number.isFinite(value) && value > 0 ? value : 60_000;
 }
 
-export type ProveedorTraductor = 'anthropic' | 'compatible';
+export type TranslatorProvider = 'anthropic' | 'compatible';
 
 /** Reasoning effort levels accepted by the Anthropic API. */
-export const ESFUERZOS_ANTHROPIC = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
-export type EsfuerzoAnthropic = (typeof ESFUERZOS_ANTHROPIC)[number];
+export const ANTHROPIC_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+export type AnthropicEffort = (typeof ANTHROPIC_EFFORTS)[number];
 
 /**
  * Default temperature of the compatible provider. Low on purpose: we
@@ -31,27 +31,27 @@ export type EsfuerzoAnthropic = (typeof ESFUERZOS_ANTHROPIC)[number];
  * thinking decides by itself. There the only control is ANTHROPIC_ESFUERZO
  * (output_config.effort), which if missing is left at the API's value.
  */
-export const TEMPERATURA_POR_DEFECTO = 0.2;
+export const DEFAULT_TEMPERATURE = 0.2;
 
-export function leerTemperatura(valor = process.env.TRADUCTOR_TEMPERATURA): number {
-  if (valor === undefined || valor.trim() === '') return TEMPERATURA_POR_DEFECTO;
-  const n = Number(valor);
-  if (!Number.isFinite(n)) return TEMPERATURA_POR_DEFECTO;
+export function readTemperature(value = process.env.TRADUCTOR_TEMPERATURA): number {
+  if (value === undefined || value.trim() === '') return DEFAULT_TEMPERATURE;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_TEMPERATURE;
   return Math.min(2, Math.max(0, n));
 }
 
-export function leerEsfuerzo(valor = process.env.ANTHROPIC_ESFUERZO): EsfuerzoAnthropic | undefined {
-  const v = valor?.trim().toLowerCase() ?? '';
+export function readEffort(value = process.env.ANTHROPIC_ESFUERZO): AnthropicEffort | undefined {
+  const v = value?.trim().toLowerCase() ?? '';
   if (v === '') return undefined;
-  if ((ESFUERZOS_ANTHROPIC as readonly string[]).includes(v)) return v as EsfuerzoAnthropic;
+  if ((ANTHROPIC_EFFORTS as readonly string[]).includes(v)) return v as AnthropicEffort;
   new Logger('ConfigTraductor').warn(
-    `ANTHROPIC_ESFUERZO="${valor}" no es válido (${ESFUERZOS_ANTHROPIC.join(', ')}); se deja el de la API.`,
+    `ANTHROPIC_ESFUERZO="${value}" no es válido (${ANTHROPIC_EFFORTS.join(', ')}); se deja el de la API.`,
   );
   return undefined;
 }
 
-export interface ConfigTraductor {
-  proveedor: ProveedorTraductor | null;
+export interface TranslatorConfig {
+  proveedor: TranslatorProvider | null;
   modelo: string;
   /** 'compatible' provider only: base of the OpenAI-style API (without /chat/completions). */
   baseUrl?: string;
@@ -60,7 +60,7 @@ export interface ConfigTraductor {
   /** 'compatible' provider only: sampling temperature (TRADUCTOR_TEMPERATURA; 0.2 if missing). */
   temperatura?: number;
   /** 'anthropic' provider only: output_config.effort (ANTHROPIC_ESFUERZO); if missing, the API's. */
-  esfuerzo?: EsfuerzoAnthropic;
+  esfuerzo?: AnthropicEffort;
 }
 
 /**
@@ -72,26 +72,26 @@ export interface ConfigTraductor {
  *      Gemini, local Ollama, Hugging Face router, etc.
  * 3. Nothing configured           → the translator answers 503 with help.
  */
-export const configTraductorProvider: Provider = {
-  provide: CONFIG_TRADUCTOR,
-  useFactory: (): ConfigTraductor => {
+export const translatorConfigProvider: Provider = {
+  provide: TRANSLATOR_CONFIG,
+  useFactory: (): TranslatorConfig => {
     if (process.env.ANTHROPIC_API_KEY) {
-      const esfuerzo = leerEsfuerzo();
+      const effort = readEffort();
       return {
         proveedor: 'anthropic',
-        modelo: process.env.ANTHROPIC_MODELO?.trim() || MODELO_CLAUDE,
-        ...(esfuerzo ? { esfuerzo } : {}),
+        modelo: process.env.ANTHROPIC_MODELO?.trim() || CLAUDE_MODEL,
+        ...(effort ? { esfuerzo: effort } : {}),
       };
     }
     const baseUrl = process.env.TRADUCTOR_BASE_URL;
-    const modelo = process.env.TRADUCTOR_MODELO;
-    if (baseUrl && modelo) {
+    const model = process.env.TRADUCTOR_MODELO;
+    if (baseUrl && model) {
       return {
         proveedor: 'compatible',
-        modelo,
+        modelo: model,
         baseUrl,
         apiKey: process.env.TRADUCTOR_API_KEY,
-        temperatura: leerTemperatura(),
+        temperatura: readTemperature(),
       };
     }
     return { proveedor: null, modelo: '' };

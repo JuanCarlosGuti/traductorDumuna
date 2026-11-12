@@ -4,10 +4,10 @@ import type { Database } from 'better-sqlite3';
 import request from 'supertest';
 import { AuthModule } from '../src/auth/auth.module';
 import { ConfigAuth } from '../src/auth/auth.config';
-import { configurarApp } from '../src/configurar-app';
-import { CONEXION_DB } from '../src/database/database.constants';
+import { configureApp } from '../src/configurar-app';
+import { DB_CONNECTION } from '../src/database/database.constants';
 import { DatabaseModule } from '../src/database/database.module';
-import { SaludModule } from '../src/salud/salud.module';
+import { HealthModule } from '../src/salud/salud.module';
 
 const config: ConfigAuth = {
   activa: true,
@@ -24,10 +24,10 @@ describe('Health (e2e, with authentication active)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AuthModule.forRoot(config), DatabaseModule.forRoot({ rutaDb: ':memory:' }), SaludModule],
+      imports: [AuthModule.forRoot(config), DatabaseModule.forRoot({ rutaDb: ':memory:' }), HealthModule],
     }).compile();
     app = moduleRef.createNestApplication();
-    configurarApp(app);
+    configureApp(app);
     await app.init();
   });
 
@@ -39,7 +39,7 @@ describe('Health (e2e, with authentication active)', () => {
   });
 
   it('with a corpus it answers 200 without a token', async () => {
-    const db = app.get<Database>(CONEXION_DB);
+    const db = app.get<Database>(DB_CONNECTION);
     db.prepare(
       "INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente) VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')",
     ).run();

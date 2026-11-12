@@ -9,39 +9,39 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { normalizar } from '../comun/texto/normalizador';
-import { esStopwordEspanol } from '../comun/texto/stopwords-es';
-import { FuenteCorpus, Idioma } from '../consulta/consulta.enums';
+import { normalize } from '../comun/texto/normalizador';
+import { isSpanishStopword } from '../comun/texto/stopwords-es';
+import { CorpusSource, Language } from '../consulta/consulta.enums';
 import {
-  ContextoRecuperado,
-  FragmentoRecuperado,
+  RetrievedContext,
+  RetrievedFragment,
   RetrievalService,
 } from '../consulta/retrieval.service';
-import { PendientesRepository } from '../pendientes/pendientes.repository';
-import { CLIENTE_ANTHROPIC } from './anthropic.provider';
-import { evaluarApoyo, SenalesApoyo } from './apoyo';
+import { PendingRepository } from '../pendientes/pendientes.repository';
+import { ANTHROPIC_CLIENT } from './anthropic.provider';
+import { evaluateSupport, SupportSignals } from './apoyo';
 import {
-  CONFIG_TRADUCTOR,
-  ConfigTraductor,
-  TEMPERATURA_POR_DEFECTO,
-  timeoutModeloMs,
+  TRANSLATOR_CONFIG,
+  TranslatorConfig,
+  DEFAULT_TEMPERATURE,
+  modelTimeoutMs,
 } from './config-traductor.provider';
 import {
-  DireccionTraduccion,
-  RespuestaTraduccionDto,
-  TraducirDto,
-  ValidacionGuardadaDto,
-  ValidarTraduccionDto,
+  TranslationDirection,
+  TranslationResponseDto,
+  TranslateDto,
+  SavedValidationDto,
+  ValidateTranslationDto,
 } from './dto/traduccion.dto';
 import {
-  armarPromptSistema,
-  armarPromptUsuario,
-  esquemaRespuesta,
-  normalizarRespuestaModelo,
-  RespuestaModelo,
+  buildSystemPrompt,
+  buildUserPrompt,
+  responseSchema,
+  normalizeModelResponse,
+  ModelResponse,
 } from './prompt';
-import { TraduccionesRepository, UsoModelo } from './traducciones.repository';
-import { ValidadasRepository } from './validadas.repository';
+import { TranslationsRepository, ModelUsage } from './traducciones.repository';
+import { ValidatedRepository } from './validadas.repository';
 
 /**
  * With adaptive thinking active, reasoning tokens count
@@ -51,7 +51,7 @@ import { ValidadasRepository } from './validadas.repository';
 const MAX_TOKENS_ANTHROPIC = 16_000;
 const MAX_TOKENS_COMPATIBLE = 4096;
 /** The original sentence is stored shortened as context for the pending item. */
-const MAX_CONTEXTO_PENDIENTE = 200;
+const MAX_PENDING_CONTEXT = 200;
 
 /**
  * Usage limit of the compatible provider (429). Groq's free plan
@@ -59,24 +59,24 @@ const MAX_CONTEXTO_PENDIENTE = 200;
  * it waits for what Retry-After asks (bounded) and retries, instead of
  * failing at the first attempt.
  */
-export const REINTENTOS_429 = 2;
-export const ESPERA_429_POR_DEFECTO_MS = 15_000;
-export const ESPERA_429_MAXIMA_MS = 30_000;
+export const RETRIES_429 = 2;
+export const DEFAULT_429_WAIT_MS = 15_000;
+export const MAX_429_WAIT_MS = 30_000;
 
-export function esperaTrasLimite(retryAfter: string | null | undefined): number {
-  const segundos = Number(retryAfter);
-  if (Number.isFinite(segundos) && segundos > 0) {
-    return Math.min(Math.ceil(segundos * 1000), ESPERA_429_MAXIMA_MS);
+export function waitAfterLimit(retryAfter: string | null | undefined): number {
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return Math.min(Math.ceil(seconds * 1000), MAX_429_WAIT_MS);
   }
-  return ESPERA_429_POR_DEFECTO_MS;
+  return DEFAULT_429_WAIT_MS;
 }
 
 /** Separate so that tests do not really wait. */
-export const reloj = {
+export const clock = {
   dormir: (ms: number): Promise<void> => new Promise((resolver) => setTimeout(resolver, ms)),
 };
 
-export const MENSAJE_SIN_PROVEEDOR =
+export const NO_PROVIDER_MESSAGE =
   'El traductor no tiene ningún motor configurado. Opciones: ' +
   '(A) gratis: define TRADUCTOR_BASE_URL, TRADUCTOR_MODELO y opcionalmente ' +
   'TRADUCTOR_API_KEY para un proveedor compatible con OpenAI (Ollama local, ' +
@@ -85,13 +85,13 @@ export const MENSAJE_SIN_PROVEEDOR =
   'Después reinicia el backend. Detalles en el README.';
 
 /** What each provider returns: the model's text and, if reported, the usage. */
-interface SalidaModelo {
+interface ModelOutput {
   texto: string;
-  uso: UsoModelo | null;
+  uso: ModelUsage | null;
 }
 
-/** Anthropic API usage → UsoModelo. */
-export function usoDeAnthropic(usage: Anthropic.Usage | null | undefined): UsoModelo | null {
+/** Anthropic API usage → ModelUsage. */
+export function usageFromAnthropic(usage: Anthropic.Usage | null | undefined): ModelUsage | null {
   if (!usage) return null;
   return {
     tokensEntrada: usage.input_tokens ?? null,
@@ -107,19 +107,19 @@ interface UsageCompatible {
   prompt_tokens_details?: { cached_tokens?: number };
 }
 
-/** OpenAI-style usage (Groq, Ollama, Gemini…) → UsoModelo. */
-export function usoDeCompatible(usage: UsageCompatible | null | undefined): UsoModelo | null {
+/** OpenAI-style usage (Groq, Ollama, Gemini…) → ModelUsage. */
+export function usageFromCompatible(usage: UsageCompatible | null | undefined): ModelUsage | null {
   if (!usage) return null;
-  const numero = (v: unknown): number | null => (typeof v === 'number' ? v : null);
+  const num = (v: unknown): number | null => (typeof v === 'number' ? v : null);
   return {
-    tokensEntrada: numero(usage.prompt_tokens),
-    tokensSalida: numero(usage.completion_tokens),
-    tokensCacheLeidos: numero(usage.prompt_tokens_details?.cached_tokens),
+    tokensEntrada: num(usage.prompt_tokens),
+    tokensSalida: num(usage.completion_tokens),
+    tokensCacheLeidos: num(usage.prompt_tokens_details?.cached_tokens),
     tokensCacheCreados: null,
   };
 }
 
-export interface OpcionesTraduccion {
+export interface TranslationOptions {
   /**
    * false to evaluate without leaving a trace: no row in traducciones and no
    * new pending items. By default everything is logged.
@@ -132,112 +132,112 @@ export interface OpcionesTraduccion {
  * ```json ... ``` blocks and surrounding text: if there is a fenced block its
  * content is used; then it is trimmed from the first '{' to the last '}'.
  */
-export function extraerJson(texto: string): Record<string, unknown> {
-  const cercado = texto.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidato = cercado ? cercado[1] : texto;
-  const inicio = candidato.indexOf('{');
-  const fin = candidato.lastIndexOf('}');
-  if (inicio === -1 || fin <= inicio) {
+export function extractJson(text: string): Record<string, unknown> {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = fenced ? fenced[1] : text;
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+  if (start === -1 || end <= start) {
     throw new Error('La respuesta del modelo no contiene un objeto JSON');
   }
-  return JSON.parse(candidato.slice(inicio, fin + 1)) as Record<string, unknown>;
+  return JSON.parse(candidate.slice(start, end + 1)) as Record<string, unknown>;
 }
 
 @Injectable()
-export class TraduccionService {
-  private readonly logger = new Logger(TraduccionService.name);
+export class TranslationService {
+  private readonly logger = new Logger(TranslationService.name);
 
   constructor(
-    @Inject(CLIENTE_ANTHROPIC) private readonly cliente: Anthropic | null,
-    @Inject(CONFIG_TRADUCTOR) private readonly config: ConfigTraductor,
+    @Inject(ANTHROPIC_CLIENT) private readonly client: Anthropic | null,
+    @Inject(TRANSLATOR_CONFIG) private readonly config: TranslatorConfig,
     private readonly retrieval: RetrievalService,
-    private readonly registro: TraduccionesRepository,
-    private readonly pendientes: PendientesRepository,
-    private readonly validadas: ValidadasRepository,
+    private readonly logEntry: TranslationsRepository,
+    private readonly pendingItems: PendingRepository,
+    private readonly validatedPairs: ValidatedRepository,
   ) {}
 
-  disponible(): boolean {
+  available(): boolean {
     return this.config.proveedor !== null;
   }
 
-  configuracion(): ConfigTraductor {
+  configuration(): TranslatorConfig {
     return this.config;
   }
 
-  async traducir(
-    dto: TraducirDto,
-    opciones: OpcionesTraduccion = {},
-  ): Promise<RespuestaTraduccionDto> {
+  async translate(
+    dto: TranslateDto,
+    options: TranslationOptions = {},
+  ): Promise<TranslationResponseDto> {
     if (!this.config.proveedor) {
       throw new ServiceUnavailableException({
         codigo: 'SIN_PROVEEDOR',
-        message: MENSAJE_SIN_PROVEEDOR,
+        message: NO_PROVIDER_MESSAGE,
       });
     }
 
-    const idiomaOrigen =
-      dto.direccion === DireccionTraduccion.damana_a_espanol ? Idioma.damana : Idioma.espanol;
-    const contexto = this.retrieval.recuperarContexto(dto.texto, idiomaOrigen);
+    const sourceLanguage =
+      dto.direccion === TranslationDirection.damana_a_espanol ? Language.damana : Language.espanol;
+    const context = this.retrieval.retrieveContext(dto.texto, sourceLanguage);
 
-    const sistema = armarPromptSistema(dto.direccion);
-    const usuario = armarPromptUsuario(dto.texto, dto.direccion, contexto);
-    const inicio = Date.now();
-    const { texto, uso } =
+    const system = buildSystemPrompt(dto.direccion);
+    const user = buildUserPrompt(dto.texto, dto.direccion, context);
+    const start = Date.now();
+    const { texto: text, uso: usageData } =
       this.config.proveedor === 'anthropic'
-        ? await this.llamarAnthropic(sistema, usuario, esquemaRespuesta(dto.direccion))
-        : await this.llamarCompatible(sistema, usuario);
-    const duracionMs = Date.now() - inicio;
-    this.logger.log(this.resumenDeUso(dto.direccion, uso, duracionMs));
-    const modelo = normalizarRespuestaModelo(this.parsearRespuesta(texto));
+        ? await this.callAnthropic(system, user, responseSchema(dto.direccion))
+        : await this.callCompatible(system, user);
+    const durationMs = Date.now() - start;
+    this.logger.log(this.usageSummary(dto.direccion, usageData, durationMs));
+    const model = normalizeModelResponse(this.parseResponse(text));
 
-    const senales = this.senalesDeApoyo(contexto.ejemplos);
-    const respuesta = this.armarRespuesta(modelo, contexto, senales);
+    const signals = this.supportSignals(context.ejemplos);
+    const response = this.buildResponse(model, context, signals);
 
-    if (opciones.registrar !== false) {
-      this.registrarTraduccion(dto, respuesta, senales, uso, duracionMs);
-      this.registrarPendientes(dto, respuesta.palabrasSinEquivalente);
+    if (options.registrar !== false) {
+      this.logTranslation(dto, response, signals, usageData, durationMs);
+      this.recordPendingItems(dto, response.palabrasSinEquivalente);
     }
-    return respuesta;
+    return response;
   }
 
   /** One line per translation: to track spending and see whether the cache kicks in. */
-  private resumenDeUso(direccion: DireccionTraduccion, uso: UsoModelo | null, duracionMs: number): string {
-    const cabecera = `Traducción ${direccion} con ${this.config.proveedor} ${this.config.modelo} en ${duracionMs} ms`;
-    if (!uso) return `${cabecera} · el proveedor no informó tokens`;
+  private usageSummary(direction: TranslationDirection, usageData: ModelUsage | null, durationMs: number): string {
+    const header = `Traducción ${direction} con ${this.config.proveedor} ${this.config.modelo} en ${durationMs} ms`;
+    if (!usageData) return `${header} · el proveedor no informó tokens`;
     const n = (v: number | null) => (v === null ? '?' : String(v));
     return (
-      `${cabecera} · tokens: entrada ${n(uso.tokensEntrada)} ` +
-      `(caché leída ${n(uso.tokensCacheLeidos)}, creada ${n(uso.tokensCacheCreados)}), salida ${n(uso.tokensSalida)}`
+      `${header} · tokens: entrada ${n(usageData.tokensEntrada)} ` +
+      `(caché leída ${n(usageData.tokensCacheLeidos)}, creada ${n(usageData.tokensCacheCreados)}), salida ${n(usageData.tokensSalida)}`
     );
   }
 
   /** «This translation is correct» / «correct it»: stores the validated pair. */
-  validar(dto: ValidarTraduccionDto): ValidacionGuardadaDto {
-    const haciaDamana = dto.direccion === DireccionTraduccion.espanol_a_damana;
-    this.validadas.guardar({
-      espanol: (haciaDamana ? dto.texto : dto.traduccion).trim(),
-      damana: (haciaDamana ? dto.traduccion : dto.texto).trim(),
+  validate(dto: ValidateTranslationDto): SavedValidationDto {
+    const toDamana = dto.direccion === TranslationDirection.espanol_a_damana;
+    this.validatedPairs.save({
+      espanol: (toDamana ? dto.texto : dto.traduccion).trim(),
+      damana: (toDamana ? dto.traduccion : dto.texto).trim(),
       direccion: dto.direccion,
       origen: dto.origen,
       traduccionModelo: dto.traduccionModelo?.trim() || null,
     });
-    return { guardada: true, total: this.validadas.contar() };
+    return { guardada: true, total: this.validatedPairs.count() };
   }
 
-  private armarRespuesta(
-    modelo: RespuestaModelo,
-    contexto: ContextoRecuperado,
-    senales: SenalesApoyo,
-  ): RespuestaTraduccionDto {
+  private buildResponse(
+    model: ModelResponse,
+    context: RetrievedContext,
+    signals: SupportSignals,
+  ): TranslationResponseDto {
     return {
-      traduccion: modelo.traduccion,
-      glosa: modelo.glosa,
-      palabrasSinEquivalente: modelo.palabrasSinEquivalente,
-      reglasAplicadas: modelo.reglasAplicadas,
-      confianza: modelo.confianza,
-      explicacionBreve: modelo.explicacionBreve,
-      apoyo: evaluarApoyo(senales),
-      ejemplos: contexto.ejemplos.map((e) => ({
+      traduccion: model.traduccion,
+      glosa: model.glosa,
+      palabrasSinEquivalente: model.palabrasSinEquivalente,
+      reglasAplicadas: model.reglasAplicadas,
+      confianza: model.confianza,
+      explicacionBreve: model.explicacionBreve,
+      apoyo: evaluateSupport(signals),
+      ejemplos: context.ejemplos.map((e) => ({
         fuente: e.fuente,
         dominio: e.dominio,
         referencia: e.referencia,
@@ -245,15 +245,15 @@ export class TraduccionService {
         espanol: e.espanol,
         puntaje: e.puntaje,
       })),
-      diccionario: contexto.diccionario.map((a) => ({
+      diccionario: context.diccionario.map((a) => ({
         palabra: a.palabra,
         espanol: a.espanol,
         damana: a.damana,
         categoria: a.categoria,
         coincidencia: a.coincidencia,
       })),
-      nombresPropios: contexto.nombresPropios,
-      reglas: contexto.reglas.map((r) => ({
+      nombresPropios: context.nombresPropios,
+      reglas: context.reglas.map((r) => ({
         forma: r.forma,
         significado: r.significado,
         ejemplo:
@@ -262,7 +262,7 @@ export class TraduccionService {
             : null,
         disparador: r.disparador,
       })),
-      disparadores: contexto.disparadores,
+      disparadores: context.disparadores,
     };
   }
 
@@ -270,19 +270,19 @@ export class TraduccionService {
    * How much the corpus backs this translation. Examples come
    * grouped by domain, so the «top» is the maximum, not the first.
    */
-  private senalesDeApoyo(ejemplos: FragmentoRecuperado[]): SenalesApoyo {
-    const top = ejemplos.reduce<FragmentoRecuperado | null>(
-      (mejor, e) => (mejor === null || e.puntaje > mejor.puntaje ? e : mejor),
+  private supportSignals(examples: RetrievedFragment[]): SupportSignals {
+    const top = examples.reduce<RetrievedFragment | null>(
+      (best, e) => (best === null || e.puntaje > best.puntaje ? e : best),
       null,
     );
     return {
-      puntajeMedio: ejemplos.length
-        ? ejemplos.reduce((suma, e) => suma + e.puntaje, 0) / ejemplos.length
+      puntajeMedio: examples.length
+        ? examples.reduce((sum, e) => sum + e.puntaje, 0) / examples.length
         : 0,
       fuenteTop: top?.fuente ?? null,
-      ejemplosRecuperados: ejemplos.length,
-      ejemplosEnContexto: ejemplos.filter(
-        (e) => e.fuente === FuenteCorpus.oraciones || e.fuente === FuenteCorpus.frases,
+      ejemplosRecuperados: examples.length,
+      ejemplosEnContexto: examples.filter(
+        (e) => e.fuente === CorpusSource.oraciones || e.fuente === CorpusSource.frases,
       ).length,
     };
   }
@@ -292,52 +292,52 @@ export class TraduccionService {
    * a logging failure must NEVER stop the user from receiving their
    * translation, which is what they came for.
    */
-  private registrarTraduccion(
-    dto: TraducirDto,
-    respuesta: RespuestaTraduccionDto,
-    senales: SenalesApoyo,
-    uso: UsoModelo | null,
-    duracionMs: number,
+  private logTranslation(
+    dto: TranslateDto,
+    response: TranslationResponseDto,
+    signals: SupportSignals,
+    usageData: ModelUsage | null,
+    durationMs: number,
   ): void {
     try {
-      this.registro.registrar({
+      this.logEntry.record({
         texto: dto.texto,
-        traduccion: respuesta.traduccion,
+        traduccion: response.traduccion,
         direccion: dto.direccion,
-        puntajeTop: respuesta.ejemplos.reduce((max, e) => Math.max(max, e.puntaje), 0),
-        puntajeMedio: senales.puntajeMedio,
-        fuenteTop: senales.fuenteTop,
-        ejemplosRecuperados: senales.ejemplosRecuperados,
-        ejemplosEnContexto: senales.ejemplosEnContexto ?? 0,
-        palabrasDudosas: respuesta.palabrasSinEquivalente,
-        vocabularioUsado: respuesta.diccionario.map((a) => ({ espanol: a.espanol, damana: a.damana })),
+        puntajeTop: response.ejemplos.reduce((max, e) => Math.max(max, e.puntaje), 0),
+        puntajeMedio: signals.puntajeMedio,
+        fuenteTop: signals.fuenteTop,
+        ejemplosRecuperados: signals.ejemplosRecuperados,
+        ejemplosEnContexto: signals.ejemplosEnContexto ?? 0,
+        palabrasDudosas: response.palabrasSinEquivalente,
+        vocabularioUsado: response.diccionario.map((a) => ({ espanol: a.espanol, damana: a.damana })),
         modelo: this.config.modelo,
-        confianza: respuesta.confianza,
-        reglasAplicadas: respuesta.reglasAplicadas,
-        glosa: respuesta.glosa,
-        uso,
-        duracionMs,
+        confianza: response.confianza,
+        reglasAplicadas: response.reglasAplicadas,
+        glosa: response.glosa,
+        uso: usageData,
+        duracionMs: durationMs,
       });
     } catch (error) {
-      this.logger.warn(`No se pudo registrar la traducción: ${mensajeDe(error)}`);
+      this.logger.warn(`No se pudo registrar la traducción: ${messageOf(error)}`);
     }
   }
 
   /** Closes the loop with the speakers: what was missing gets noted down. */
-  private registrarPendientes(dto: TraducirDto, palabras: string[]): void {
-    const idioma = dto.direccion === DireccionTraduccion.espanol_a_damana ? 'espanol' : 'damana';
+  private recordPendingItems(dto: TranslateDto, words: string[]): void {
+    const language = dto.direccion === TranslationDirection.espanol_a_damana ? 'espanol' : 'damana';
     // Articles and other Spanish function words are not
     // missing vocabulary: Damana does not have them. If the model leaves them
     // in square brackets they are shown, but the speakers are not asked about them.
-    const porRegistrar =
-      idioma === 'espanol' ? palabras.filter((p) => !esStopwordEspanol(normalizar(p))) : palabras;
-    if (porRegistrar.length === 0) return;
-    const contexto = dto.texto.replace(/\s+/g, ' ').trim().slice(0, MAX_CONTEXTO_PENDIENTE);
-    for (const palabra of porRegistrar) {
+    const toRecord =
+      language === 'espanol' ? words.filter((p) => !isSpanishStopword(normalize(p))) : words;
+    if (toRecord.length === 0) return;
+    const context = dto.texto.replace(/\s+/g, ' ').trim().slice(0, MAX_PENDING_CONTEXT);
+    for (const word of toRecord) {
       try {
-        this.pendientes.registrarPedida(palabra, idioma, contexto);
+        this.pendingItems.recordRequested(word, language, context);
       } catch (error) {
-        this.logger.warn(`No se pudo registrar la pendiente «${palabra}»: ${mensajeDe(error)}`);
+        this.logger.warn(`No se pudo registrar la pendiente «${word}»: ${messageOf(error)}`);
       }
     }
   }
@@ -346,13 +346,13 @@ export class TraduccionService {
    * Claude via the official SDK, with structured output (output_config.format
    * with the response's JSON Schema) so that the JSON arrives well formed.
    */
-  private async llamarAnthropic(
-    sistema: string,
-    usuario: string,
-    esquema: Record<string, unknown>,
-  ): Promise<SalidaModelo> {
+  private async callAnthropic(
+    system: string,
+    user: string,
+    schema: Record<string, unknown>,
+  ): Promise<ModelOutput> {
     try {
-      const respuesta = await this.cliente!.messages.create({
+      const response = await this.client!.messages.create({
         model: this.config.modelo,
         max_tokens: MAX_TOKENS_ANTHROPIC,
         // The system prompt is identical across all translations in the
@@ -363,32 +363,32 @@ export class TraduccionService {
         // translations. The user message changes with every sentence (dictionary,
         // rules and examples depend on it), so it has no stable
         // prefix to mark.
-        system: [{ type: 'text', text: sistema, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: usuario }],
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        messages: [{ role: 'user', content: user }],
         // No temperature: claude-opus-5-5 rejects it with a 400 (see
         // config-traductor.provider.ts). The effort is only sent if it was
         // configured; otherwise the API's default value applies.
         output_config: {
-          format: { type: 'json_schema', schema: esquema },
+          format: { type: 'json_schema', schema: schema },
           ...(this.config.esfuerzo ? { effort: this.config.esfuerzo } : {}),
         },
       });
-      if (respuesta.stop_reason === 'refusal') {
+      if (response.stop_reason === 'refusal') {
         throw new BadGatewayException(
           'El modelo rechazó la petición por sus filtros de seguridad. Reformula el texto e intenta de nuevo.',
         );
       }
-      const bloqueTexto = respuesta.content.find(
+      const textBlock = response.content.find(
         (b): b is Anthropic.TextBlock => b.type === 'text',
       );
-      if (!bloqueTexto) {
+      if (!textBlock) {
         throw new BadGatewayException(
           'El modelo no devolvió texto (¿respuesta cortada?). Intenta de nuevo.',
         );
       }
-      return { texto: bloqueTexto.text, uso: usoDeAnthropic(respuesta.usage) };
+      return { texto: textBlock.text, uso: usageFromAnthropic(response.usage) };
     } catch (error) {
-      throw this.traducirErrorAnthropic(error);
+      throw this.mapAnthropicError(error);
     }
   }
 
@@ -396,22 +396,22 @@ export class TraduccionService {
    * Calls any OpenAI-compatible API (Ollama, Gemini, Groq,
    * Hugging Face router...) using native fetch: POST {base}/chat/completions.
    * response_format json_object is requested; if the provider does not support it
-   * (400) it retries without it and relies on extraerJson. On a 429 it waits
-   * and retries up to REINTENTOS_429 times before giving up.
+   * (400) it retries without it and relies on extractJson. On a 429 it waits
+   * and retries up to RETRIES_429 times before giving up.
    */
-  private async llamarCompatible(
-    sistema: string,
-    usuario: string,
-    conFormatoJson = true,
-    intento = 0,
-  ): Promise<SalidaModelo> {
+  private async callCompatible(
+    system: string,
+    user: string,
+    withJsonFormat = true,
+    attempt = 0,
+  ): Promise<ModelOutput> {
     const url = `${this.config.baseUrl!.replace(/\/+$/, '')}/chat/completions`;
     const control = new AbortController();
-    const temporizador = setTimeout(() => control.abort(), timeoutModeloMs());
+    const timer = setTimeout(() => control.abort(), modelTimeoutMs());
 
-    let respuesta: Response;
+    let response: Response;
     try {
-      respuesta = await fetch(url, {
+      response = await fetch(url, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -420,11 +420,11 @@ export class TraduccionService {
         body: JSON.stringify({
           model: this.config.modelo,
           max_tokens: MAX_TOKENS_COMPATIBLE,
-          temperature: this.config.temperatura ?? TEMPERATURA_POR_DEFECTO,
-          ...(conFormatoJson ? { response_format: { type: 'json_object' } } : {}),
+          temperature: this.config.temperatura ?? DEFAULT_TEMPERATURE,
+          ...(withJsonFormat ? { response_format: { type: 'json_object' } } : {}),
           messages: [
-            { role: 'system', content: sistema },
-            { role: 'user', content: usuario },
+            { role: 'system', content: system },
+            { role: 'user', content: user },
           ],
         }),
         signal: control.signal,
@@ -432,7 +432,7 @@ export class TraduccionService {
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new GatewayTimeoutException(
-          `La traducción superó el tiempo de espera (${Math.round(timeoutModeloMs() / 1000)} s). ` +
+          `La traducción superó el tiempo de espera (${Math.round(modelTimeoutMs() / 1000)} s). ` +
             'Con modelos locales puedes ampliarlo con TRADUCTOR_TIMEOUT_MS.',
         );
       }
@@ -441,57 +441,57 @@ export class TraduccionService {
           '¿Está corriendo el proveedor (p. ej. Ollama) y la URL es correcta?',
       );
     } finally {
-      clearTimeout(temporizador);
+      clearTimeout(timer);
     }
 
-    if (respuesta.status === 400 && conFormatoJson) {
-      return this.llamarCompatible(sistema, usuario, false, intento);
+    if (response.status === 400 && withJsonFormat) {
+      return this.callCompatible(system, user, false, attempt);
     }
-    if (respuesta.status === 429 && intento < REINTENTOS_429) {
-      const espera = esperaTrasLimite(respuesta.headers?.get?.('retry-after'));
+    if (response.status === 429 && attempt < RETRIES_429) {
+      const wait = waitAfterLimit(response.headers?.get?.('retry-after'));
       this.logger.warn(
-        `El proveedor devolvió 429; se reintenta en ${Math.round(espera / 1000)} s ` +
-          `(intento ${intento + 1} de ${REINTENTOS_429}).`,
+        `El proveedor devolvió 429; se reintenta en ${Math.round(wait / 1000)} s ` +
+          `(intento ${attempt + 1} de ${RETRIES_429}).`,
       );
-      await reloj.dormir(espera);
-      return this.llamarCompatible(sistema, usuario, conFormatoJson, intento + 1);
+      await clock.dormir(wait);
+      return this.callCompatible(system, user, withJsonFormat, attempt + 1);
     }
-    if (respuesta.status === 401 || respuesta.status === 403) {
+    if (response.status === 401 || response.status === 403) {
       throw new BadGatewayException(
         'El proveedor rechazó la clave TRADUCTOR_API_KEY. Revísala y reinicia el backend.',
       );
     }
-    if (respuesta.status === 429) {
+    if (response.status === 429) {
       throw new HttpException(
         'El proveedor devolvió un límite de uso (429). Espera un momento y reintenta.',
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
-    if (respuesta.status === 404) {
+    if (response.status === 404) {
       throw new BadGatewayException(
         `El proveedor no encontró el modelo "${this.config.modelo}" (404). ` +
           'Revisa TRADUCTOR_MODELO (con Ollama: ¿hiciste "ollama pull <modelo>"?).',
       );
     }
-    if (!respuesta.ok) {
-      throw new BadGatewayException(`El proveedor devolvió un error (${respuesta.status}).`);
+    if (!response.ok) {
+      throw new BadGatewayException(`El proveedor devolvió un error (${response.status}).`);
     }
 
-    const json = (await respuesta.json().catch(() => null)) as {
+    const json = (await response.json().catch(() => null)) as {
       choices?: { message?: { content?: unknown } }[];
       usage?: UsageCompatible;
     } | null;
-    const texto = json?.choices?.[0]?.message?.content;
-    if (typeof texto !== 'string' || texto.length === 0) {
+    const text = json?.choices?.[0]?.message?.content;
+    if (typeof text !== 'string' || text.length === 0) {
       throw new BadGatewayException(
         'El proveedor no devolvió texto en el formato esperado (choices[0].message.content).',
       );
     }
-    return { texto, uso: usoDeCompatible(json?.usage) };
+    return { texto: text, uso: usageFromCompatible(json?.usage) };
   }
 
   /** Maps the Anthropic SDK's typed errors to clear HTTP errors. */
-  private traducirErrorAnthropic(error: unknown): Error {
+  private mapAnthropicError(error: unknown): Error {
     if (error instanceof HttpException) return error;
     if (error instanceof Anthropic.AuthenticationError) {
       return new BadGatewayException(
@@ -519,12 +519,12 @@ export class TraduccionService {
         `La API de Anthropic devolvió un error (${String(error.status)}): ${error.message}`,
       );
     }
-    return new BadGatewayException(`Error inesperado al traducir: ${mensajeDe(error)}`);
+    return new BadGatewayException(`Error inesperado al traducir: ${messageOf(error)}`);
   }
 
-  private parsearRespuesta(texto: string): Record<string, unknown> {
+  private parseResponse(text: string): Record<string, unknown> {
     try {
-      return extraerJson(texto);
+      return extractJson(text);
     } catch {
       throw new BadGatewayException(
         'El modelo no devolvió el JSON esperado. Reintenta la traducción.',
@@ -533,6 +533,6 @@ export class TraduccionService {
   }
 }
 
-function mensajeDe(error: unknown): string {
+function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

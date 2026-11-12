@@ -1,26 +1,26 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Database } from 'better-sqlite3';
-import { FrecuenciasService } from '../consulta/frecuencias.service';
-import { PalabraService } from '../consulta/palabra.service';
+import { FrequenciesService } from '../consulta/frecuencias.service';
+import { WordService } from '../consulta/palabra.service';
 import { CorpusRepository } from '../consulta/corpus.repository';
-import { CONEXION_DB } from '../database/database.constants';
+import { DB_CONNECTION } from '../database/database.constants';
 import {
-  EstadoSrsDto,
-  ProgresoActualizadoDto,
-  TarjetaSrsDto,
+  SrsStatusDto,
+  UpdatedProgressDto,
+  SrsCardDto,
 } from './dto/srs.dto';
-import { aplicarSm2, Calificacion, ESTADO_SM2_INICIAL, EstadoSm2 } from './sm2';
+import { applySm2, Grade, INITIAL_SM2_STATE, Sm2State } from './sm2';
 
-const TOP_FRECUENCIAS = 300;
-const MAX_CANDIDATAS_TARJETA = 3;
+const TOP_FREQUENCIES = 300;
+const MAX_CARD_CANDIDATES = 3;
 
-interface CartaPool {
+interface PoolCard {
   palabra: string;
   tipo: 'vocabulario' | 'frecuencia';
   traduccion?: string;
 }
 
-interface FilaProgreso {
+interface ProgressRow {
   palabra: string;
   repeticiones: number;
   factor_facilidad: number;
@@ -31,66 +31,66 @@ interface FilaProgreso {
 @Injectable()
 export class SrsService {
   constructor(
-    @Inject(CONEXION_DB) private readonly db: Database,
+    @Inject(DB_CONNECTION) private readonly db: Database,
     private readonly repo: CorpusRepository,
-    private readonly frecuencias: FrecuenciasService,
-    private readonly palabraService: PalabraService,
+    private readonly frequencies: FrequenciesService,
+    private readonly wordService: WordService,
   ) {}
 
   /**
    * Next card to review: first the overdue ones (oldest
    * proxima_revision), then the never-seen ones (vocabulary first, then the
-   * TOP_FRECUENCIAS most frequent words in frequency order).
+   * TOP_FREQUENCIES most frequent words in frequency order).
    */
-  siguiente(ahora: Date = new Date()): EstadoSrsDto {
+  nextCard(now: Date = new Date()): SrsStatusDto {
     const pool = this.pool();
-    const progresos = this.progresosPorPalabra();
+    const progressRows = this.progressByWord();
 
-    const vencidas = pool
+    const overdue = pool
       .filter((c) => {
-        const p = progresos.get(c.palabra);
-        return p !== undefined && p.proxima_revision <= ahora.toISOString();
+        const p = progressRows.get(c.palabra);
+        return p !== undefined && p.proxima_revision <= now.toISOString();
       })
       .sort((a, b) =>
-        progresos
+        progressRows
           .get(a.palabra)!
-          .proxima_revision.localeCompare(progresos.get(b.palabra)!.proxima_revision),
+          .proxima_revision.localeCompare(progressRows.get(b.palabra)!.proxima_revision),
       );
-    const nuevas = pool.filter((c) => !progresos.has(c.palabra));
+    const newItems = pool.filter((c) => !progressRows.has(c.palabra));
 
-    const carta = vencidas[0] ?? nuevas[0] ?? null;
+    const card = overdue[0] ?? newItems[0] ?? null;
     return {
-      tarjeta: carta ? this.armarTarjeta(carta, progresos.get(carta.palabra)) : null,
-      pendientes: vencidas.length,
-      nuevas: nuevas.length,
+      tarjeta: card ? this.buildCard(card, progressRows.get(card.palabra)) : null,
+      pendientes: overdue.length,
+      nuevas: newItems.length,
     };
   }
 
-  responder(
-    palabra: string,
-    calificacion: Calificacion,
-    ahora: Date = new Date(),
-  ): ProgresoActualizadoDto {
-    if (!this.pool().some((c) => c.palabra === palabra)) {
+  answer(
+    word: string,
+    grade: Grade,
+    now: Date = new Date(),
+  ): UpdatedProgressDto {
+    if (!this.pool().some((c) => c.palabra === word)) {
       throw new NotFoundException(
-        `La palabra "${palabra}" no está en el mazo de repaso`,
+        `La palabra "${word}" no está en el mazo de repaso`,
       );
     }
 
-    const fila = this.db
+    const row = this.db
       .prepare('SELECT * FROM progreso_srs WHERE palabra = ?')
-      .get(palabra) as FilaProgreso | undefined;
-    const estado: EstadoSm2 = fila
+      .get(word) as ProgressRow | undefined;
+    const status: Sm2State = row
       ? {
-          repeticiones: fila.repeticiones,
-          factorFacilidad: fila.factor_facilidad,
-          intervaloDias: fila.intervalo_dias,
+          repeticiones: row.repeticiones,
+          factorFacilidad: row.factor_facilidad,
+          intervaloDias: row.intervalo_dias,
         }
-      : ESTADO_SM2_INICIAL;
+      : INITIAL_SM2_STATE;
 
-    const nuevo = aplicarSm2(estado, calificacion);
-    const proxima = new Date(
-      ahora.getTime() + nuevo.intervaloDias * 24 * 60 * 60 * 1000,
+    const newValue = applySm2(status, grade);
+    const next = new Date(
+      now.getTime() + newValue.intervaloDias * 24 * 60 * 60 * 1000,
     ).toISOString();
 
     this.db
@@ -106,63 +106,63 @@ export class SrsService {
            actualizado_en = excluded.actualizado_en`,
       )
       .run(
-        palabra,
-        nuevo.repeticiones,
-        nuevo.factorFacilidad,
-        nuevo.intervaloDias,
-        proxima,
-        ahora.toISOString(),
+        word,
+        newValue.repeticiones,
+        newValue.factorFacilidad,
+        newValue.intervaloDias,
+        next,
+        now.toISOString(),
       );
 
     return {
-      palabra,
-      repeticiones: nuevo.repeticiones,
-      intervaloDias: nuevo.intervaloDias,
-      proximaRevision: proxima,
+      palabra: word,
+      repeticiones: newValue.repeticiones,
+      intervaloDias: newValue.intervaloDias,
+      proximaRevision: next,
     };
   }
 
   /** Deck: the whole vocabulary + the 300 most frequent words (no duplicates). */
-  private pool(): CartaPool[] {
-    const vocabulario: CartaPool[] = this.repo.listarVocabulario().map((v) => ({
+  private pool(): PoolCard[] {
+    const vocabulary: PoolCard[] = this.repo.listVocabulary().map((v) => ({
       palabra: v.damana,
       tipo: 'vocabulario',
       traduccion: v.espanol,
     }));
-    const enVocabulario = new Set(vocabulario.map((c) => c.palabra));
-    const frecuentes: CartaPool[] = this.frecuencias
-      .listar(TOP_FRECUENCIAS)
-      .filter((f) => !enVocabulario.has(f.palabra))
+    const inVocabulary = new Set(vocabulary.map((c) => c.palabra));
+    const frequent: PoolCard[] = this.frequencies
+      .listAll(TOP_FREQUENCIES)
+      .filter((f) => !inVocabulary.has(f.palabra))
       .map((f) => ({ palabra: f.palabra, tipo: 'frecuencia' }));
-    return [...vocabulario, ...frecuentes];
+    return [...vocabulary, ...frequent];
   }
 
-  private progresosPorPalabra(): Map<string, FilaProgreso> {
-    const filas = this.db
+  private progressByWord(): Map<string, ProgressRow> {
+    const rows = this.db
       .prepare('SELECT * FROM progreso_srs')
-      .all() as FilaProgreso[];
-    return new Map(filas.map((f) => [f.palabra, f]));
+      .all() as ProgressRow[];
+    return new Map(rows.map((f) => [f.palabra, f]));
   }
 
-  private armarTarjeta(carta: CartaPool, progreso?: FilaProgreso): TarjetaSrsDto {
-    let traduccion = carta.traduccion;
-    if (traduccion === undefined) {
+  private buildCard(card: PoolCard, progress?: ProgressRow): SrsCardDto {
+    let translation = card.traduccion;
+    if (translation === undefined) {
       // Frequent word without a vocabulary entry: the back shows its
       // candidate translations by co-occurrence.
-      const candidatas = this.palabraService
-        .ficha(carta.palabra)
-        .traduccionesCandidatas.slice(0, MAX_CANDIDATAS_TARJETA)
+      const candidateWords = this.wordService
+        .wordCard(card.palabra)
+        .traduccionesCandidatas.slice(0, MAX_CARD_CANDIDATES)
         .map((c) => c.palabra);
-      traduccion =
-        candidatas.length > 0
-          ? `candidatas: ${candidatas.join(', ')}`
+      translation =
+        candidateWords.length > 0
+          ? `candidatas: ${candidateWords.join(', ')}`
           : '(sin traducciones candidatas)';
     }
     return {
-      palabra: carta.palabra,
-      tipo: carta.tipo,
-      traduccion,
-      repeticiones: progreso?.repeticiones ?? 0,
+      palabra: card.palabra,
+      tipo: card.tipo,
+      traduccion: translation,
+      repeticiones: progress?.repeticiones ?? 0,
     };
   }
 }

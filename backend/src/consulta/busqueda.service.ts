@@ -1,29 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import {
-  buscarOcurrencias,
-  extraerFragmento,
-  marcarOcurrencias,
-  Ocurrencia,
+  findOccurrences,
+  extractFragment,
+  markOccurrences,
+  Occurrence,
 } from '../comun/texto/concordancia';
-import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { FuenteCorpus, Idioma } from './consulta.enums';
+import { tokenizeDamana } from '../comun/texto/tokenizador';
+import { CorpusSource, Language } from './consulta.enums';
 import { CorpusRepository } from './corpus.repository';
-import { ConcordanciaDto, RespuestaBusquedaDto } from './dto/consulta.dto';
+import { ConcordanceDto, SearchResponseDto } from './dto/consulta.dto';
 import { RetrievalService } from './retrieval.service';
 
-export interface ParametrosBusqueda {
+export interface SearchParams {
   q: string;
-  idioma: Idioma;
-  fuente?: FuenteCorpus;
+  idioma: Language;
+  fuente?: CorpusSource;
   limite: number;
 }
 
 /** In similarity mode more candidates than the limit are fetched so that
  *  the source filter does not leave the response short. */
-const CANDIDATOS_SIMILITUD = 200;
+const SIMILARITY_CANDIDATES = 200;
 
 @Injectable()
-export class BusquedaService {
+export class SearchService {
   constructor(
     private readonly repo: CorpusRepository,
     private readonly retrieval: RetrievalService,
@@ -34,41 +34,41 @@ export class BusquedaService {
    * Several words → TF-IDF similarity search over sentences,
    * phrases and conjugations, with the query words highlighted.
    */
-  buscar(params: ParametrosBusqueda): RespuestaBusquedaDto {
-    const tokens = tokenizarDamana(params.q);
+  search(params: SearchParams): SearchResponseDto {
+    const tokens = tokenizeDamana(params.q);
     return tokens.length >= 2
-      ? this.buscarPorSimilitud(params, tokens.map((t) => t.normalizada))
-      : this.buscarConcordancia(params);
+      ? this.searchBySimilarity(params, tokens.map((t) => t.normalizada))
+      : this.searchConcordance(params);
   }
 
-  private buscarConcordancia(params: ParametrosBusqueda): RespuestaBusquedaDto {
-    const fuentes = params.fuente
+  private searchConcordance(params: SearchParams): SearchResponseDto {
+    const sources = params.fuente
       ? [params.fuente]
       : [
-          FuenteCorpus.oraciones,
-          FuenteCorpus.frases,
-          FuenteCorpus.vocabulario,
-          FuenteCorpus.conjugaciones,
+          CorpusSource.oraciones,
+          CorpusSource.frases,
+          CorpusSource.vocabulario,
+          CorpusSource.conjugaciones,
         ];
 
     let total = 0;
-    const resultados: ConcordanciaDto[] = [];
+    const results: ConcordanceDto[] = [];
 
-    for (const fuente of fuentes) {
-      for (const fila of this.repo.textosDe(fuente)) {
-        const texto =
-          params.idioma === Idioma.damana ? fila.textoDamana : fila.textoEspanol;
-        const paralelo =
-          params.idioma === Idioma.damana ? fila.textoEspanol : fila.textoDamana;
-        for (const ocurrencia of buscarOcurrencias(texto, params.q)) {
+    for (const source of sources) {
+      for (const row of this.repo.textsOf(source)) {
+        const text =
+          params.idioma === Language.damana ? row.textoDamana : row.textoEspanol;
+        const parallel =
+          params.idioma === Language.damana ? row.textoEspanol : row.textoDamana;
+        for (const occurrence of findOccurrences(text, params.q)) {
           total++;
-          if (resultados.length < params.limite) {
-            resultados.push({
-              fuente,
-              id: fila.id,
-              referencia: fila.referencia,
-              fragmento: extraerFragmento(texto, ocurrencia),
-              textoParalelo: paralelo,
+          if (results.length < params.limite) {
+            results.push({
+              fuente: source,
+              id: row.id,
+              referencia: row.referencia,
+              fragmento: extractFragment(text, occurrence),
+              textoParalelo: parallel,
               puntaje: null,
             });
           }
@@ -81,27 +81,27 @@ export class BusquedaService {
       idioma: params.idioma,
       modo: 'concordancia',
       total,
-      resultados,
+      resultados: results,
     };
   }
 
-  private buscarPorSimilitud(
-    params: ParametrosBusqueda,
-    tokensConsulta: string[],
-  ): RespuestaBusquedaDto {
-    const resultados = this.retrieval
-      .similares(params.q, params.idioma, CANDIDATOS_SIMILITUD)
+  private searchBySimilarity(
+    params: SearchParams,
+    queryTokens: string[],
+  ): SearchResponseDto {
+    const results = this.retrieval
+      .similar(params.q, params.idioma, SIMILARITY_CANDIDATES)
       .filter((f) => !params.fuente || f.fuente === params.fuente)
       .slice(0, params.limite)
       .map((f) => {
-        const texto = params.idioma === Idioma.damana ? f.damana : f.espanol;
-        const paralelo = params.idioma === Idioma.damana ? f.espanol : f.damana;
+        const text = params.idioma === Language.damana ? f.damana : f.espanol;
+        const parallel = params.idioma === Language.damana ? f.espanol : f.damana;
         return {
           fuente: f.fuente,
           id: f.id,
           referencia: f.referencia,
-          fragmento: marcarOcurrencias(texto, this.ocurrenciasDe(texto, tokensConsulta)),
-          textoParalelo: paralelo,
+          fragmento: markOccurrences(text, this.occurrencesOf(text, queryTokens)),
+          textoParalelo: parallel,
           puntaje: f.puntaje,
         };
       });
@@ -110,14 +110,14 @@ export class BusquedaService {
       consulta: params.q,
       idioma: params.idioma,
       modo: 'similitud',
-      total: resultados.length,
-      resultados,
+      total: results.length,
+      resultados: results,
     };
   }
 
   /** Occurrences of each query word within the text. */
-  private ocurrenciasDe(texto: string, tokensConsulta: string[]): Ocurrencia[] {
-    const unicas = [...new Set(tokensConsulta)];
-    return unicas.flatMap((token) => buscarOcurrencias(texto, token));
+  private occurrencesOf(text: string, queryTokens: string[]): Occurrence[] {
+    const uniqueWords = [...new Set(queryTokens)];
+    return uniqueWords.flatMap((token) => findOccurrences(text, token));
   }
 }

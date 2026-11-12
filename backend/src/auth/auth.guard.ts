@@ -8,17 +8,17 @@ import {
 import { Reflector } from '@nestjs/core';
 import { AuthService } from './auth.service';
 import { CONFIG_AUTH, ConfigAuth } from './auth.config';
-import { CLAVE_PUBLICO } from './publico.decorator';
+import { PUBLIC_KEY } from './publico.decorator';
 
 /** Request with the user already resolved by the guard. */
-export interface PeticionConSesion {
+export interface RequestWithSession {
   headers: Record<string, string | string[] | undefined>;
   ip?: string;
   usuario?: string;
 }
 
 /**
- * Global guard: all of /api requires a session except what is marked with @Publico().
+ * Global guard: all of /api requires a session except what is marked with @Public().
  *
  * The frontend's static files do NOT go through here (they are served by
  * ServeStatic, which is not a Nest route), and that is how it must be: the SPA has
@@ -33,28 +33,28 @@ export class AuthGuard implements CanActivate {
     private readonly auth: AuthService,
   ) {}
 
-  canActivate(contexto: ExecutionContext): boolean {
+  canActivate(context: ExecutionContext): boolean {
     if (!this.config.activa) return true;
 
-    const publico = this.reflector.getAllAndOverride<boolean>(CLAVE_PUBLICO, [
-      contexto.getHandler(),
-      contexto.getClass(),
+    const isPublic = this.reflector.getAllAndOverride<boolean>(PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
     ]);
-    if (publico) return true;
+    if (isPublic) return true;
 
-    const peticion = contexto.switchToHttp().getRequest<PeticionConSesion>();
-    const cabecera = peticion.headers?.authorization;
-    const valor = Array.isArray(cabecera) ? cabecera[0] : cabecera;
-    const [tipo, token] = (valor ?? '').split(' ');
-    if (tipo !== 'Bearer' || !token) {
+    const request = context.switchToHttp().getRequest<RequestWithSession>();
+    const header = request.headers?.authorization;
+    const value = Array.isArray(header) ? header[0] : header;
+    const [kind, token] = (value ?? '').split(' ');
+    if (kind !== 'Bearer' || !token) {
       throw new UnauthorizedException('Falta la sesión');
     }
 
-    const usuario = this.auth.usuarioDelToken(token);
-    if (!usuario) {
+    const user = this.auth.userFromToken(token);
+    if (!user) {
       throw new UnauthorizedException('Sesión inválida o caducada');
     }
-    peticion.usuario = usuario;
+    request.usuario = user;
     return true;
   }
 }

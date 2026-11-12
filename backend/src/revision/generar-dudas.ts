@@ -2,51 +2,51 @@ import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ConsultaModule } from '../consulta/consulta.module';
+import { QueryModule } from '../consulta/consulta.module';
 import { CorpusRepository } from '../consulta/corpus.repository';
 import { DatabaseModule } from '../database/database.module';
-import { resolverDirDatos, rutaDbPorDefecto } from '../importador/rutas-datos';
-import { DudasService } from './dudas.service';
-import { construirLibroDudas } from './libro-dudas';
-import { ARCHIVO_PARADIGMAS, construirLibroParadigmas, PARADIGMAS } from './paradigmas';
+import { resolveDataDir, defaultDbPath } from '../importador/rutas-datos';
+import { DoubtsService } from './dudas.service';
+import { buildDoubtsWorkbook } from './libro-dudas';
+import { PARADIGMS_FILE, buildParadigmsWorkbook, PARADIGMS } from './paradigmas';
 
 // Own CLI module: read-only over the already imported corpus.
 @Module({
-  imports: [DatabaseModule.forRoot({ rutaDb: rutaDbPorDefecto() }), ConsultaModule],
+  imports: [DatabaseModule.forRoot({ rutaDb: defaultDbPath() }), QueryModule],
 })
-class DudasCliModule {}
+class DoubtsCliModule {}
 
-export function archivoDudas(fecha: Date): string {
-  return `dudas_para_hablantes_${fecha.toISOString().slice(0, 10)}.xlsx`;
+export function doubtsFile(date: Date): string {
+  return `dudas_para_hablantes_${date.toISOString().slice(0, 10)}.xlsx`;
 }
 
 async function main(): Promise<void> {
-  const app = await NestFactory.createApplicationContext(DudasCliModule, {
+  const app = await NestFactory.createApplicationContext(DoubtsCliModule, {
     logger: ['error', 'warn'],
   });
-  const dirDatos = resolverDirDatos();
-  const hoy = new Date();
+  const dataDir = resolveDataDir();
+  const today = new Date();
 
-  const informe = new DudasService(app.get(CorpusRepository)).generar();
-  const rutaDudas = path.join(dirDatos, archivoDudas(hoy));
-  await construirLibroDudas(informe, hoy).xlsx.writeFile(rutaDudas);
+  const report = new DoubtsService(app.get(CorpusRepository)).generate();
+  const doubtsPath = path.join(dataDir, doubtsFile(today));
+  await buildDoubtsWorkbook(report, today).xlsx.writeFile(doubtsPath);
 
   console.log('\n=== Dudas para aclarar con hablantes ===');
-  console.log(`1 escritura (misma palabra, varias grafías):   ${informe.escritura.length} grupos`);
-  console.log(`2 mismo significado (español → varias damana): ${informe.sinonimos.length} grupos`);
-  console.log(`3 varios significados (damana → varios):       ${informe.polisemia.length} grupos`);
-  console.log(`     de ellos, solo cambia la tilde:           ${informe.polisemia.filter((g) => g.soloTilde).length}`);
-  console.log(`4 entradas por aclarar:                        ${informe.dudosas.length}`);
-  console.log(`5 terminaciones frecuentes:                    ${informe.terminaciones.length}`);
-  console.log(`\nDocumento: ${rutaDudas}`);
+  console.log(`1 escritura (misma palabra, varias grafías):   ${report.escritura.length} grupos`);
+  console.log(`2 mismo significado (español → varias damana): ${report.sinonimos.length} grupos`);
+  console.log(`3 varios significados (damana → varios):       ${report.polisemia.length} grupos`);
+  console.log(`     de ellos, solo cambia la tilde:           ${report.polisemia.filter((g) => g.soloTilde).length}`);
+  console.log(`4 entradas por aclarar:                        ${report.dudosas.length}`);
+  console.log(`5 terminaciones frecuentes:                    ${report.terminaciones.length}`);
+  console.log(`\nDocumento: ${doubtsPath}`);
 
   // The grammar batch is not regenerated if it already exists: it may be filled in.
-  const rutaParadigmas = path.join(dirDatos, ARCHIVO_PARADIGMAS);
-  if (fs.existsSync(rutaParadigmas)) {
-    console.log(`Lote de gramática: ya existe y no se toca (${rutaParadigmas})`);
+  const paradigmsPath = path.join(dataDir, PARADIGMS_FILE);
+  if (fs.existsSync(paradigmsPath)) {
+    console.log(`Lote de gramática: ya existe y no se toca (${paradigmsPath})`);
   } else {
-    await construirLibroParadigmas().xlsx.writeFile(rutaParadigmas);
-    console.log(`Lote de gramática: ${PARADIGMAS.length} oraciones en ${rutaParadigmas}`);
+    await buildParadigmsWorkbook().xlsx.writeFile(paradigmsPath);
+    console.log(`Lote de gramática: ${PARADIGMS.length} oraciones en ${paradigmsPath}`);
   }
 
   await app.close();

@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { ConsultaModule } from '../consulta/consulta.module';
-import { TraduccionesRepository } from '../traduccion/traducciones.repository';
-import { NecesitoService } from './necesito.service';
+import { QueryModule } from '../consulta/consulta.module';
+import { TranslationsRepository } from '../traduccion/traducciones.repository';
+import { MissingWordsService } from './necesito.service';
 
 @Module({
-  imports: [ConsultaModule],
-  providers: [NecesitoService, TraduccionesRepository],
-  exports: [NecesitoService],
+  imports: [QueryModule],
+  providers: [MissingWordsService, TranslationsRepository],
+  exports: [MissingWordsService],
 })
-export class NecesitoModule {}
+export class MissingWordsModule {}

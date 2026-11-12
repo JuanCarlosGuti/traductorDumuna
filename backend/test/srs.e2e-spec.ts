@@ -4,11 +4,11 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import request from 'supertest';
-import { configurarApp } from '../src/configurar-app';
-import { ConsultaModule } from '../src/consulta/consulta.module';
+import { configureApp } from '../src/configurar-app';
+import { QueryModule } from '../src/consulta/consulta.module';
 import { DatabaseModule } from '../src/database/database.module';
-import { ImportadorModule } from '../src/importador/importador.module';
-import { ImportadorService } from '../src/importador/importador.service';
+import { ImporterModule } from '../src/importador/importador.module';
+import { ImporterService } from '../src/importador/importador.service';
 import { SrsModule } from '../src/srs/srs.module';
 
 const BOM = String.fromCharCode(0xfeff);
@@ -45,15 +45,15 @@ describe('SRS (e2e, corpus v3)', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         DatabaseModule.forRoot({ rutaDb: ':memory:' }),
-        ImportadorModule,
-        ConsultaModule,
+        ImporterModule,
+        QueryModule,
         SrsModule,
       ],
     }).compile();
     app = moduleRef.createNestApplication();
-    configurarApp(app);
+    configureApp(app);
     await app.init();
-    await app.get(ImportadorService).importarTodo(dirTmp);
+    await app.get(ImporterService).importAll(dirTmp);
   });
 
   afterAll(async () => {

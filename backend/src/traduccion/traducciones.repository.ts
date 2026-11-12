@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Database } from 'better-sqlite3';
-import { FuenteCorpus } from '../consulta/consulta.enums';
-import { CONEXION_DB } from '../database/database.constants';
-import { DireccionTraduccion, ParGlosaDto } from './dto/traduccion.dto';
+import { CorpusSource } from '../consulta/consulta.enums';
+import { DB_CONNECTION } from '../database/database.constants';
+import { TranslationDirection, GlossPairDto } from './dto/traduccion.dto';
 
 /**
  * Usage reported by the provider for one call. With Anthropic all
@@ -10,7 +10,7 @@ import { DireccionTraduccion, ParGlosaDto } from './dto/traduccion.dto';
  * prompt_tokens/completion_tokens and rarely the cache ones. null = not
  * reported.
  */
-export interface UsoModelo {
+export interface ModelUsage {
   tokensEntrada: number | null;
   tokensSalida: number | null;
   /** Tokens served from the prompt cache (billed at 10%). */
@@ -19,16 +19,16 @@ export interface UsoModelo {
   tokensCacheCreados: number | null;
 }
 
-export interface RegistroTraduccion {
+export interface TranslationLog {
   texto: string;
   traduccion: string;
-  direccion: DireccionTraduccion;
+  direccion: TranslationDirection;
   /** Similarity of the best retrieved example (0 if there was none). */
   puntajeTop: number;
   /** Mean of the similarities of the K examples: discriminates better than the top. */
   puntajeMedio: number;
   /** Which source the best match came from; null if there were no examples. */
-  fuenteTop: FuenteCorpus | null;
+  fuenteTop: CorpusSource | null;
   ejemplosRecuperados: number;
   /** How many examples came from sentences or phrases (the language in use). */
   ejemplosEnContexto: number;
@@ -38,21 +38,21 @@ export interface RegistroTraduccion {
   modelo: string;
   confianza?: number;
   reglasAplicadas?: string[];
-  glosa?: ParGlosaDto[];
+  glosa?: GlossPairDto[];
   /** null if the provider did not report usage. */
-  uso?: UsoModelo | null;
+  uso?: ModelUsage | null;
   /** How long the model call took (not counting retrieval). */
   duracionMs?: number | null;
 }
 
 /** Row as read from the table, for later analysis. */
-export interface TraduccionRegistrada {
+export interface LoggedTranslation {
   creadoEn: string;
   texto: string;
   traduccion: string;
-  direccion: DireccionTraduccion;
+  direccion: TranslationDirection;
   puntajeMedio: number;
-  fuenteTop: FuenteCorpus | null;
+  fuenteTop: CorpusSource | null;
   ejemplosRecuperados: number;
   /** null in rows logged before v5 (it was not measured). */
   ejemplosEnContexto: number | null;
@@ -60,11 +60,11 @@ export interface TraduccionRegistrada {
 }
 
 @Injectable()
-export class TraduccionesRepository {
-  constructor(@Inject(CONEXION_DB) private readonly db: Database) {}
+export class TranslationsRepository {
+  constructor(@Inject(DB_CONNECTION) private readonly db: Database) {}
 
   /** All logged translations, from oldest to most recent. */
-  listar(): TraduccionRegistrada[] {
+  listAll(): LoggedTranslation[] {
     return (
       this.db
         .prepare(
@@ -92,7 +92,7 @@ export class TraduccionesRepository {
    * serialized as JSON (SQLite has no array type and the volume is
    * minimal: one row per translation).
    */
-  registrar(registro: RegistroTraduccion, ahora: Date = new Date()): void {
+  record(logEntry: TranslationLog, now: Date = new Date()): void {
     this.db
       .prepare(
         `INSERT INTO traducciones
@@ -103,26 +103,26 @@ export class TraduccionesRepository {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
-        ahora.toISOString(),
-        registro.texto,
-        registro.traduccion,
-        registro.direccion,
-        registro.puntajeTop,
-        registro.puntajeMedio,
-        registro.fuenteTop,
-        registro.ejemplosRecuperados,
-        registro.ejemplosEnContexto,
-        JSON.stringify(registro.palabrasDudosas),
-        JSON.stringify(registro.vocabularioUsado),
-        registro.modelo,
-        registro.confianza ?? null,
-        registro.reglasAplicadas ? JSON.stringify(registro.reglasAplicadas) : null,
-        registro.glosa ? JSON.stringify(registro.glosa) : null,
-        registro.uso?.tokensEntrada ?? null,
-        registro.uso?.tokensSalida ?? null,
-        registro.uso?.tokensCacheLeidos ?? null,
-        registro.uso?.tokensCacheCreados ?? null,
-        registro.duracionMs ?? null,
+        now.toISOString(),
+        logEntry.texto,
+        logEntry.traduccion,
+        logEntry.direccion,
+        logEntry.puntajeTop,
+        logEntry.puntajeMedio,
+        logEntry.fuenteTop,
+        logEntry.ejemplosRecuperados,
+        logEntry.ejemplosEnContexto,
+        JSON.stringify(logEntry.palabrasDudosas),
+        JSON.stringify(logEntry.vocabularioUsado),
+        logEntry.modelo,
+        logEntry.confianza ?? null,
+        logEntry.reglasAplicadas ? JSON.stringify(logEntry.reglasAplicadas) : null,
+        logEntry.glosa ? JSON.stringify(logEntry.glosa) : null,
+        logEntry.uso?.tokensEntrada ?? null,
+        logEntry.uso?.tokensSalida ?? null,
+        logEntry.uso?.tokensCacheLeidos ?? null,
+        logEntry.uso?.tokensCacheCreados ?? null,
+        logEntry.duracionMs ?? null,
       );
   }
 }

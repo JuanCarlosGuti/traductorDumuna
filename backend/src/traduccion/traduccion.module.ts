@@ -1,23 +1,23 @@
 import { Module } from '@nestjs/common';
-import { ConsultaModule } from '../consulta/consulta.module';
-import { PendientesModule } from '../pendientes/pendientes.module';
-import { clienteAnthropicProvider } from './anthropic.provider';
-import { configTraductorProvider } from './config-traductor.provider';
-import { TraduccionController } from './traduccion.controller';
-import { TraduccionService } from './traduccion.service';
-import { TraduccionesRepository } from './traducciones.repository';
-import { ValidadasRepository } from './validadas.repository';
+import { QueryModule } from '../consulta/consulta.module';
+import { PendingModule } from '../pendientes/pendientes.module';
+import { anthropicClientProvider } from './anthropic.provider';
+import { translatorConfigProvider } from './config-traductor.provider';
+import { TranslationController } from './traduccion.controller';
+import { TranslationService } from './traduccion.service';
+import { TranslationsRepository } from './traducciones.repository';
+import { ValidatedRepository } from './validadas.repository';
 
 @Module({
-  imports: [ConsultaModule, PendientesModule],
-  controllers: [TraduccionController],
+  imports: [QueryModule, PendingModule],
+  controllers: [TranslationController],
   providers: [
-    clienteAnthropicProvider,
-    configTraductorProvider,
-    TraduccionService,
-    TraduccionesRepository,
-    ValidadasRepository,
+    anthropicClientProvider,
+    translatorConfigProvider,
+    TranslationService,
+    TranslationsRepository,
+    ValidatedRepository,
   ],
-  exports: [TraduccionService],
+  exports: [TranslationService],
 })
-export class TraduccionModule {}
+export class TranslationModule {}

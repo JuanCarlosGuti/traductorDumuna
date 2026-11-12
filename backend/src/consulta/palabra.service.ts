@@ -1,62 +1,62 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { normalizar } from '../comun/texto/normalizador';
-import { esStopwordEspanol } from '../comun/texto/stopwords-es';
-import { tokenizarDamana } from '../comun/texto/tokenizador';
-import { BusquedaService } from './busqueda.service';
-import { Idioma } from './consulta.enums';
+import { normalize } from '../comun/texto/normalizador';
+import { isSpanishStopword } from '../comun/texto/stopwords-es';
+import { tokenizeDamana } from '../comun/texto/tokenizador';
+import { SearchService } from './busqueda.service';
+import { Language } from './consulta.enums';
 import { CorpusRepository } from './corpus.repository';
 import {
-  EntradaVocabularioFichaDto,
-  FichaPalabraDto,
-  FormaVerbalDto,
-  TraduccionCandidataDto,
+  WordCardVocabularyEntryDto,
+  WordCardDto,
+  VerbFormDto,
+  CandidateTranslationDto,
 } from './dto/consulta.dto';
 
-const MAX_CONCORDANCIAS = 10;
-const MAX_CANDIDATAS = 10;
+const MAX_CONCORDANCES = 10;
+const MAX_CANDIDATES = 10;
 
 @Injectable()
-export class PalabraService {
+export class WordService {
   constructor(
     private readonly repo: CorpusRepository,
-    private readonly busqueda: BusquedaService,
+    private readonly searchService: SearchService,
   ) {}
 
-  ficha(token: string): FichaPalabraDto {
-    const palabra = normalizar(token.trim());
-    const frecuenciaPorFuente = this.repo.frecuenciaPorFuente(palabra);
-    const frecuenciaTotal = frecuenciaPorFuente.reduce(
-      (suma, f) => suma + f.frecuencia,
+  wordCard(token: string): WordCardDto {
+    const word = normalize(token.trim());
+    const frequencyBySource = this.repo.frequencyBySource(word);
+    const totalFrequency = frequencyBySource.reduce(
+      (sum, f) => sum + f.frecuencia,
       0,
     );
-    if (frecuenciaTotal === 0) {
+    if (totalFrequency === 0) {
       throw new NotFoundException(
         `La palabra "${token}" no aparece en el corpus damana`,
       );
     }
 
-    const concordancias = this.busqueda.buscar({
-      q: palabra,
-      idioma: Idioma.damana,
-      limite: MAX_CONCORDANCIAS,
+    const concordances = this.searchService.search({
+      q: word,
+      idioma: Language.damana,
+      limite: MAX_CONCORDANCES,
     }).resultados;
 
     return {
-      palabra,
-      entradasVocabulario: this.entradasVocabulario(palabra),
-      formasVerbales: this.formasVerbales(palabra),
-      frecuenciaTotal,
-      frecuenciaPorFuente,
-      concordancias,
-      traduccionesCandidatas: this.traduccionesCandidatas(palabra),
+      palabra: word,
+      entradasVocabulario: this.vocabularyEntries(word),
+      formasVerbales: this.verbForms(word),
+      frecuenciaTotal: totalFrequency,
+      frecuenciaPorFuente: frequencyBySource,
+      concordancias: concordances,
+      traduccionesCandidatas: this.candidateTranslations(word),
     };
   }
 
   /** Direct translations: vocabulary entries whose Damana side IS the word. */
-  private entradasVocabulario(palabraNormalizada: string): EntradaVocabularioFichaDto[] {
+  private vocabularyEntries(normalizedWord: string): WordCardVocabularyEntryDto[] {
     return this.repo
-      .listarVocabulario()
-      .filter((e) => normalizar(e.damana) === palabraNormalizada)
+      .listVocabulary()
+      .filter((e) => normalize(e.damana) === normalizedWord)
       .map((e) => ({
         espanol: e.espanol,
         categoria: e.categoria,
@@ -67,9 +67,9 @@ export class PalabraService {
 
   /** Conjugations whose Damana form contains the word (exact or inside
    *  a multi-word form), with their gloss and lemma. */
-  private formasVerbales(palabraNormalizada: string): FormaVerbalDto[] {
+  private verbForms(normalizedWord: string): VerbFormDto[] {
     return this.repo
-      .conjugacionesConPalabra(palabraNormalizada)
+      .conjugationsWithWord(normalizedWord)
       .map((c) => ({ damana: c.damana, espanol: c.espanol, lema: c.lema }));
   }
 
@@ -78,24 +78,24 @@ export class PalabraService {
    * parallel texts where the token appears, excluding stopwords and
    * single-letter words.
    */
-  private traduccionesCandidatas(
-    palabraNormalizada: string,
-  ): TraduccionCandidataDto[] {
-    const conteo = new Map<string, number>();
-    for (const origen of this.repo.origenesDe(palabraNormalizada)) {
-      const espanol = this.repo.textoEspanolDe(origen.fuente, origen.id);
-      for (const token of tokenizarDamana(espanol)) {
+  private candidateTranslations(
+    normalizedWord: string,
+  ): CandidateTranslationDto[] {
+    const tally = new Map<string, number>();
+    for (const origin of this.repo.originsOf(normalizedWord)) {
+      const spanish = this.repo.spanishTextOf(origin.fuente, origin.id);
+      for (const token of tokenizeDamana(spanish)) {
         if (token.normalizada.length < 2) continue;
-        if (esStopwordEspanol(token.normalizada)) continue;
-        conteo.set(token.normalizada, (conteo.get(token.normalizada) ?? 0) + 1);
+        if (isSpanishStopword(token.normalizada)) continue;
+        tally.set(token.normalizada, (tally.get(token.normalizada) ?? 0) + 1);
       }
     }
-    return [...conteo.entries()]
-      .map(([palabra, coocurrencias]) => ({ palabra, coocurrencias }))
+    return [...tally.entries()]
+      .map(([word, coocurrencias]) => ({ palabra: word, coocurrencias }))
       .sort(
         (a, b) =>
           b.coocurrencias - a.coocurrencias || a.palabra.localeCompare(b.palabra),
       )
-      .slice(0, MAX_CANDIDATAS);
+      .slice(0, MAX_CANDIDATES);
   }
 }

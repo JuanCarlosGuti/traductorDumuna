@@ -7,12 +7,12 @@ import * as path from 'path';
  * The path never goes through a shell, so the space in the project
  * name is not a problem.
  */
-export function resolverDirDatos(): string {
+export function resolveDataDir(): string {
   return (
     process.env.CORPUS_DATOS_DIR ?? path.resolve(process.cwd(), '..', 'datos')
   );
 }
 
-export function rutaDbPorDefecto(): string {
-  return path.join(resolverDirDatos(), 'corpus.db');
+export function defaultDbPath(): string {
+  return path.join(resolveDataDir(), 'corpus.db');
 }

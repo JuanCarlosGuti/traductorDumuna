@@ -2,20 +2,20 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as ExcelJS from 'exceljs';
 import request from 'supertest';
-import { configurarApp } from '../src/configurar-app';
+import { configureApp } from '../src/configurar-app';
 import { DatabaseModule } from '../src/database/database.module';
-import { PendientesModule } from '../src/pendientes/pendientes.module';
-import { PendientesRepository } from '../src/pendientes/pendientes.repository';
+import { PendingModule } from '../src/pendientes/pendientes.module';
+import { PendingRepository } from '../src/pendientes/pendientes.repository';
 
 describe('Pending items (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [DatabaseModule.forRoot({ rutaDb: ':memory:' }), PendientesModule],
+      imports: [DatabaseModule.forRoot({ rutaDb: ':memory:' }), PendingModule],
     }).compile();
     app = moduleRef.createNestApplication();
-    configurarApp(app);
+    configureApp(app);
     await app.init();
   });
 
@@ -27,10 +27,10 @@ describe('Pending items (e2e)', () => {
   });
 
   it('lists the recorded pending items, most requested first', async () => {
-    const repo = app.get(PendientesRepository);
-    repo.registrarPedida('vecina', 'espanol', 'mi vecina cocina');
-    repo.registrarPedida('vecina', 'espanol', null);
-    repo.registrarPedida('ñame', 'espanol', 'quiero ñame');
+    const repo = app.get(PendingRepository);
+    repo.recordRequested('vecina', 'espanol', 'mi vecina cocina');
+    repo.recordRequested('vecina', 'espanol', null);
+    repo.recordRequested('ñame', 'espanol', 'quiero ñame');
 
     const res = await request(app.getHttpServer()).get('/api/pendientes').expect(200);
     expect(res.body.map((p: any) => [p.palabra, p.vecesPedida, p.estado])).toEqual([
@@ -43,10 +43,10 @@ describe('Pending items (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/pendientes/exportar')
       .buffer(true)
-      .parse((respuesta, callback) => {
-        const trozos: Buffer[] = [];
-        respuesta.on('data', (t: Buffer) => trozos.push(t));
-        respuesta.on('end', () => callback(null, Buffer.concat(trozos)));
+      .parse((response, callback) => {
+        const chunks: Buffer[] = [];
+        response.on('data', (t: Buffer) => chunks.push(t));
+        response.on('end', () => callback(null, Buffer.concat(chunks)));
       })
       .expect(201);
 
@@ -54,13 +54,13 @@ describe('Pending items (e2e)', () => {
     expect(res.headers['content-disposition']).toMatch(/formato_elicitacion_pendientes_\d{4}-\d{2}-\d{2}\.xlsx/);
     expect(res.headers['x-filas-exportadas']).toBe('2');
 
-    const libro = new ExcelJS.Workbook();
-    await libro.xlsx.load(res.body as ExcelJS.Buffer);
-    const hoja = libro.getWorksheet('elicitacion')!;
-    expect(hoja.getRow(2).getCell(3).value).toBe('vecina');
-    expect(hoja.getRow(3).getCell(3).value).toBe('ñame');
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(res.body as ExcelJS.Buffer);
+    const sheet = workbook.getWorksheet('elicitacion')!;
+    expect(sheet.getRow(2).getCell(3).value).toBe('vecina');
+    expect(sheet.getRow(3).getCell(3).value).toBe('ñame');
 
-    const despues = await request(app.getHttpServer()).get('/api/pendientes').expect(200);
-    expect(despues.body.every((p: any) => p.estado === 'exportada')).toBe(true);
+    const after = await request(app.getHttpServer()).get('/api/pendientes').expect(200);
+    expect(after.body.every((p: any) => p.estado === 'exportada')).toBe(true);
   });
 });
