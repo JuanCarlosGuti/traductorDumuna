@@ -7,11 +7,11 @@ import request from 'supertest';
 import { AuthModule } from '../src/auth/auth.module';
 import { ConfigAuth } from '../src/auth/auth.config';
 import { MAX_ATTEMPTS } from '../src/auth/auth.service';
-import { configureApp } from '../src/configurar-app';
-import { QueryModule } from '../src/consulta/consulta.module';
+import { configureApp } from '../src/configure-app';
+import { QueryModule } from '../src/query/query.module';
 import { DatabaseModule } from '../src/database/database.module';
-import { ImporterModule } from '../src/importador/importador.module';
-import { ImporterService } from '../src/importador/importador.service';
+import { ImporterModule } from '../src/importer/importer.module';
+import { ImporterService } from '../src/importer/importer.service';
 
 const BOM = String.fromCharCode(0xfeff);
 const USER = 'juan';

@@ -42,7 +42,7 @@ Status legend: 🔲 not started · 🔧 in progress · ✅ done
 | # | Item | Est. | Status |
 | --- | --- | --- | --- |
 | 5.1 | Grow the sample corpus into a self-contained demo data set (enough entries to exercise lessons and flashcards without the private corpus) | 3 h | 🔲 |
-| 5.2 | Translate identifiers, comments and docs to English module by module (start with `backend/src/traduccion`, `frontend/src/app/vistas`) | 5 h | 🔲 |
+| 5.2 | Finish the English migration: backend class/function/file names, comments and test titles are done; remaining are frontend identifiers (`frontend/src/app/vistas`), API routes and JSON field names (backend and frontend together) | 5 h | 🔲 |
 | 5.3 | CI on GitHub Actions for PRs (lint, unit, e2e) separate from the deploy workflow | 2 h | 🔲 |
 | 5.4 | Persistent storage for runtime data (SRS progress, validated translations) instead of baking SQLite into the image | 2 h | 🔲 |
 

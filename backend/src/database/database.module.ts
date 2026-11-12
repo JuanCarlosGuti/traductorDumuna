@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import Database from 'better-sqlite3';
 import { DB_CONNECTION, DatabaseOptions } from './database.constants';
-import { runMigrations } from './migraciones';
+import { runMigrations } from './migrations';
 
 @Global()
 @Module({})

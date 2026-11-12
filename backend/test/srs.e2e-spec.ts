@@ -4,11 +4,11 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import request from 'supertest';
-import { configureApp } from '../src/configurar-app';
-import { QueryModule } from '../src/consulta/consulta.module';
+import { configureApp } from '../src/configure-app';
+import { QueryModule } from '../src/query/query.module';
 import { DatabaseModule } from '../src/database/database.module';
-import { ImporterModule } from '../src/importador/importador.module';
-import { ImporterService } from '../src/importador/importador.service';
+import { ImporterModule } from '../src/importer/importer.module';
+import { ImporterService } from '../src/importer/importer.service';
 import { SrsModule } from '../src/srs/srs.module';
 
 const BOM = String.fromCharCode(0xfeff);

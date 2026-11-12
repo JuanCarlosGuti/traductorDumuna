@@ -38,7 +38,7 @@ services:
       # ones that build and import. The code detects the deployment via the
       # RENDER variable, which the platform sets by itself.
       # Main engine: Claude. It takes priority over Groq
-      # (backend/src/traduccion/config-traductor.provider.ts).
+      # (backend/src/translation/translator-config.provider.ts).
       # Private repo with the real corpus ("owner/repo") and a read-only
       # token for it. Optional: without them the sample corpus is used.
       - key: CORPUS_DATOS_REPO

@@ -1,8 +1,8 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Database } from 'better-sqlite3';
-import { FrequenciesService } from '../consulta/frecuencias.service';
-import { WordService } from '../consulta/palabra.service';
-import { CorpusRepository } from '../consulta/corpus.repository';
+import { FrequenciesService } from '../query/frequencies.service';
+import { WordService } from '../query/word.service';
+import { CorpusRepository } from '../query/corpus.repository';
 import { DB_CONNECTION } from '../database/database.constants';
 import {
   SrsStatusDto,

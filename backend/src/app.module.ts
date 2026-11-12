@@ -3,14 +3,14 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import * as fs from 'fs';
 import * as path from 'path';
 import { AuthModule } from './auth/auth.module';
-import { QueryModule } from './consulta/consulta.module';
+import { QueryModule } from './query/query.module';
 import { DatabaseModule } from './database/database.module';
-import { ImporterModule } from './importador/importador.module';
-import { defaultDbPath } from './importador/rutas-datos';
-import { PendingModule } from './pendientes/pendientes.module';
-import { HealthModule } from './salud/salud.module';
+import { ImporterModule } from './importer/importer.module';
+import { defaultDbPath } from './importer/data-paths';
+import { PendingModule } from './pending/pending.module';
+import { HealthModule } from './health/health.module';
 import { SrsModule } from './srs/srs.module';
-import { TranslationModule } from './traduccion/traduccion.module';
+import { TranslationModule } from './translation/translation.module';
 
 // backend/public: where the frontend leaves its build (npm run build -w frontend).
 // In dev __dirname is backend/src and compiled it is backend/dist; in both

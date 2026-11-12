@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { QueryModule } from '../consulta/consulta.module';
+import { QueryModule } from '../query/query.module';
 import { SrsController } from './srs.controller';
 import { SrsService } from './srs.service';
 

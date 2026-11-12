@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigAuth } from './auth.config';
 import { AuthGuard, RequestWithSession } from './auth.guard';
 import { AuthService } from './auth.service';
-import { PUBLIC_KEY } from './publico.decorator';
+import { PUBLIC_KEY } from './public.decorator';
 
 const config: ConfigAuth = {
   activa: true,

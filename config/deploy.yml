@@ -36,7 +36,7 @@ proxy:
   forward_headers: false
   app_port: 3000
   healthcheck:
-    # Public and lightweight (backend/src/salud/salud.controller.ts). It answers 503
+    # Public and lightweight (backend/src/health/health.controller.ts). It answers 503
     # if the image came out without a corpus, and then the deployment fails instead
     # of replacing the previous container.
     path: /api/salud

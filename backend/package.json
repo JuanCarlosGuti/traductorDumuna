@@ -8,15 +8,15 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
-    "importar": "ts-node src/importador/importar.ts",
-    "necesito": "ts-node src/necesito/necesito.ts",
-    "necesito:aplicar": "ts-node src/necesito/aplicar.ts",
+    "importar": "ts-node src/importer/import-corpus.ts",
+    "necesito": "ts-node src/missing-words/missing-words.ts",
+    "necesito:aplicar": "ts-node src/missing-words/apply.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "evaluar": "ts-node src/evaluacion/evaluar.ts",
-    "dudas": "ts-node src/revision/generar-dudas.ts",
-    "pruebas:desde-validadas": "ts-node src/evaluacion/pruebas-desde-validadas.ts"
+    "evaluar": "ts-node src/evaluation/evaluate.ts",
+    "dudas": "ts-node src/review/generate-doubts.ts",
+    "pruebas:desde-validadas": "ts-node src/evaluation/tests-from-validated.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

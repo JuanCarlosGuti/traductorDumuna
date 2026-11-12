@@ -118,13 +118,13 @@ experiencia en TypeScript/Angular y backend.
 ## Traductor de propósito general (oct 2026) — cómo funciona
 - El corpus bíblico (lfb) sigue siendo la fuente principal de gramática
   y morfología, pero ya NO la fuente principal de ejemplos.
-- Retrieval (`consulta/retrieval.service.ts`, `recuperarContexto`), en
+- Retrieval (`query/retrieval.service.ts`, `retrieveContext`), en
   este orden: (a) diccionario palabra por palabra
-  (`consulta/diccionario.ts`: exacta → sin tildes → sinónimo coloquial
+  (`query/dictionary.ts`: exacta → sin tildes → sinónimo coloquial
   del español (mamá→madre, lista corta SINONIMOS_ES) → singular → prefijo
   de 5 letras marcado «posible»; las entradas de varias palabras entran
   si todas sus palabras están en la frase), (b) nombres propios con la
-  grafía de la tabla, (c) reglas aplicables (`consulta/reglas.ts`:
+  grafía de la tabla, (c) reglas aplicables (`query/rules.ts`:
   disparadores plural/posesivo/negacion/pregunta/pasado/futuro por
   heurísticas en español y por sufijo en damana; el disparador de cada
   regla se infiere al importar del «tipo» + «qué hace»), (d) ejemplos
@@ -137,12 +137,12 @@ experiencia en TypeScript/Angular y backend.
   registrada, pendiente de confirmar con las hablantes») y, para la
   negación, remite a las formas negativas del diccionario (No quiero →
   Nandunun, No hay → Nanún…) y de las conjugaciones (-nún/-nuñí). Las
-  negaciones del español (`esNegacionEspanol`, comun/texto/stopwords-es.ts)
+  negaciones del español (`isSpanishNegation`, common/text/stopwords-es.ts)
   cuentan como contenido al indexar entradas de varias palabras: «No
   quiero» solo entra si la frase trae «no» (antes salía también para la
   afirmativa). La regla la deben dar las hablantes (el lote 2 de gramática
   ya pide los pares negativos); no inventarla.
-- Prompt (`traduccion/prompt.ts`) con secciones fijas: REGLAS
+- Prompt (`translation/prompt.ts`) con secciones fijas: REGLAS
   GRAMATICALES, DICCIONARIO DE ESTA FRASE, EJEMPLOS COTIDIANOS, EJEMPLOS
   DE GRAMÁTICA, EJEMPLOS DEL CORPUS BÍBLICO, FRASE A TRADUCIR. Respuesta
   JSON: traduccion, glosa, palabras_sin_equivalente, reglas_aplicadas,
@@ -151,7 +151,7 @@ experiencia en TypeScript/Angular y backend.
 - Las hablantes cobran por palabra: el importador NO registra como
   pendiente una fila de elicitación sin llenar cuya palabra ya está en el
   vocabulario (incluida la que trae el mismo lote), y cierra las pendientes
-  abiertas que el vocabulario cubre (`importador/cobertura-vocabulario.ts`:
+  abiertas que el vocabulario cubre (`importer/vocabulary-coverage.ts`:
   alternativas del español, paréntesis, singular; ʉ ≠ u, ñ ≠ n). El 21 oct
   2026 eso cerró 277 de las 515 del lote 1 que el corpus ya sabía, y otras
   tantas al cargar vocabulario externo. Una pendiente resuelta que el
@@ -164,7 +164,7 @@ experiencia en TypeScript/Angular y backend.
   `validadas` (futura fuente cotidiana; aún no entra al retrieval).
 - `npm run evaluar`: traduce `datos/pruebas_traduccion.csv` (español →
   damana) y guarda en `/evaluaciones/<fecha>_<modelo>.{json,md}` la
-  coincidencia exacta, el chrF (propio, `evaluacion/chrf.ts`) y el % de
+  coincidencia exacta, el chrF (propio, `evaluation/chrf.ts`) y el % de
   palabras sin equivalente por ámbito. No registra traducciones ni
   pendientes. Las pruebas salen del importador: 1 de cada 10 filas de
   elicitación completas, elegida por hash estable del id (no por
@@ -185,7 +185,7 @@ experiencia en TypeScript/Angular y backend.
   pasada (son más baratas) y UNA persona con experiencia en traducción de
   publicaciones revisa. Lo validado en la app entra al retrieval solo
   tras esa revisión. Trabajan en un portátil con Excel.
-- `npm run dudas` (`backend/src/revision/`) NO corrige nada: genera
+- `npm run dudas` (`backend/src/review/`) NO corrige nada: genera
   `datos/dudas_para_hablantes_<fecha>.xlsx` con lo que no está claro, una
   hoja por tipo de pregunta y las respuestas en amarillo: 1 escritura
   (misma palabra con varias grafías: u/ʉ, w/u, y/i, ndzina/nyina, h/j),
@@ -195,11 +195,11 @@ experiencia en TypeScript/Angular y backend.
   formas en una casilla, notas corridas de fila), 5 terminaciones que se
   repiten (-mba, -win, -ga…). La hoja 1 es para cualquier hablante; las
   demás, para el revisor.
-- `esqueletoOrtografico()` (comun/texto/esqueleto.ts) junta u con ʉ SOLO
+- `spellingSkeleton()` (common/text/skeleton.ts) junta u con ʉ SOLO
   para detectar esas dudas; no usarlo para buscar, indexar ni corregir.
 - `formato_elicitacion_lote2_gramatica.xlsx`: oraciones mínimas que
   cambian una sola cosa (persona, tiempo, negación, pregunta) para sacar
-  reglas. Sale de `revision/paradigmas.ts`, lista de SOLO AÑADIR (el id
+  reglas. Sale de `review/paradigms.ts`, lista de SOLO AÑADIR (el id
   es la posición). El importador lo absorbe como cualquier lote.
 - Pendiente de decidir por el dueño: disco persistente de Render (es de
   pago) para que pendientes y validadas sobrevivan a los deploys.
@@ -249,7 +249,7 @@ experiencia en TypeScript/Angular y backend.
   y orden la tratan como letra; ʉ ≠ u SIEMPRE.
 - ñ también es letra plena (en damana: ñingui, kʉñingui; en español
   año ≠ ano); ñ ≠ n SIEMPRE.
-- Normalizar con normalizar() de backend/src/comun/texto/normalizador.ts:
+- Normalizar con normalizar() de backend/src/common/text/normalizer.ts:
   minúsculas + NFD, recomponer n + U+0303 → ñ (preservarla) y después
   quitar las marcas combinantes U+0300–U+036F. Quita tildes (á→a), NO
   toca la ʉ (no se descompone en NFD) y NO degrada ñ→n. Ojo: quitar
@@ -259,7 +259,7 @@ experiencia en TypeScript/Angular y backend.
   letra Unicode, ʉ o apóstrofe interno).
 - El importador corrige ü/Ü → ʉ/Ʉ en las columnas damana (la ü no existe
   en damana; algunas fuentes Word la usan como apaño para ʉ). Ver
-  corregirOrtografiaDamana() en backend/src/comun/texto/ortografia.ts;
+  corregirOrtografiaDamana() en backend/src/common/text/spelling.ts;
   para la elicitación, normalizarDamanaEscrito() añade «u+» → ʉ y
   protege las palabras españolas con ü. La u simple NUNCA se convierte
   (u y ʉ son letras distintas) y las comillas tipográficas «' '» se

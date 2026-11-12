@@ -18,7 +18,7 @@ The importer (`npm run importar`) reads the files below from the data folder (`d
 
 - `ʉ` (U+0289) is a full letter of the Damana alphabet. Search, tokenization and sorting treat it as a letter; `ʉ` and `u` are never equivalent.
 - `ñ` is also a full letter in both languages; `ñ` and `n` are never equivalent.
-- Normalization (`backend/src/comun/texto/normalizador.ts`): lowercase, NFD, recompose `n` + U+0303 into `ñ`, then strip combining marks. Accents are removed (`á` → `a`); `ʉ` and `ñ` are preserved.
+- Normalization (`backend/src/common/text/normalizer.ts`): lowercase, NFD, recompose `n` + U+0303 into `ñ`, then strip combining marks. Accents are removed (`á` → `a`); `ʉ` and `ñ` are preserved.
 - Damana text is tokenized on anything that is not a Unicode letter, `ʉ` or an inner apostrophe.
 - The importer rewrites `ü`/`Ü` to `ʉ`/`Ʉ` in Damana columns (some Word sources use `ü` as a stand-in). In elicitation sheets `u+` is also accepted for `ʉ`, and Spanish words that really contain `ü` are protected. A plain `u` is never converted. Source files are not modified.
 - Sentences with `estado = revisar` take part in the translator's retrieval with half the score.

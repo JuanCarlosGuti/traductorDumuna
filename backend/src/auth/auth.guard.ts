@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { AuthService } from './auth.service';
 import { CONFIG_AUTH, ConfigAuth } from './auth.config';
-import { PUBLIC_KEY } from './publico.decorator';
+import { PUBLIC_KEY } from './public.decorator';
 
 /** Request with the user already resolved by the guard. */
 export interface RequestWithSession {

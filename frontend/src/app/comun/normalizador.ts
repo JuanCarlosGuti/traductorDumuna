@@ -1,4 +1,4 @@
-// Mirror of the backend normalizer (backend/src/comun/texto/normalizador.ts):
+// Mirror of the backend normalizer (backend/src/common/text/normalizer.ts):
 // lowercase without accents, preserving ʉ (U+0289) and ñ. Code points
 // built numerically so as not to depend on the file's encoding.
 const TILDE_COMBINANTE = String.fromCharCode(0x0303);

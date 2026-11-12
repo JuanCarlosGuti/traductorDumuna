@@ -14,7 +14,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CONFIG_AUTH, ConfigAuth } from './auth.config';
 import { RequestWithSession } from './auth.guard';
 import { AuthService } from './auth.service';
-import { Public } from './publico.decorator';
+import { Public } from './public.decorator';
 import { AuthStatusDto, LoginDto, SessionDto, UserDto } from './dto/auth.dto';
 
 @ApiTags('auth')

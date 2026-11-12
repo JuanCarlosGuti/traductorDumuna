@@ -1,11 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
 import Database from 'better-sqlite3';
-import { SearchService } from '../consulta/busqueda.service';
-import { CorpusRepository } from '../consulta/corpus.repository';
-import { FrequenciesService } from '../consulta/frecuencias.service';
-import { WordService } from '../consulta/palabra.service';
-import { RetrievalService } from '../consulta/retrieval.service';
-import { runMigrations } from '../database/migraciones';
+import { SearchService } from '../query/search.service';
+import { CorpusRepository } from '../query/corpus.repository';
+import { FrequenciesService } from '../query/frequencies.service';
+import { WordService } from '../query/word.service';
+import { RetrievalService } from '../query/retrieval.service';
+import { runMigrations } from '../database/migrations';
 import { Grade } from './sm2';
 import { SrsService } from './srs.service';
 
