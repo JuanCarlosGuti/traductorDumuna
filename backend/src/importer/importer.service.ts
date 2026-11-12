@@ -154,7 +154,7 @@ export class ImporterService {
       );
 
       // Damana columns go through fixDamanaSpelling (ü→ʉ, see
-      // comun/texto/ortografia.ts); the source CSVs are left intact.
+      // common/text/spelling.ts); the source CSVs are left intact.
       const insSentence = this.db.prepare(
         `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente, dominio)
          VALUES (?, ?, ?, ?, ?, ?)`,

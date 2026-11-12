@@ -2,127 +2,127 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
-  Calificacion,
-  DireccionTraduccion,
-  EntradaVocabulario,
-  EstadoSrs,
-  EstadoTraductor,
-  FichaPalabra,
-  Frase,
-  Frecuencia,
-  Idioma,
-  Lema,
-  Pendiente,
-  ProgresoActualizado,
-  RespuestaBusqueda,
-  RespuestaTraduccion,
-  TablaConjugacion,
-  ValidacionGuardada,
-  ValidarTraduccion,
-} from './modelos';
+  Grade,
+  TranslationDirection,
+  VocabularyEntry,
+  SrsStatus,
+  TranslatorStatus,
+  WordCard,
+  Phrase,
+  Frequency,
+  Language,
+  Lemma,
+  PendingItem,
+  UpdatedProgress,
+  SearchResponse,
+  TranslationResponse,
+  ConjugationTable,
+  SavedValidation,
+  ValidateTranslation,
+} from './models';
 
-export interface ArchivoDescargado {
+export interface DownloadedFile {
   blob: Blob;
   nombreArchivo: string;
 }
 
 /** Attachment name from a Content-Disposition header (or the fallback one). */
-export function nombreDeAdjunto(contentDisposition: string | null, reserva: string): string {
+export function attachmentName(contentDisposition: string | null, fallback: string): string {
   const m = /filename="?([^";]+)"?/i.exec(contentDisposition ?? '');
-  return m ? m[1] : reserva;
+  return m ? m[1] : fallback;
 }
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
 
-  buscar(
+  search(
     q: string,
-    idioma: Idioma,
-    fuente?: string,
-    limite = 100,
-  ): Promise<RespuestaBusqueda> {
+    language: Language,
+    source?: string,
+    limit = 100,
+  ): Promise<SearchResponse> {
     let params = new HttpParams()
       .set('q', q)
-      .set('idioma', idioma)
-      .set('limite', limite);
-    if (fuente) params = params.set('fuente', fuente);
+      .set('idioma', language)
+      .set('limite', limit);
+    if (source) params = params.set('fuente', source);
     return firstValueFrom(
-      this.http.get<RespuestaBusqueda>('/api/buscar', { params }),
+      this.http.get<SearchResponse>('/api/buscar', { params }),
     );
   }
 
-  palabra(token: string): Promise<FichaPalabra> {
+  word(token: string): Promise<WordCard> {
     return firstValueFrom(
-      this.http.get<FichaPalabra>(`/api/palabra/${encodeURIComponent(token)}`),
+      this.http.get<WordCard>(`/api/palabra/${encodeURIComponent(token)}`),
     );
   }
 
-  frecuencias(limite = 10000): Promise<Frecuencia[]> {
-    const params = new HttpParams().set('limite', limite);
-    return firstValueFrom(this.http.get<Frecuencia[]>('/api/frecuencias', { params }));
+  frequencies(limit = 10000): Promise<Frequency[]> {
+    const params = new HttpParams().set('limite', limit);
+    return firstValueFrom(this.http.get<Frequency[]>('/api/frecuencias', { params }));
   }
 
-  vocabulario(): Promise<EntradaVocabulario[]> {
-    return firstValueFrom(this.http.get<EntradaVocabulario[]>('/api/vocabulario'));
+  vocabulary(): Promise<VocabularyEntry[]> {
+    return firstValueFrom(this.http.get<VocabularyEntry[]>('/api/vocabulario'));
   }
 
-  frases(): Promise<Frase[]> {
-    return firstValueFrom(this.http.get<Frase[]>('/api/frases'));
+  phrases(): Promise<Phrase[]> {
+    return firstValueFrom(this.http.get<Phrase[]>('/api/frases'));
   }
 
-  srsSiguiente(): Promise<EstadoSrs> {
-    return firstValueFrom(this.http.get<EstadoSrs>('/api/srs/siguiente'));
+  srsNext(): Promise<SrsStatus> {
+    return firstValueFrom(this.http.get<SrsStatus>('/api/srs/siguiente'));
   }
 
-  srsResponder(palabra: string, calificacion: Calificacion): Promise<ProgresoActualizado> {
+  srsAnswer(word: string, grade: Grade): Promise<UpdatedProgress> {
     return firstValueFrom(
-      this.http.post<ProgresoActualizado>('/api/srs/respuesta', { palabra, calificacion }),
+      this.http.post<UpdatedProgress>('/api/srs/respuesta', { palabra: word, calificacion: grade }),
     );
   }
 
-  gramaticaLemas(): Promise<Lema[]> {
-    return firstValueFrom(this.http.get<Lema[]>('/api/gramatica/lemas'));
+  grammarLemmas(): Promise<Lemma[]> {
+    return firstValueFrom(this.http.get<Lemma[]>('/api/gramatica/lemas'));
   }
 
-  gramaticaTabla(lema: string): Promise<TablaConjugacion> {
+  grammarTable(lemma: string): Promise<ConjugationTable> {
     return firstValueFrom(
-      this.http.get<TablaConjugacion>(`/api/gramatica/lemas/${encodeURIComponent(lema)}`),
+      this.http.get<ConjugationTable>(`/api/gramatica/lemas/${encodeURIComponent(lemma)}`),
     );
   }
 
-  traductorEstado(): Promise<EstadoTraductor> {
-    return firstValueFrom(this.http.get<EstadoTraductor>('/api/traducir/estado'));
+  translatorStatus(): Promise<TranslatorStatus> {
+    return firstValueFrom(this.http.get<TranslatorStatus>('/api/traducir/estado'));
   }
 
-  traducir(texto: string, direccion: DireccionTraduccion): Promise<RespuestaTraduccion> {
+  translate(text: string, direction: TranslationDirection): Promise<TranslationResponse> {
     return firstValueFrom(
-      this.http.post<RespuestaTraduccion>('/api/traducir', { texto, direccion }),
+      this.http.post<TranslationResponse>('/api/traducir', { texto: text, direccion: direction }),
     );
   }
 
-  validarTraduccion(cuerpo: ValidarTraduccion): Promise<ValidacionGuardada> {
+  validateTranslation(bodyData: ValidateTranslation): Promise<SavedValidation> {
     return firstValueFrom(
-      this.http.post<ValidacionGuardada>('/api/traducir/validar', cuerpo),
+      this.http.post<SavedValidation>('/api/traducir/validar', bodyData),
     );
   }
 
-  pendientes(): Promise<Pendiente[]> {
-    return firstValueFrom(this.http.get<Pendiente[]>('/api/pendientes'));
+  pendingItems(): Promise<PendingItem[]> {
+    return firstValueFrom(this.http.get<PendingItem[]>('/api/pendientes'));
   }
 
   /** Generates and downloads the Excel batch for the speakers; the server marks the rows as exported. */
-  async exportarPendientes(): Promise<ArchivoDescargado> {
-    const respuesta = await firstValueFrom(
+  async exportPending(): Promise<DownloadedFile> {
+    const response = await firstValueFrom(
       this.http.post('/api/pendientes/exportar', null, {
         responseType: 'blob',
         observe: 'response',
       }),
     );
     return {
-      blob: respuesta.body ?? new Blob(),
-      nombreArchivo: nombreDeAdjunto(
-        respuesta.headers.get('content-disposition'),
+      blob: response.body ?? new Blob(),
+      nombreArchivo: attachmentName(
+        response.headers.get('content-disposition'),
         'formato_elicitacion_pendientes.xlsx',
       ),
     };

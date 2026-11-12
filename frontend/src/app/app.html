@@ -8,10 +8,10 @@
     <a routerLink="/traductor" routerLinkActive="activo">Traductor</a>
     <a routerLink="/pendientes" routerLinkActive="activo">Pendientes</a>
   </nav>
-  @if (usuario(); as quien) {
+  @if (user(); as quien) {
     <span class="sesion">
       <span class="suave">{{ quien }}</span>
-      <button type="button" class="boton-suave" (click)="salir()">Salir</button>
+      <button type="button" class="boton-suave" (click)="signOut()">Salir</button>
     </span>
   }
 </header>

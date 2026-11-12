@@ -1,0 +1,118 @@
+<h1>Diccionario</h1>
+
+<div class="controles">
+  <div class="modos" role="tablist">
+    <button
+      type="button"
+      class="boton-suave"
+      [class.activo]="mode() === 'damana'"
+      (click)="changeMode('damana')"
+    >
+      damana → español
+    </button>
+    <button
+      type="button"
+      class="boton-suave"
+      [class.activo]="mode() === 'espanol'"
+      (click)="changeMode('espanol')"
+    >
+      español → damana
+    </button>
+  </div>
+  <input
+    #campoFiltro
+    type="search"
+    appUPlus
+    [placeholder]="mode() === 'damana' ? 'Filtrar palabra damana… (u+ → ʉ)' : 'Filtrar por español…'"
+    [value]="filterText()"
+    (input)="applyFilter(campoFiltro.value)"
+  />
+</div>
+
+@if (mode() === 'damana') {
+  <p class="suave">
+    Todas las palabras del corpus por frecuencia (sin probables nombres
+    propios). La traducción sale del vocabulario o de las conjugaciones;
+    haz clic en la palabra para ver su ficha.
+  </p>
+} @else {
+  <p class="suave">
+    Las {{ vocabulary().length }} entradas del vocabulario ordenadas por
+    español. Haz clic en la palabra damana para ver su ficha.
+  </p>
+}
+
+@if (loading()) {
+  <p class="suave">Cargando…</p>
+} @else {
+  @if (mode() === 'damana') {
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>palabra</th>
+          <th>traducción</th>
+          <th>frecuencia</th>
+          <th>categoría</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (f of visible(); track f.palabra) {
+          <tr>
+            <td class="suave">{{ pageIndex() * perPage + $index + 1 }}</td>
+            <td><a [routerLink]="['/diccionario', f.palabra]">{{ f.palabra }}</a></td>
+            <td>{{ f.traduccion ?? '' }}</td>
+            <td>{{ f.frecuencia }}</td>
+            <td class="suave">{{ f.categoria ?? '' }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5">Sin resultados para «{{ filterText() }}».</td></tr>
+        }
+      </tbody>
+    </table>
+  } @else {
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>español</th>
+          <th>damana</th>
+          <th>categoría</th>
+          <th>notas</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of visibleEntries(); track e.id) {
+          <tr>
+            <td class="suave">{{ pageIndex() * perPage + $index + 1 }}</td>
+            <td>{{ e.espanol }}</td>
+            <td lang="mbp">
+              <a [routerLink]="['/diccionario', e.damana]">{{ e.damana }}</a>
+            </td>
+            <td class="suave">{{ e.categoria ?? '' }}</td>
+            <td class="suave chiquito">{{ e.notas ?? '' }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5">Sin resultados para «{{ filterText() }}».</td></tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  <nav class="paginador">
+    <button type="button" class="boton-suave" (click)="previousPage()" [disabled]="pageIndex() === 0">
+      ‹ Anterior
+    </button>
+    <span class="suave">
+      página {{ pageIndex() + 1 }} de {{ totalPages() }} · {{ totalRows() }} filas
+    </span>
+    <button
+      type="button"
+      class="boton-suave"
+      (click)="next()"
+      [disabled]="pageIndex() >= totalPages() - 1"
+    >
+      Siguiente ›
+    </button>
+  </nav>
+}

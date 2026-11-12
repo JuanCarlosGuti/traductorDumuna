@@ -12,10 +12,10 @@ export class App {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  protected readonly usuario = this.auth.usuario;
+  protected readonly user = this.auth.user;
 
-  protected async salir(): Promise<void> {
-    this.auth.salir();
+  protected async signOut(): Promise<void> {
+    this.auth.signOut();
     await this.router.navigate(['/entrar']);
   }
 }

@@ -23,8 +23,8 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const html = fixture.nativeElement as HTMLElement;
-    const enlaces = Array.from(html.querySelectorAll('nav a')).map((a) => a.textContent?.trim());
-    expect(enlaces).toEqual(['Buscar', 'Diccionario', 'Gramática', 'Flashcards', 'Traductor', 'Pendientes']);
+    const links = Array.from(html.querySelectorAll('nav a')).map((a) => a.textContent?.trim());
+    expect(links).toEqual(['Buscar', 'Diccionario', 'Gramática', 'Flashcards', 'Traductor', 'Pendientes']);
   });
 
   it('without a session it does not show the logout button', async () => {
@@ -39,8 +39,8 @@ describe('App', () => {
     localStorage.setItem('damana.usuario', 'juan');
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
-    const sesion = (fixture.nativeElement as HTMLElement).querySelector('.sesion');
-    expect(sesion?.textContent).toContain('juan');
-    expect(sesion?.querySelector('button')?.textContent?.trim()).toBe('Salir');
+    const session = (fixture.nativeElement as HTMLElement).querySelector('.sesion');
+    expect(session?.textContent).toContain('juan');
+    expect(session?.querySelector('button')?.textContent?.trim()).toBe('Salir');
   });
 });

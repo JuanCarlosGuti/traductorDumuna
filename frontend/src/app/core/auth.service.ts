@@ -2,91 +2,91 @@ import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-interface RespuestaLogin {
+interface LoginResponse {
   token: string;
   usuario: string;
   duracionDias: number;
 }
 
-const CLAVE_TOKEN = 'damana.token';
-const CLAVE_USUARIO = 'damana.usuario';
+const TOKEN_KEY = 'damana.token';
+const USER_KEY = 'damana.usuario';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
 
-  private readonly _token = signal<string | null>(leer(CLAVE_TOKEN));
-  private readonly _usuario = signal<string | null>(leer(CLAVE_USUARIO));
+  private readonly _token = signal<string | null>(read(TOKEN_KEY));
+  private readonly _user = signal<string | null>(read(USER_KEY));
 
   /**
    * null until the server has been asked. Locally, with no
    * credentials configured, the API comes open and no login is required.
    */
-  private readonly _exigeSesion = signal<boolean | null>(null);
+  private readonly _requiresSession = signal<boolean | null>(null);
 
-  readonly usuario = this._usuario.asReadonly();
-  readonly autenticado = computed(() => this._token() !== null);
+  readonly user = this._user.asReadonly();
+  readonly authenticated = computed(() => this._token() !== null);
 
   token(): string | null {
     return this._token();
   }
 
   /** Queried only once per app load. */
-  async exigeSesion(): Promise<boolean> {
-    const conocido = this._exigeSesion();
-    if (conocido !== null) return conocido;
+  async requiresSession(): Promise<boolean> {
+    const known = this._requiresSession();
+    if (known !== null) return known;
     try {
-      const { activa } = await firstValueFrom(
+      const { activa: active } = await firstValueFrom(
         this.http.get<{ activa: boolean }>('/api/auth/estado'),
       );
-      this._exigeSesion.set(activa);
-      return activa;
+      this._requiresSession.set(active);
+      return active;
     } catch {
       // If it cannot be asked, the safe option is assumed: require a session.
-      this._exigeSesion.set(true);
+      this._requiresSession.set(true);
       return true;
     }
   }
 
-  async entrar(usuario: string, password: string): Promise<void> {
+  async signIn(user: string, password: string): Promise<void> {
     const res = await firstValueFrom(
-      this.http.post<RespuestaLogin>('/api/auth/login', { usuario, password }),
+      this.http.post<LoginResponse>('/api/auth/login', { usuario: user, password }),
     );
-    guardar(CLAVE_TOKEN, res.token);
-    guardar(CLAVE_USUARIO, res.usuario);
+    save(TOKEN_KEY, res.token);
+    save(USER_KEY, res.usuario);
     this._token.set(res.token);
-    this._usuario.set(res.usuario);
+    this._user.set(res.usuario);
   }
 
-  salir(): void {
-    borrar(CLAVE_TOKEN);
-    borrar(CLAVE_USUARIO);
+  signOut(): void {
+    remove(TOKEN_KEY);
+    remove(USER_KEY);
     this._token.set(null);
-    this._usuario.set(null);
+    this._user.set(null);
   }
 }
 
 // localStorage can throw (Safari private mode, blocked cookies):
 // in that case the session lasts as long as the tab, which is better than an error.
-function leer(clave: string): string | null {
+function read(key: string): string | null {
   try {
-    return localStorage.getItem(clave);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-function guardar(clave: string, valor: string): void {
+function save(key: string, value: string): void {
   try {
-    localStorage.setItem(clave, valor);
+    localStorage.setItem(key, value);
   } catch {
     /* in-memory session only */
   }
 }
 
-function borrar(clave: string): void {
+function remove(key: string): void {
   try {
-    localStorage.removeItem(clave);
+    localStorage.removeItem(key);
   } catch {
     /* nothing to clean up */
   }

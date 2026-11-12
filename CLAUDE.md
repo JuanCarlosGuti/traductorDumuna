@@ -89,7 +89,7 @@ experiencia en TypeScript/Angular y backend.
     memoria. Ojo con el nombre: es prueba de API, no e2e de navegador.
   - `npm run test:front` — Vitest. Componentes con TestBed y HttpClient
     simulado. En zoneless, `fixture.whenStable()` NO espera las promesas del
-    componente: usar `asentar()` de comun/probar.ts o se lee el DOM a medias.
+    componente: usar `settle()` de shared/testing.ts o se lee el DOM a medias.
   - `npm run test:navegador` — Playwright, Chromium real contra el backend
     sirviendo el build de Angular con la auth activa. Es la ÚNICA capa que
     comprueba que frontend y backend se entienden. Usa su propio corpus en e2e/datos (no

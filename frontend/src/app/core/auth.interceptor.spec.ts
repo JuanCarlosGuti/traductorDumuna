@@ -36,70 +36,70 @@ describe('authInterceptor', () => {
     localStorage.clear();
   });
 
-  const conSesion = async () => {
-    const entrando = auth.entrar('juan', 'x');
+  const withSession = async () => {
+    const signingIn = auth.signIn('juan', 'x');
     control.expectOne('/api/auth/login').flush({
       token: 'token-valido',
       usuario: 'juan',
       duracionDias: 30,
     });
-    await entrando;
+    await signingIn;
   };
 
   it('without a session it adds no header', () => {
     void firstValueFrom(http.get('/api/vocabulario'));
-    const peticion = control.expectOne('/api/vocabulario');
-    expect(peticion.request.headers.has('Authorization')).toBe(false);
-    peticion.flush([]);
+    const httpRequest = control.expectOne('/api/vocabulario');
+    expect(httpRequest.request.headers.has('Authorization')).toBe(false);
+    httpRequest.flush([]);
   });
 
   it('with a session it adds Authorization: Bearer', async () => {
-    await conSesion();
+    await withSession();
     void firstValueFrom(http.get('/api/vocabulario'));
-    const peticion = control.expectOne('/api/vocabulario');
-    expect(peticion.request.headers.get('Authorization')).toBe('Bearer token-valido');
-    peticion.flush([]);
+    const httpRequest = control.expectOne('/api/vocabulario');
+    expect(httpRequest.request.headers.get('Authorization')).toBe('Bearer token-valido');
+    httpRequest.flush([]);
   });
 
   it('does not send the token to servers other than the API', async () => {
-    await conSesion();
+    await withSession();
     void firstValueFrom(http.get('https://example.com/algo'));
-    const peticion = control.expectOne('https://example.com/algo');
-    expect(peticion.request.headers.has('Authorization')).toBe(false);
-    peticion.flush({});
+    const httpRequest = control.expectOne('https://example.com/algo');
+    expect(httpRequest.request.headers.has('Authorization')).toBe(false);
+    httpRequest.flush({});
   });
 
   it('a 401 logs out and leads to login', async () => {
-    await conSesion();
-    const llamada = firstValueFrom(http.get('/api/vocabulario')).catch(() => null);
+    await withSession();
+    const call = firstValueFrom(http.get('/api/vocabulario')).catch(() => null);
     control
       .expectOne('/api/vocabulario')
       .flush({}, { status: 401, statusText: 'Unauthorized' });
-    await llamada;
+    await call;
 
-    expect(auth.autenticado()).toBe(false);
+    expect(auth.authenticated()).toBe(false);
     expect(localStorage.getItem('damana.token')).toBeNull();
     expect(router.navigate).toHaveBeenCalledWith(['/entrar']);
   });
 
   it('a 401 from login itself does NOT redirect: we are already on that screen', async () => {
-    const intento = auth.entrar('juan', 'mala').catch(() => null);
+    const attempt = auth.signIn('juan', 'mala').catch(() => null);
     control
       .expectOne('/api/auth/login')
       .flush({}, { status: 401, statusText: 'Unauthorized' });
-    await intento;
+    await attempt;
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it('other errors do not log out', async () => {
-    await conSesion();
-    const llamada = firstValueFrom(http.get('/api/vocabulario')).catch(() => null);
+    await withSession();
+    const call = firstValueFrom(http.get('/api/vocabulario')).catch(() => null);
     control
       .expectOne('/api/vocabulario')
       .flush({}, { status: 500, statusText: 'Server Error' });
-    await llamada;
+    await call;
 
-    expect(auth.autenticado()).toBe(true);
+    expect(auth.authenticated()).toBe(true);
     expect(router.navigate).not.toHaveBeenCalled();
   });
 });

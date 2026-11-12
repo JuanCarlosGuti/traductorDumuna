@@ -5,16 +5,16 @@ import {
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router, UrlTree } from '@angular/router';
-import { sesionIniciada } from './auth.guard';
+import { sessionStarted } from './auth.guard';
 import { AuthService } from './auth.service';
 
 /** The guard uses inject(): it must be called inside a DI context. */
-const ejecutar = () =>
+const run = () =>
   TestBed.runInInjectionContext(
-    () => sesionIniciada(null as never, null as never) as Promise<boolean | UrlTree>,
+    () => sessionStarted(null as never, null as never) as Promise<boolean | UrlTree>,
   );
 
-describe('sesionIniciada', () => {
+describe('sessionStarted', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
@@ -32,37 +32,37 @@ describe('sesionIniciada', () => {
 
   it('with a session it lets through without asking the server', async () => {
     localStorage.setItem('damana.token', 't');
-    expect(await ejecutar()).toBe(true);
+    expect(await run()).toBe(true);
     // No calls: the afterEach's http.verify() confirms it.
   });
 
   it('without a session and with auth active it sends to /entrar', async () => {
-    const resultado = ejecutar();
+    const result = run();
     http.expectOne('/api/auth/estado').flush({ activa: true });
 
-    const destino = await resultado;
-    expect(destino).toBeInstanceOf(UrlTree);
-    expect(TestBed.inject(Router).serializeUrl(destino as UrlTree)).toBe('/entrar');
+    const target = await result;
+    expect(target).toBeInstanceOf(UrlTree);
+    expect(TestBed.inject(Router).serializeUrl(target as UrlTree)).toBe('/entrar');
   });
 
   it('without a session but with the API open (local) it lets through', async () => {
-    const resultado = ejecutar();
+    const result = run();
     http.expectOne('/api/auth/estado').flush({ activa: false });
-    expect(await resultado).toBe(true);
+    expect(await result).toBe(true);
   });
 
   it('if the state cannot be queried, it plays safe and asks for login', async () => {
-    const resultado = ejecutar();
+    const result = run();
     http.expectOne('/api/auth/estado').error(new ProgressEvent('error'));
-    expect(await resultado).toBeInstanceOf(UrlTree);
+    expect(await result).toBeInstanceOf(UrlTree);
   });
 
   it('the state is queried only once even when navigating several times', async () => {
     TestBed.inject(AuthService);
-    const primera = ejecutar();
+    const first = run();
     http.expectOne('/api/auth/estado').flush({ activa: false });
-    expect(await primera).toBe(true);
+    expect(await first).toBe(true);
 
-    expect(await ejecutar()).toBe(true); // no second call
+    expect(await run()).toBe(true); // no second call
   });
 });

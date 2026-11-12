@@ -1,22 +1,22 @@
 import { expect, test } from '@playwright/test';
-import { CREDENCIALES } from '../playwright.config';
+import { CREDENTIALS } from '../playwright.config';
 
 /**
  * Real browser against the backend serving the Angular build, with
  * authentication active, the e2e/datos corpus and NO translation engine
  * (see playwright.config.ts). Checks that the new views talk to
  * the backend properly once logged in; login itself is covered by
- * sesion.spec.ts.
+ * session.spec.ts.
  */
-const entrar = async (page: import('@playwright/test').Page) => {
+const signIn = async (page: import('@playwright/test').Page) => {
   await page.goto('/entrar');
-  await page.getByLabel('Usuario').fill(CREDENCIALES.usuario);
-  await page.getByLabel('Contraseña').fill(CREDENCIALES.password);
+  await page.getByLabel('Usuario').fill(CREDENTIALS.usuario);
+  await page.getByLabel('Contraseña').fill(CREDENTIALS.password);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await expect(page).toHaveURL(/\/buscar/);
 };
 
-test.describe('Sin sesión', () => {
+test.describe('Without a session', () => {
   test('the new views also lead to login', async ({ page }) => {
     await page.goto('/pendientes');
     await expect(page).toHaveURL(/\/entrar/);
@@ -33,9 +33,9 @@ test.describe('Sin sesión', () => {
   });
 });
 
-test.describe('Con sesión iniciada', () => {
+test.describe('Logged in', () => {
   test.beforeEach(async ({ page }) => {
-    await entrar(page);
+    await signIn(page);
   });
 
   test('the navigation includes Pendientes', async ({ page }) => {

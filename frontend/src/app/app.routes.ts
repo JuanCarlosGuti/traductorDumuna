@@ -1,30 +1,30 @@
 import { Routes } from '@angular/router';
-import { sesionIniciada } from './core/auth.guard';
-import { Buscar } from './vistas/buscar/buscar';
-import { Diccionario } from './vistas/diccionario/diccionario';
-import { Entrar } from './vistas/entrar/entrar';
-import { Ficha } from './vistas/ficha/ficha';
-import { Flashcards } from './vistas/flashcards/flashcards';
-import { Gramatica } from './vistas/gramatica/gramatica';
-import { Pendientes } from './vistas/pendientes/pendientes';
-import { Traductor } from './vistas/traductor/traductor';
+import { sessionStarted } from './core/auth.guard';
+import { SearchView } from './views/search/search';
+import { DictionaryView } from './views/dictionary/dictionary';
+import { LoginView } from './views/login/login';
+import { WordCardView } from './views/word-card/word-card';
+import { Flashcards } from './views/flashcards/flashcards';
+import { GrammarView } from './views/grammar/grammar';
+import { PendingView } from './views/pending/pending';
+import { TranslatorView } from './views/translator/translator';
 
 // Everything requires a session except /entrar. The guard still lets through when the
 // server does not require credentials (local development).
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'buscar' },
-  { path: 'entrar', component: Entrar, title: 'Entrar — Corpus Damana' },
+  { path: 'entrar', component: LoginView, title: 'Entrar — Corpus Damana' },
   {
     path: '',
-    canActivateChild: [sesionIniciada],
+    canActivateChild: [sessionStarted],
     children: [
-      { path: 'buscar', component: Buscar, title: 'Buscar — Corpus Damana' },
-      { path: 'diccionario', component: Diccionario, title: 'Diccionario — Corpus Damana' },
-      { path: 'diccionario/:palabra', component: Ficha, title: 'Palabra — Corpus Damana' },
-      { path: 'gramatica', component: Gramatica, title: 'Gramática — Corpus Damana' },
+      { path: 'buscar', component: SearchView, title: 'Buscar — Corpus Damana' },
+      { path: 'diccionario', component: DictionaryView, title: 'Diccionario — Corpus Damana' },
+      { path: 'diccionario/:palabra', component: WordCardView, title: 'Palabra — Corpus Damana' },
+      { path: 'gramatica', component: GrammarView, title: 'Gramática — Corpus Damana' },
       { path: 'flashcards', component: Flashcards, title: 'Flashcards — Corpus Damana' },
-      { path: 'traductor', component: Traductor, title: 'Traductor — Corpus Damana' },
-      { path: 'pendientes', component: Pendientes, title: 'Pendientes — Corpus Damana' },
+      { path: 'traductor', component: TranslatorView, title: 'Traductor — Corpus Damana' },
+      { path: 'pendientes', component: PendingView, title: 'Pendientes — Corpus Damana' },
     ],
   },
   { path: '**', redirectTo: 'buscar' },

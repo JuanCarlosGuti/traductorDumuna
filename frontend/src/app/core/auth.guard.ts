@@ -3,10 +3,10 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 
 /** Lets through if there is a session, or if this server requires none. */
-export const sesionIniciada: CanActivateFn = async () => {
+export const sessionStarted: CanActivateFn = async () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  if (auth.autenticado()) return true;
-  if (!(await auth.exigeSesion())) return true;
+  if (auth.authenticated()) return true;
+  if (!(await auth.requiresSession())) return true;
   return router.createUrlTree(['/entrar']);
 };

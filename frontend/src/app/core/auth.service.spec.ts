@@ -7,7 +7,7 @@ import { TestBed } from '@angular/core/testing';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
-  let servicio: AuthService;
+  let service: AuthService;
   let http: HttpTestingController;
 
   beforeEach(() => {
@@ -15,7 +15,7 @@ describe('AuthService', () => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
-    servicio = TestBed.inject(AuthService);
+    service = TestBed.inject(AuthService);
     http = TestBed.inject(HttpTestingController);
   });
 
@@ -25,19 +25,19 @@ describe('AuthService', () => {
   });
 
   it('starts without a session', () => {
-    expect(servicio.autenticado()).toBe(false);
-    expect(servicio.token()).toBeNull();
+    expect(service.authenticated()).toBe(false);
+    expect(service.token()).toBeNull();
   });
 
   it('stores token and user on login', async () => {
-    const entrando = servicio.entrar('juan', 'ñandú-ʉnkua');
-    const peticion = http.expectOne('/api/auth/login');
-    expect(peticion.request.body).toEqual({ usuario: 'juan', password: 'ñandú-ʉnkua' });
-    peticion.flush({ token: 'abc.def.ghi', usuario: 'juan', duracionDias: 30 });
-    await entrando;
+    const signingIn = service.signIn('juan', 'ñandú-ʉnkua');
+    const httpRequest = http.expectOne('/api/auth/login');
+    expect(httpRequest.request.body).toEqual({ usuario: 'juan', password: 'ñandú-ʉnkua' });
+    httpRequest.flush({ token: 'abc.def.ghi', usuario: 'juan', duracionDias: 30 });
+    await signingIn;
 
-    expect(servicio.autenticado()).toBe(true);
-    expect(servicio.usuario()).toBe('juan');
+    expect(service.authenticated()).toBe(true);
+    expect(service.user()).toBe('juan');
     expect(localStorage.getItem('damana.token')).toBe('abc.def.ghi');
   });
 
@@ -45,37 +45,37 @@ describe('AuthService', () => {
     localStorage.setItem('damana.token', 'abc.def.ghi');
     localStorage.setItem('damana.usuario', 'juan');
     // New instance = cold start, as when reloading the page.
-    const recargado = TestBed.runInInjectionContext(() => new AuthService());
-    expect(recargado.autenticado()).toBe(true);
-    expect(recargado.usuario()).toBe('juan');
+    const reloaded = TestBed.runInInjectionContext(() => new AuthService());
+    expect(reloaded.authenticated()).toBe(true);
+    expect(reloaded.user()).toBe('juan');
   });
 
   it('salir deletes the session from storage', async () => {
-    const entrando = servicio.entrar('juan', 'x');
+    const signingIn = service.signIn('juan', 'x');
     http.expectOne('/api/auth/login').flush({
       token: 't',
       usuario: 'juan',
       duracionDias: 30,
     });
-    await entrando;
+    await signingIn;
 
-    servicio.salir();
-    expect(servicio.autenticado()).toBe(false);
+    service.signOut();
+    expect(service.authenticated()).toBe(false);
     expect(localStorage.getItem('damana.token')).toBeNull();
   });
 
   it('asks the server whether it requires a session, and remembers it', async () => {
-    const primera = servicio.exigeSesion();
+    const first = service.requiresSession();
     http.expectOne('/api/auth/estado').flush({ activa: true });
-    expect(await primera).toBe(true);
+    expect(await first).toBe(true);
 
     // The second one does not ask again: http.verify() would fail if it did.
-    expect(await servicio.exigeSesion()).toBe(true);
+    expect(await service.requiresSession()).toBe(true);
   });
 
   it('if it cannot ask, it assumes a session is needed', async () => {
-    const consulta = servicio.exigeSesion();
+    const queryText = service.requiresSession();
     http.expectOne('/api/auth/estado').error(new ProgressEvent('error'));
-    expect(await consulta).toBe(true);
+    expect(await queryText).toBe(true);
   });
 });
