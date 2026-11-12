@@ -5,7 +5,7 @@ import {
 } from './config-traductor.provider';
 
 describe('leerTemperatura (TRADUCTOR_TEMPERATURA)', () => {
-  it('por defecto 0.2; acepta números y los acota a [0, 2]; ignora lo que no es número', () => {
+  it('0.2 by default; accepts numbers and clamps them to [0, 2]; ignores what is not a number', () => {
     expect(leerTemperatura(undefined)).toBe(TEMPERATURA_POR_DEFECTO);
     expect(leerTemperatura('')).toBe(TEMPERATURA_POR_DEFECTO);
     expect(leerTemperatura('0')).toBe(0);
@@ -17,7 +17,7 @@ describe('leerTemperatura (TRADUCTOR_TEMPERATURA)', () => {
 });
 
 describe('leerEsfuerzo (ANTHROPIC_ESFUERZO)', () => {
-  it('solo acepta los niveles de la API, sin distinguir mayúsculas; si falta o no vale, undefined', () => {
+  it('only accepts the API levels, case-insensitively; if missing or invalid, undefined', () => {
     expect(leerEsfuerzo(undefined)).toBeUndefined();
     expect(leerEsfuerzo('')).toBeUndefined();
     expect(leerEsfuerzo('low')).toBe('low');

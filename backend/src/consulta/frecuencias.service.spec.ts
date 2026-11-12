@@ -38,7 +38,7 @@ describe('FrecuenciasService', () => {
 
   afterEach(() => db.close());
 
-  it('excluye probables nombres propios (solo con mayúscula inicial)', () => {
+  it('excludes probable proper names (initial capital only)', () => {
     const palabras = servicio.listar(500).map((f) => f.palabra);
     expect(palabras).not.toContain('jehova');
     expect(palabras).not.toContain('ñandu'); // capital Ñ counts too
@@ -46,7 +46,7 @@ describe('FrecuenciasService', () => {
     expect(palabras).toContain('shkua');
   });
 
-  it('ordena por frecuencia descendente', () => {
+  it('sorts by descending frequency', () => {
     const filas = servicio.listar(500);
     expect(filas[0]).toEqual({
       palabra: 'nʉnka',
@@ -62,7 +62,7 @@ describe('FrecuenciasService', () => {
     });
   });
 
-  it('trae traducción y categoría del vocabulario cuando el damana coincide (caso con ʉ)', () => {
+  it('brings translation and category from the vocabulary when the Damana matches (case with ʉ)', () => {
     const fila = servicio.listar(500).find((f) => f.palabra === 'kʉnʉnka');
     expect(fila).toEqual({
       palabra: 'kʉnʉnka',
@@ -72,7 +72,7 @@ describe('FrecuenciasService', () => {
     });
   });
 
-  it('usa la glosa de conjugación como traducción cuando no hay vocabulario (caso con ñ)', () => {
+  it('uses the conjugation gloss as translation when there is no vocabulary (case with ñ)', () => {
     db.prepare(
       `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
        VALUES ('ñingunka', 'él volvió', 'volver', 'doc', NULL)`,
@@ -85,7 +85,7 @@ describe('FrecuenciasService', () => {
     expect(fila).toMatchObject({ traduccion: 'él volvió', categoria: null });
   });
 
-  it('respeta el límite', () => {
+  it('respects the limit', () => {
     expect(servicio.listar(1)).toHaveLength(1);
   });
 });

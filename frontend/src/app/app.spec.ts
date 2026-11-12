@@ -19,7 +19,7 @@ describe('App', () => {
 
   afterEach(() => localStorage.clear());
 
-  it('crea la app con la navegación de las seis vistas', async () => {
+  it('creates the app with the navigation for the six views', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const html = fixture.nativeElement as HTMLElement;
@@ -27,13 +27,13 @@ describe('App', () => {
     expect(enlaces).toEqual(['Buscar', 'Diccionario', 'Gramática', 'Flashcards', 'Traductor', 'Pendientes']);
   });
 
-  it('sin sesión no muestra el botón de salir', async () => {
+  it('without a session it does not show the logout button', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     expect((fixture.nativeElement as HTMLElement).querySelector('.sesion')).toBeNull();
   });
 
-  it('con sesión guardada muestra el usuario y el botón de salir', async () => {
+  it('with a stored session it shows the user and the logout button', async () => {
     // The service reads localStorage on construction, same as on a reload.
     localStorage.setItem('damana.token', 'token-de-prueba');
     localStorage.setItem('damana.usuario', 'juan');

@@ -10,21 +10,21 @@ import {
 } from './retrieval.service';
 
 describe('esParSinTraduccion', () => {
-  it('detecta referencias bíblicas (damana idéntico al español)', () => {
+  it('detects biblical references (Damana identical to the Spanish)', () => {
     const ref = 'Génesis 1:27-31; Salmo 115:16.';
     expect(esParSinTraduccion(ref, ref)).toBe(true);
   });
 
-  it('detecta nombres propios sueltos y tolera espacios y tildes', () => {
+  it('detects loose proper names and tolerates spaces and accents', () => {
     expect(esParSinTraduccion(' Felipe ', 'Felipe')).toBe(true);
     expect(esParSinTraduccion('Simon', 'Simón')).toBe(true); // normalizing removes accents
   });
 
-  it('NO marca pares traducidos de verdad (caso con ʉ y ñ)', () => {
+  it('does NOT flag genuinely translated pairs (case with ʉ and ñ)', () => {
     expect(esParSinTraduccion('nʉnka ñingui', 'es otra vez')).toBe(false);
   });
 
-  it('NO marca un par vacío como sin traducción', () => {
+  it('does NOT flag an empty pair as untranslated', () => {
     expect(esParSinTraduccion('', '')).toBe(false);
   });
 });
@@ -61,7 +61,7 @@ describe('RetrievalService (corpus v3)', () => {
 
   afterEach(() => db.close());
 
-  it('recupera oraciones por damana con ʉ intacta y puntajes descendentes', () => {
+  it('retrieves sentences by Damana with ʉ intact and descending scores', () => {
     const resultados = servicio.similares('nʉnka shkua', Idioma.damana, 8);
     expect(resultados.length).toBeGreaterThanOrEqual(2);
     for (const r of resultados) {
@@ -71,7 +71,7 @@ describe('RetrievalService (corpus v3)', () => {
     expect([...puntajes].sort((a, b) => b - a)).toEqual(puntajes);
   });
 
-  it('una oración estado=revisar puntúa la mitad que la aprobada idéntica y queda después', () => {
+  it('a sentence with estado=revisar scores half the identical approved one and comes after it', () => {
     const resultados = servicio.similares('nʉnka shkua gontka', Idioma.damana, 8);
     const aprobada = resultados.find((r) => r.referencia === 'oración 1')!;
     const revisar = resultados.find((r) => r.referencia === 'oración 2 (revisar)')!;
@@ -81,13 +81,13 @@ describe('RetrievalService (corpus v3)', () => {
     expect(resultados.indexOf(aprobada)).toBeLessThan(resultados.indexOf(revisar));
   });
 
-  it('el vocabulario NO participa en el retrieval (va aparte en el prompt)', () => {
+  it('the vocabulary does NOT take part in retrieval (it goes separately in the prompt)', () => {
     const resultados = servicio.similares('nʉnka', Idioma.damana, 8);
     expect(resultados.some((r) => r.fuente === 'vocabulario')).toBe(false);
     expect(resultados.length).toBeGreaterThan(0); // but it does find sentences
   });
 
-  it('las conjugaciones sí participan (caso con ʉ en la forma verbal)', () => {
+  it('conjugations do take part (case with ʉ in the verb form)', () => {
     const resultados = servicio.similares('nujkunʉnanka', Idioma.damana, 8);
     expect(resultados).toHaveLength(1);
     expect(resultados[0].fuente).toBe('conjugaciones');
@@ -95,20 +95,20 @@ describe('RetrievalService (corpus v3)', () => {
     expect(resultados[0].espanol).toBe('yo tuve');
   });
 
-  it('nunca confunde ʉ con u: buscar "nunka" no recupera nada', () => {
+  it('never confuses ʉ with u: searching "nunka" retrieves nothing', () => {
     expect(servicio.similares('nunka', Idioma.damana)).toEqual([]);
   });
 
-  it('recupera por español y trae el damana paralelo (caso con ñ en damana)', () => {
+  it('retrieves by Spanish and brings the parallel Damana (case with ñ in Damana)', () => {
     const resultados = servicio.similares('otra vez al monte', Idioma.espanol, 8);
     expect(resultados[0].damana).toBe('ñingui tua ukurra');
   });
 
-  it('respeta el límite k', () => {
+  it('respects the limit k', () => {
     expect(servicio.similares('nʉnka shkua gontka', Idioma.damana, 1)).toHaveLength(1);
   });
 
-  describe('expansión por lema verbal', () => {
+  describe('verb lemma expansion', () => {
     /** Corpus with the verb «leer» in two different persons. */
     const prepararVerbo = () => {
       db.prepare(
@@ -129,7 +129,7 @@ describe('RetrievalService (corpus v3)', () => {
       return new RetrievalService(new CorpusRepository(db));
     };
 
-    it('encuentra oraciones con otra conjugación del mismo verbo', () => {
+    it('finds sentences with another conjugation of the same verb', () => {
       const servicio = prepararVerbo();
       // 'naijkasheshisha' is in no sentence: it used to return 0 results
       const resultados = servicio.similares('naijkasheshisha', Idioma.damana, 8);
@@ -138,7 +138,7 @@ describe('RetrievalService (corpus v3)', () => {
       expect(oraciones.every((r) => r.porLema === 'leer')).toBe(true);
     });
 
-    it('una coincidencia directa gana a un pariente verbal', () => {
+    it('a direct match beats a verbal relative', () => {
       const servicio = prepararVerbo();
       const resultados = servicio.similares('nʉjkasheshisha', Idioma.damana, 8);
       const directa = resultados.find((r) => r.damana.includes('nʉjkasheshisha'))!;
@@ -148,7 +148,7 @@ describe('RetrievalService (corpus v3)', () => {
       expect(porLema.porLema).toBe('leer');
     });
 
-    it('el pariente nunca supera a la coincidencia directa de la conjugación', () => {
+    it('the relative never outranks the direct match of the conjugation', () => {
       const servicio = prepararVerbo();
       const resultados = servicio.similares('naijkasheshisha', Idioma.damana, 8);
       // The conjugations entry itself matches directly (1.0);
@@ -163,7 +163,7 @@ describe('RetrievalService (corpus v3)', () => {
       }
     });
 
-    it('no trae conjugaciones hermanas: ocuparían huecos sin enseñar contexto', () => {
+    it('does not bring sibling conjugations: they would take slots without teaching context', () => {
       const servicio = prepararVerbo();
       const resultados = servicio.similares('naijkasheshisha', Idioma.damana, 8);
       const conjugaciones = resultados.filter((r) => r.fuente === 'conjugaciones');
@@ -172,20 +172,20 @@ describe('RetrievalService (corpus v3)', () => {
       expect(conjugaciones[0].porLema).toBeUndefined();
     });
 
-    it('sin verbos en la consulta el resultado no cambia', () => {
+    it('without verbs in the query the result does not change', () => {
       const servicio = prepararVerbo();
       const resultados = servicio.similares('nʉnka shkua gontka', Idioma.damana, 8);
       expect(resultados.every((r) => r.porLema === undefined)).toBe(true);
     });
 
-    it('no expande en dirección español (los lemas son de formas damana)', () => {
+    it('does not expand in the Spanish direction (lemmas are for Damana forms)', () => {
       const servicio = prepararVerbo();
       const resultados = servicio.similares('leer este texto', Idioma.espanol, 8);
       expect(resultados.every((r) => r.porLema === undefined)).toBe(true);
     });
   });
 
-  it('excluye del índice los pares sin traducción (referencias bíblicas)', () => {
+  it('excludes untranslated pairs (biblical references) from the index', () => {
     const referencia = 'Genesis 1:27-31; Salmo 115:16.';
     db.prepare(
       `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)

@@ -19,7 +19,7 @@ const validada = (id: number, espanol: string, damana: string): Validada => ({
 });
 
 describe('pruebasDesdeValidadas', () => {
-  it('cada par es una prueba del ámbito «validadas», sin espacios sobrantes y sin lados vacíos', () => {
+  it('each pair is a test in the «validadas» scope, without extra spaces and without empty sides', () => {
     expect(
       pruebasDesdeValidadas([
         validada(1, ' mi mamá cocina ', 'Ranzhe abu dugwa '),
@@ -55,7 +55,7 @@ describe('exportarValidadasAPruebas', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('añade los pares al CSV sin repetir (idempotente) y conserva ʉ y ñ', () => {
+  it('adds the pairs to the CSV without repeating (idempotent) and keeps ʉ and ñ', () => {
     const repo = new ValidadasRepository(db);
     repo.guardar(nueva('no tengo agua', 'Nʉjkʉnanun nʉnka'));
     repo.guardar(nueva('otra vez', 'ñingui'));
@@ -69,7 +69,7 @@ describe('exportarValidadasAPruebas', () => {
     ]);
   });
 
-  it('no borra las pruebas que ya había en el CSV ni duplica un par que ya era prueba', () => {
+  it('does not delete tests already in the CSV or duplicate a pair that was already a test', () => {
     fs.writeFileSync(
       path.join(dir, ARCHIVO_PRUEBAS),
       '\ufeffespanol,damana_esperado,ambito\r\nagua,nʉnka,casa\r\n',

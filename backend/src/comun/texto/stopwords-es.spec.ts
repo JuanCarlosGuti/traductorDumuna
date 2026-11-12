@@ -1,7 +1,7 @@
 import { esNegacionEspanol, esStopwordEspanol } from './stopwords-es';
 
-describe('stopwords y negaciones del español', () => {
-  it('«no», «ni» y «nada» son stopwords Y negaciones; «nunca» y «jamás» solo negaciones', () => {
+describe('Spanish stopwords and negations', () => {
+  it('«no», «ni» and «nada» are stopwords AND negations; «nunca» and «jamás» only negations', () => {
     for (const p of ['no', 'ni', 'nada']) {
       expect(esStopwordEspanol(p)).toBe(true);
       expect(esNegacionEspanol(p)).toBe(true);
@@ -11,7 +11,7 @@ describe('stopwords y negaciones del español', () => {
     expect(esStopwordEspanol('nunca')).toBe(false);
   });
 
-  it('las palabras de contenido no son ni lo uno ni lo otro (con ñ y con ʉ)', () => {
+  it('content words are neither (with ñ and with ʉ)', () => {
     expect(esStopwordEspanol('ñame')).toBe(false);
     expect(esNegacionEspanol('ñame')).toBe(false);
     expect(esStopwordEspanol('nʉnka')).toBe(false);

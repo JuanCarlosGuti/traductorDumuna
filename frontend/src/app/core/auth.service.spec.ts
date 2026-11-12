@@ -24,12 +24,12 @@ describe('AuthService', () => {
     localStorage.clear();
   });
 
-  it('arranca sin sesión', () => {
+  it('starts without a session', () => {
     expect(servicio.autenticado()).toBe(false);
     expect(servicio.token()).toBeNull();
   });
 
-  it('guarda token y usuario al entrar', async () => {
+  it('stores token and user on login', async () => {
     const entrando = servicio.entrar('juan', 'ñandú-ʉnkua');
     const peticion = http.expectOne('/api/auth/login');
     expect(peticion.request.body).toEqual({ usuario: 'juan', password: 'ñandú-ʉnkua' });
@@ -41,7 +41,7 @@ describe('AuthService', () => {
     expect(localStorage.getItem('damana.token')).toBe('abc.def.ghi');
   });
 
-  it('recupera la sesión guardada al recargar', () => {
+  it('restores the stored session on reload', () => {
     localStorage.setItem('damana.token', 'abc.def.ghi');
     localStorage.setItem('damana.usuario', 'juan');
     // New instance = cold start, as when reloading the page.
@@ -50,7 +50,7 @@ describe('AuthService', () => {
     expect(recargado.usuario()).toBe('juan');
   });
 
-  it('salir borra la sesión del almacenamiento', async () => {
+  it('salir deletes the session from storage', async () => {
     const entrando = servicio.entrar('juan', 'x');
     http.expectOne('/api/auth/login').flush({
       token: 't',
@@ -64,7 +64,7 @@ describe('AuthService', () => {
     expect(localStorage.getItem('damana.token')).toBeNull();
   });
 
-  it('pregunta al servidor si exige sesión, y lo recuerda', async () => {
+  it('asks the server whether it requires a session, and remembers it', async () => {
     const primera = servicio.exigeSesion();
     http.expectOne('/api/auth/estado').flush({ activa: true });
     expect(await primera).toBe(true);
@@ -73,7 +73,7 @@ describe('AuthService', () => {
     expect(await servicio.exigeSesion()).toBe(true);
   });
 
-  it('si no puede preguntar, asume que hace falta sesión', async () => {
+  it('if it cannot ask, it assumes a session is needed', async () => {
     const consulta = servicio.exigeSesion();
     http.expectOne('/api/auth/estado').error(new ProgressEvent('error'));
     expect(await consulta).toBe(true);

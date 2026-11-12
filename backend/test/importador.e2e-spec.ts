@@ -9,7 +9,7 @@ import { ImportadorService } from '../src/importador/importador.service';
 
 const BOM = String.fromCharCode(0xfeff);
 
-describe('Importador (e2e, módulo Nest completo con SQLite en memoria)', () => {
+describe('Importer (e2e, full Nest module with in-memory SQLite)', () => {
   let dirTmp: string;
   let app: INestApplicationContext;
   let servicio: ImportadorService;
@@ -55,7 +55,7 @@ describe('Importador (e2e, módulo Nest completo con SQLite en memoria)', () => 
     fs.rmSync(dirTmp, { recursive: true, force: true });
   });
 
-  it('importa y reporta estadísticas coherentes de las 4 fuentes (sin reglas ni elicitación)', async () => {
+  it('imports and reports consistent statistics for the 4 sources (no rules or elicitation)', async () => {
     const stats = await servicio.importarTodo(dirTmp);
     expect(stats.oraciones).toBe(2);
     expect(stats.frases).toBe(1);
@@ -67,7 +67,7 @@ describe('Importador (e2e, módulo Nest completo con SQLite en memoria)', () => 
     expect(stats.topPalabras.length).toBeGreaterThan(0);
   });
 
-  it('los tokens conservan ʉ y ñ (nunca degradadas a u/n)', async () => {
+  it('tokens keep ʉ and ñ (never degraded to u/n)', async () => {
     const stats = await servicio.importarTodo(dirTmp);
     const palabras = stats.topPalabras.map((p) => p.palabra);
     expect(palabras).toContain('nʉnka');
@@ -76,13 +76,13 @@ describe('Importador (e2e, módulo Nest completo con SQLite en memoria)', () => 
     expect(palabras).not.toContain('ningui');
   });
 
-  it('deja escrito pruebas_traduccion.csv aunque no haya pruebas (solo encabezado)', async () => {
+  it('writes pruebas_traduccion.csv even if there are no tests (header only)', async () => {
     await servicio.importarTodo(dirTmp);
     const csv = fs.readFileSync(path.join(dirTmp, 'pruebas_traduccion.csv'), 'utf8');
     expect(csv).toContain('espanol,damana_esperado,ambito');
   });
 
-  it('es idempotente al importar dos veces', async () => {
+  it('is idempotent when importing twice', async () => {
     const primera = await servicio.importarTodo(dirTmp);
     const segunda = await servicio.importarTodo(dirTmp);
     expect(segunda).toEqual(primera);

@@ -44,7 +44,7 @@ describe('Ficha', () => {
 
   afterEach(() => http.verify());
 
-  it('pide la palabra de la URL y pinta su ficha', async () => {
+  it('requests the word in the URL and renders its card', async () => {
     await arrancarCon('nʉnka');
     // encodeURIComponent: the ʉ travels percent-encoded in the path
     http.expectOne('/api/palabra/n%CA%89nka').flush(FICHA);
@@ -55,14 +55,14 @@ describe('Ficha', () => {
     expect(texto(fixture)).toContain('283');
   });
 
-  it('marca la palabra damana con lang="mbp"', async () => {
+  it('marks the Damana word with lang="mbp"', async () => {
     await arrancarCon('nʉnka');
     http.expectOne('/api/palabra/n%CA%89nka').flush(FICHA);
     await asentar(fixture);
     expect(buscarTodos(fixture, 'h1[lang="mbp"]')[0].textContent).toContain('nʉnka');
   });
 
-  it('una candidata lleva a buscarla en español', async () => {
+  it('a candidate leads to searching it in Spanish', async () => {
     await arrancarCon('nʉnka');
     http.expectOne('/api/palabra/n%CA%89nka').flush(FICHA);
     await asentar(fixture);
@@ -74,7 +74,7 @@ describe('Ficha', () => {
     });
   });
 
-  it('navegar a otra palabra recarga la ficha', async () => {
+  it('navigating to another word reloads the card', async () => {
     await arrancarCon('nʉnka');
     http.expectOne('/api/palabra/n%CA%89nka').flush(FICHA);
     await asentar(fixture);
@@ -90,7 +90,7 @@ describe('Ficha', () => {
     expect(texto(fixture)).toContain('ñingui'); // the ñ is not degraded to n
   });
 
-  it('una palabra inexistente se anuncia sin romper la vista', async () => {
+  it('a nonexistent word is announced without breaking the view', async () => {
     await arrancarCon('zzzz');
     http.expectOne('/api/palabra/zzzz').flush({}, { status: 404, statusText: 'Not Found' });
     await asentar(fixture);

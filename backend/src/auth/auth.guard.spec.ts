@@ -34,7 +34,7 @@ describe('AuthGuard', () => {
     guard = new AuthGuard(reflector, config, auth);
   });
 
-  it('deja pasar con un token válido y deja el usuario en la petición', () => {
+  it('lets through with a valid token and leaves the user on the request', () => {
     const peticion: PeticionConSesion = {
       headers: { authorization: `Bearer ${auth.emitirToken('juan')}` },
     };
@@ -42,34 +42,34 @@ describe('AuthGuard', () => {
     expect(peticion.usuario).toBe('juan');
   });
 
-  it('rechaza sin cabecera', () => {
+  it('rejects without a header', () => {
     expect(() => guard.canActivate(contextoCon({ headers: {} }))).toThrow(
       UnauthorizedException,
     );
   });
 
-  it('rechaza un esquema que no sea Bearer', () => {
+  it('rejects a scheme other than Bearer', () => {
     const peticion = { headers: { authorization: 'Basic anVhbjpjbGF2ZQ==' } };
     expect(() => guard.canActivate(contextoCon(peticion))).toThrow(
       UnauthorizedException,
     );
   });
 
-  it('rechaza un token inventado', () => {
+  it('rejects a made-up token', () => {
     const peticion = { headers: { authorization: 'Bearer no.es.un.token' } };
     expect(() => guard.canActivate(contextoCon(peticion))).toThrow(
       UnauthorizedException,
     );
   });
 
-  it('deja pasar las rutas marcadas con @Publico()', () => {
+  it('lets through routes marked with @Publico()', () => {
     jest
       .spyOn(reflector, 'getAllAndOverride')
       .mockImplementation((clave) => clave === CLAVE_PUBLICO);
     expect(guard.canActivate(contextoCon({ headers: {} }))).toBe(true);
   });
 
-  it('con la auth desactivada no exige nada (desarrollo local)', () => {
+  it('with auth disabled it requires nothing (local development)', () => {
     const abierto = new AuthGuard(reflector, { ...config, activa: false }, auth);
     expect(abierto.canActivate(contextoCon({ headers: {} }))).toBe(true);
   });

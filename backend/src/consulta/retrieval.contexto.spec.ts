@@ -39,27 +39,27 @@ const fragmento = (
 });
 
 describe('esCasiIgual', () => {
-  it('mismo damana salvo mayúsculas/puntuación → casi igual', () => {
+  it('same Damana except capitals/punctuation → almost equal', () => {
     expect(esCasiIgual({ damana: 'Nʉnka shkua.', espanol: 'a' }, { damana: 'nʉnka shkua', espanol: 'b' })).toBe(true);
   });
 
-  it('mismo español → casi igual aunque el damana cambie', () => {
+  it('same Spanish → almost equal even if the Damana changes', () => {
     expect(esCasiIgual({ damana: 'x y', espanol: 'El agua es una' }, { damana: 'z w', espanol: 'el agua es una' })).toBe(true);
   });
 
-  it('casi todas las palabras damana en común (Jaccard ≥ 0,8) → casi igual', () => {
+  it('almost all Damana words in common (Jaccard ≥ 0.8) → almost equal', () => {
     const a = { damana: 'a b c d e', espanol: 'uno' };
     const b = { damana: 'a b c d e f', espanol: 'dos' };
     expect(esCasiIgual(a, b)).toBe(true);
   });
 
-  it('ʉ ≠ u: «nʉnka shkua» y «nunka shkua» NO son casi iguales', () => {
+  it('ʉ ≠ u: «nʉnka shkua» and «nunka shkua» are NOT almost equal', () => {
     expect(esCasiIgual({ damana: 'nʉnka shkua', espanol: 'a' }, { damana: 'nunka shkua', espanol: 'b' })).toBe(false);
   });
 });
 
-describe('repartirPorDominio (cupos del prompt)', () => {
-  it('hasta 6 cotidianos, 4 de gramática y, con cotidianos suficientes, solo 2 bíblicos', () => {
+describe('repartirPorDominio (prompt quotas)', () => {
+  it('up to 6 everyday, 4 grammar and, with enough everyday ones, only 2 biblical', () => {
     const candidatos = [
       ...Array.from({ length: 9 }, (_, i) => fragmento(100 + i, DominioCorpus.cotidiano, 0.9 - i * 0.01)),
       ...Array.from({ length: 6 }, (_, i) => fragmento(200 + i, DominioCorpus.gramatica, 0.8 - i * 0.01)),
@@ -76,7 +76,7 @@ describe('repartirPorDominio (cupos del prompt)', () => {
     expect(r.at(-1)!.dominio).toBe(DominioCorpus.biblico);
   });
 
-  it('con pocos cotidianos los bíblicos conservan su cupo de 4', () => {
+  it('with few everyday ones the biblical ones keep their quota of 4', () => {
     const candidatos = [
       ...Array.from({ length: 3 }, (_, i) => fragmento(100 + i, DominioCorpus.cotidiano, 0.9)),
       ...Array.from({ length: 7 }, (_, i) => fragmento(300 + i, DominioCorpus.biblico, 0.8 - i * 0.01)),
@@ -86,7 +86,7 @@ describe('repartirPorDominio (cupos del prompt)', () => {
     expect(r.filter((f) => f.dominio === DominioCorpus.cotidiano)).toHaveLength(3);
   });
 
-  it('descarta los casi iguales quedándose con el de mayor puntaje', () => {
+  it('discards near-duplicates keeping the one with the highest score', () => {
     const candidatos = [
       fragmento(1, DominioCorpus.cotidiano, 0.5, 'nʉnka shkua gontka', 'el agua es una'),
       fragmento(2, DominioCorpus.cotidiano, 0.9, 'Nʉnka shkua gontka.', 'El agua es una.'),
@@ -96,7 +96,7 @@ describe('repartirPorDominio (cupos del prompt)', () => {
     expect(r.map((f) => f.id)).toEqual([2, 3]);
   });
 
-  it('nunca devuelve más de 14 ejemplos', () => {
+  it('never returns more than 14 examples', () => {
     const candidatos = [
       ...Array.from({ length: 20 }, (_, i) => fragmento(100 + i, DominioCorpus.cotidiano, 0.9 - i * 0.01)),
       ...Array.from({ length: 20 }, (_, i) => fragmento(200 + i, DominioCorpus.gramatica, 0.9 - i * 0.01)),
@@ -146,7 +146,7 @@ describe('RetrievalService.recuperarContexto', () => {
 
   afterEach(() => db.close());
 
-  it('español → damana: diccionario por palabra, rasgo posesivo, regla -nzhe y ejemplos por dominio', () => {
+  it('Spanish → Damana: per-word dictionary, possessive feature, -nzhe rule and examples by domain', () => {
     const c = servicio.recuperarContexto('mi mamá cocina en la casa', Idioma.espanol);
     expect(c.diccionario.find((a) => a.palabra === 'mamá')).toMatchObject({ damana: 'Abu', coincidencia: 'exacta' });
     expect(c.diccionario.find((a) => a.palabra === 'casa')).toMatchObject({ damana: 'Urraga' });
@@ -162,12 +162,12 @@ describe('RetrievalService.recuperarContexto', () => {
     );
   });
 
-  it('reconoce el nombre propio por cualquiera de sus grafías y devuelve la del corpus', () => {
+  it('recognizes the proper name under any of its spellings and returns the corpus one', () => {
     const c = servicio.recuperarContexto('Jehova hizo el agua', Idioma.espanol);
     expect(c.nombresPropios).toEqual([{ enTexto: 'Jehova', espanol: 'Jehová', damana: 'Jehová' }]);
   });
 
-  it('damana → español: la regla se activa por sufijo (terruandzina → -ndzina) y el diccionario por token con ʉ', () => {
+  it('Damana → Spanish: the rule is triggered by suffix (terruandzina → -ndzina) and the dictionary by token with ʉ', () => {
     const c = servicio.recuperarContexto('terruandzina nʉnka', Idioma.damana);
     expect(c.reglas.map((r) => r.forma)).toEqual(['-ndzina']);
     expect(c.disparadores).toEqual(['plural']);
@@ -175,7 +175,7 @@ describe('RetrievalService.recuperarContexto', () => {
     expect(c.ejemplos.some((e) => e.dominio === DominioCorpus.gramatica)).toBe(true);
   });
 
-  it('nunca confunde ʉ con u: «nunka» no encuentra ni diccionario ni ejemplos', () => {
+  it('never confuses ʉ with u: «nunka» finds neither dictionary nor examples', () => {
     const c = servicio.recuperarContexto('nunka', Idioma.damana);
     expect(c.diccionario).toEqual([]);
     expect(c.ejemplos).toEqual([]);

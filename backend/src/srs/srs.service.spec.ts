@@ -48,7 +48,7 @@ describe('SrsService', () => {
 
   afterEach(() => db.close());
 
-  it('sin progreso: entrega primero el vocabulario como tarjetas nuevas', () => {
+  it('no progress: serves the vocabulary first as new cards', () => {
     const estado = servicio.siguiente(dia0);
     expect(estado.tarjeta).toMatchObject({
       palabra: 'nʉnka',
@@ -61,7 +61,7 @@ describe('SrsService', () => {
     expect(estado.nuevas).toBe(4);
   });
 
-  it('las palabras frecuentes llevan traducciones candidatas como reverso', () => {
+  it('frequent words carry candidate translations as the back', () => {
     servicio.responder('nʉnka', Calificacion.bien, dia0);
     servicio.responder('ñingui', Calificacion.bien, dia0);
     const estado = servicio.siguiente(dia0);
@@ -70,7 +70,7 @@ describe('SrsService', () => {
     expect(estado.tarjeta!.traduccion).toContain('hizo'); // 'esto'/'aqui' are candidates too
   });
 
-  it('responder "bien" programa la revisión y la tarjeta vence al día siguiente', () => {
+  it('answering "bien" schedules the review and the card is due the next day', () => {
     const r = servicio.responder('nʉnka', Calificacion.bien, dia0);
     expect(r.intervaloDias).toBe(1);
 
@@ -83,14 +83,14 @@ describe('SrsService', () => {
     expect(manana.tarjeta!.repeticiones).toBe(1);
   });
 
-  it('"otra vez" hace que la tarjeta venza de inmediato (caso con ñ)', () => {
+  it('"otra vez" makes the card due immediately (case with ñ)', () => {
     servicio.responder('ñingui', Calificacion.otra_vez, dia0);
     const estado = servicio.siguiente(dia0);
     expect(estado.pendientes).toBe(1);
     expect(estado.tarjeta!.palabra).toBe('ñingui');
   });
 
-  it('prioriza la tarjeta vencida más antigua', () => {
+  it('prioritizes the oldest overdue card', () => {
     servicio.responder('nʉnka', Calificacion.bien, dia0); // due day 1
     servicio.responder('ñingui', Calificacion.bien, dias(0.5)); // due day 1.5
     const estado = servicio.siguiente(dias(2));
@@ -98,13 +98,13 @@ describe('SrsService', () => {
     expect(estado.tarjeta!.palabra).toBe('nʉnka');
   });
 
-  it('rechaza palabras fuera del mazo', () => {
+  it('rejects words outside the deck', () => {
     expect(() =>
       servicio.responder('inexistente', Calificacion.bien, dia0),
     ).toThrow(NotFoundException);
   });
 
-  it('el progreso sobrevive a una reimportación (DELETE de tablas del corpus)', () => {
+  it('progress survives a re-import (DELETE of corpus tables)', () => {
     servicio.responder('nʉnka', Calificacion.bien, dia0);
     db.exec('DELETE FROM tokens_damana'); // what the importer does
     const fila = db

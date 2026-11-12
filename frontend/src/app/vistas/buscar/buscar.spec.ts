@@ -43,12 +43,12 @@ describe('Buscar', () => {
 
   afterEach(() => http.verify());
 
-  it('sin término en la URL no llama al backend', async () => {
+  it('without a term in the URL it does not call the backend', async () => {
     await arrancarCon({});
     http.expectNone(() => true);
   });
 
-  it('con término en la URL busca al entrar y pinta los resultados', async () => {
+  it('with a term in the URL it searches on entry and renders the results', async () => {
     await arrancarCon({ q: 'nʉnka' });
     const peticion = http.expectOne((r) => r.url === '/api/buscar');
     expect(peticion.request.params.get('q')).toBe('nʉnka');
@@ -60,7 +60,7 @@ describe('Buscar', () => {
     expect(texto(fixture)).toContain('el agua es una');
   });
 
-  it('respeta el idioma y la fuente que vengan en la URL', async () => {
+  it('respects the language and source given in the URL', async () => {
     await arrancarCon({ q: 'agua', idioma: 'espanol', fuente: 'frases' });
     const peticion = http.expectOne((r) => r.url === '/api/buscar');
     expect(peticion.request.params.get('idioma')).toBe('espanol');
@@ -69,7 +69,7 @@ describe('Buscar', () => {
     await asentar(fixture);
   });
 
-  it('navegar a otro término relanza la búsqueda: el «atrás» del navegador funciona', async () => {
+  it('navigating to another term relaunches the search: the browser «back» works', async () => {
     await arrancarCon({ q: 'nʉnka' });
     http.expectOne((r) => r.url === '/api/buscar').flush(RESULTADOS);
     await asentar(fixture);
@@ -82,7 +82,7 @@ describe('Buscar', () => {
     await asentar(fixture);
   });
 
-  it('enviar el formulario navega en vez de buscar a mano', async () => {
+  it('submitting the form navigates instead of searching by hand', async () => {
     await arrancarCon({});
     const campo = (fixture.nativeElement as HTMLElement).querySelector('input')!;
     campo.value = 'nʉnka';
@@ -99,14 +99,14 @@ describe('Buscar', () => {
     expect((extras as { queryParams: { q: string } }).queryParams.q).toBe('nʉnka');
   });
 
-  it('si el backend falla avisa y no deja resultados viejos', async () => {
+  it('if the backend fails it warns and leaves no stale results', async () => {
     await arrancarCon({ q: 'nʉnka' });
     http.expectOne((r) => r.url === '/api/buscar').error(new ProgressEvent('error'));
     await asentar(fixture);
     expect(texto(fixture)).toContain('No se pudo completar la búsqueda');
   });
 
-  it('cero resultados no es un error', async () => {
+  it('zero results is not an error', async () => {
     await arrancarCon({ q: 'zzzz' });
     http.expectOne((r) => r.url === '/api/buscar').flush({
       ...RESULTADOS,

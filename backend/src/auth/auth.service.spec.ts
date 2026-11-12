@@ -25,33 +25,33 @@ describe('AuthService', () => {
     );
   });
 
-  it('acepta las credenciales correctas, con ʉ y ñ en la contraseña', () => {
+  it('accepts the correct credentials, with ʉ and ñ in the password', () => {
     expect(servicio.verificar('juan', CONTRASENA)).toBe(true);
   });
 
-  it('rechaza la contraseña con u donde va ʉ: son letras distintas', () => {
+  it('rejects the password with u where ʉ goes: they are different letters', () => {
     expect(servicio.verificar('juan', 'ñandú-unkua-2026')).toBe(false);
   });
 
-  it('rechaza la contraseña con n donde va ñ', () => {
+  it('rejects the password with n where ñ goes', () => {
     expect(servicio.verificar('juan', 'nandú-ʉnkua-2026')).toBe(false);
   });
 
-  it('rechaza usuario incorrecto aunque la contraseña sea buena', () => {
+  it('rejects a wrong user even if the password is right', () => {
     expect(servicio.verificar('otro', CONTRASENA)).toBe(false);
   });
 
-  it('el token emitido se puede verificar y lleva el usuario', () => {
+  it('the issued token can be verified and carries the user', () => {
     const token = servicio.emitirToken('juan');
     expect(servicio.usuarioDelToken(token)).toBe('juan');
   });
 
-  it('un token manipulado no vale', () => {
+  it('a tampered token is not valid', () => {
     const token = servicio.emitirToken('juan');
     expect(servicio.usuarioDelToken(token.slice(0, -3) + 'aaa')).toBeNull();
   });
 
-  it('un token firmado con otro secreto no vale', () => {
+  it('a token signed with another secret is not valid', () => {
     const intruso = new AuthService(
       config,
       new JwtService({ secret: 'otro-secreto-distinto' }),
@@ -59,7 +59,7 @@ describe('AuthService', () => {
     expect(servicio.usuarioDelToken(intruso.emitirToken('juan'))).toBeNull();
   });
 
-  it('un token caducado no vale', () => {
+  it('an expired token is not valid', () => {
     const efimero = new AuthService(
       config,
       new JwtService({ secret: config.secreto, signOptions: { expiresIn: '-1s' } }),
@@ -67,31 +67,31 @@ describe('AuthService', () => {
     expect(servicio.usuarioDelToken(efimero.emitirToken('juan'))).toBeNull();
   });
 
-  describe('límite de intentos', () => {
+  describe('attempt limit', () => {
     const IP = '203.0.113.7';
 
-    it('bloquea tras agotar los intentos', () => {
+    it('blocks after the attempts are used up', () => {
       for (let i = 0; i < MAX_INTENTOS; i++) servicio.registrarFallo(IP, 1000);
       expect(servicio.bloqueado(IP, 1000)).toBe(true);
     });
 
-    it('no bloquea antes de agotarlos', () => {
+    it('does not block before they are used up', () => {
       for (let i = 0; i < MAX_INTENTOS - 1; i++) servicio.registrarFallo(IP, 1000);
       expect(servicio.bloqueado(IP, 1000)).toBe(false);
     });
 
-    it('el bloqueo caduca solo', () => {
+    it('the block expires by itself', () => {
       for (let i = 0; i < MAX_INTENTOS; i++) servicio.registrarFallo(IP, 1000);
       expect(servicio.bloqueado(IP, 1000 + BLOQUEO_MS + 1)).toBe(false);
     });
 
-    it('un login correcto limpia los fallos previos', () => {
+    it('a successful login clears previous failures', () => {
       for (let i = 0; i < MAX_INTENTOS; i++) servicio.registrarFallo(IP, 1000);
       servicio.olvidarFallos(IP);
       expect(servicio.bloqueado(IP, 1000)).toBe(false);
     });
 
-    it('el bloqueo es por IP: no deja fuera a los demás', () => {
+    it('the block is per IP: it does not lock everyone else out', () => {
       for (let i = 0; i < MAX_INTENTOS; i++) servicio.registrarFallo(IP, 1000);
       expect(servicio.bloqueado('198.51.100.4', 1000)).toBe(false);
     });

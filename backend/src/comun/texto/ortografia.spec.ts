@@ -5,55 +5,55 @@ const U_MAYUS_DIERESIS = String.fromCharCode(0x00dc);
 const DIERESIS_COMBINANTE = String.fromCharCode(0x0308);
 
 describe('corregirOrtografiaDamana (ü → ʉ)', () => {
-  it('convierte ü precompuesta en ʉ', () => {
+  it('converts precomposed ü into ʉ', () => {
     expect(corregirOrtografiaDamana(`bug${U_DIERESIS}i`)).toBe('bugʉi');
   });
 
-  it('convierte Ü mayúscula en Ʉ', () => {
+  it('converts capital Ü into Ʉ', () => {
     expect(corregirOrtografiaDamana(`${U_MAYUS_DIERESIS}nkua`)).toBe('Ʉnkua');
   });
 
-  it('convierte la forma descompuesta u + diéresis combinante', () => {
+  it('converts the decomposed form u + combining diaeresis', () => {
     expect(corregirOrtografiaDamana(`bug${'u' + DIERESIS_COMBINANTE}i`)).toBe('bugʉi');
   });
 
-  it('NO toca la u simple ni la ñ', () => {
+  it('does NOT touch plain u or ñ', () => {
     expect(corregirOrtografiaDamana('nunka ñingui')).toBe('nunka ñingui');
   });
 
-  it('deja intacta la ʉ que ya venía bien', () => {
+  it('leaves intact the ʉ that was already right', () => {
     expect(corregirOrtografiaDamana('kʉnʉnka')).toBe('kʉnʉnka');
   });
 
-  it('conserva las comillas tipográficas', () => {
+  it('keeps typographic quotes', () => {
     expect(corregirOrtografiaDamana('‘shke’ta’')).toBe('‘shke’ta’');
   });
 });
 
-describe('normalizarDamanaEscrito (ü y u+ → ʉ, protegiendo el español con ü)', () => {
-  it('convierte u+ en ʉ y U+ en Ʉ', () => {
+describe('normalizarDamanaEscrito (ü and u+ → ʉ, protecting Spanish words with ü)', () => {
+  it('converts u+ into ʉ and U+ into Ʉ', () => {
     expect(normalizarDamanaEscrito('ku+nʉnka U+nkua')).toBe('kʉnʉnka Ʉnkua');
   });
 
-  it('convierte ü en ʉ como el importador de CSV', () => {
+  it('converts ü into ʉ like the CSV importer', () => {
     expect(normalizarDamanaEscrito(`bug${U_DIERESIS}i`)).toBe('bugʉi');
   });
 
-  it('protege las palabras españolas con ü (vergüenza, pingüino, bilingüe)', () => {
+  it('protects Spanish words with ü (vergüenza, pingüino, bilingüe)', () => {
     expect(normalizarDamanaEscrito('vergüenza pingüino bilingüe')).toBe(
       'vergüenza pingüino bilingüe',
     );
   });
 
-  it('protege el español aunque vaya mezclado con damana con ü de apaño', () => {
+  it('protects Spanish even when mixed with Damana using the ü workaround', () => {
     expect(normalizarDamanaEscrito(`bug${U_DIERESIS}i pingüino`)).toBe('bugʉi pingüino');
   });
 
-  it('respeta la ñ como letra plena', () => {
+  it('respects ñ as a full letter', () => {
     expect(normalizarDamanaEscrito('ñingu+i')).toBe('ñingʉi');
   });
 
-  it('no toca el signo + cuando no sigue a una u', () => {
+  it('does not touch the + sign when it does not follow a u', () => {
     expect(normalizarDamanaEscrito('a+b')).toBe('a+b');
   });
 });

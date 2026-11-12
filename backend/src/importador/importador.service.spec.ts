@@ -108,7 +108,7 @@ async function escribirLote(dir: string, nombre: string, filas: string[][]): Pro
   ]);
 }
 
-describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
+describe('ImportadorService (corpus v3 + rules + elicitation)', () => {
   let dirTmp: string;
   let db: Database.Database;
   let servicio: ImportadorService;
@@ -139,7 +139,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
   const filas = <T = any>(sql: string, ...params: unknown[]): T[] =>
     db.prepare(sql).all(...params) as T[];
 
-  it('importa los conteos de los CSV, las reglas, los nombres y la elicitación', async () => {
+  it('imports the counts from the CSVs, the rules, the names and the elicitation', async () => {
     const stats = await servicio.importarTodo(dirTmp);
     expect(stats.oraciones).toBe(2 + 2); // CSV + elicitation (agua, pingüino); the test does not go in
     expect(stats.frases).toBe(2);
@@ -165,7 +165,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     expect(stats.totalTokens).toBeGreaterThan(0);
   });
 
-  it('corrige la ü de Word a ʉ en el damana de los CSV y en los tokens', async () => {
+  it('fixes the Word ü to ʉ in the Damana of the CSVs and in the tokens', async () => {
     await servicio.importarTodo(dirTmp);
     const fila = db.prepare('SELECT damana FROM frases WHERE rowid = 2').get() as { damana: string };
     expect(fila.damana).toBe('bugʉi we ugunga');
@@ -174,7 +174,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     expect(palabras).not.toContain('bugui');
   });
 
-  it('en la elicitación convierte ü y u+ a ʉ, pero respeta pingüino', async () => {
+  it('in elicitation it converts ü and u+ to ʉ, but respects pingüino', async () => {
     await servicio.importarTodo(dirTmp);
     const agua = db.prepare("SELECT damana, categoria, fuente FROM vocabulario WHERE espanol = 'agua' AND fuente = 'elicitacion'").get() as any;
     expect(agua).toMatchObject({ damana: 'nʉnka', categoria: 'naturaleza' });
@@ -190,14 +190,14 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     expect(pinguino.damana).toBe('pingüino');
   });
 
-  it('marca el dominio: lfb → biblico, frases y elicitación → cotidiano', async () => {
+  it('marks the domain: lfb → biblico, phrases and elicitation → cotidiano', async () => {
     await servicio.importarTodo(dirTmp);
     expect(filas("SELECT dominio FROM oraciones WHERE fuente LIKE 'lfb%'").map((f) => f.dominio)).toEqual(['biblico', 'biblico']);
     expect(filas("SELECT dominio FROM oraciones WHERE fuente = 'elicitacion'").map((f) => f.dominio)).toEqual(['cotidiano', 'cotidiano']);
     expect(filas('SELECT dominio FROM frases').map((f) => f.dominio)).toEqual(['cotidiano', 'cotidiano']);
   });
 
-  it('importa las reglas con su disparador y los nombres propios con sus grafías', async () => {
+  it('imports the rules with their trigger and the proper names with their spellings', async () => {
     await servicio.importarTodo(dirTmp);
     expect(filas('SELECT forma, significado, disparador, ejemplo_regla FROM reglas ORDER BY rowid')).toEqual([
       { forma: '-ndzina', significado: 'pluraliza sustantivos', disparador: 'plural', ejemplo_regla: 'terruandzina' },
@@ -209,7 +209,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     ]);
   });
 
-  it('reserva la fila de prueba en pruebas_traduccion.csv y la deja fuera de las oraciones', async () => {
+  it('reserves the test row in pruebas_traduccion.csv and leaves it out of the sentences', async () => {
     await servicio.importarTodo(dirTmp);
     expect(leerPruebas(dirTmp)).toEqual([
       { espanol: 'Mi casa es grande.', damanaEsperado: 'Ranzhe urraga aikuia', ambito: 'casa' },
@@ -223,7 +223,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     expect(crudo).toContain('\r\n');
   });
 
-  it('las filas sin llenar quedan como pendientes de elicitación, sin duplicarse al reimportar', async () => {
+  it('unfilled rows stay as pending elicitation items, without duplicating on re-import', async () => {
     await servicio.importarTodo(dirTmp);
     await servicio.importarTodo(dirTmp);
     // hola carries palabra_dm in the batch itself and «años» is already in the
@@ -233,7 +233,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     ]);
   });
 
-  it('un lote posterior que llena la fila cierra la pendiente y gana por id (idempotente por id)', async () => {
+  it('a later batch that fills in the row closes the pending item and wins by id (idempotent by id)', async () => {
     await servicio.importarTodo(dirTmp);
     await escribirLote(dirTmp, 'formato_elicitacion_lote2.xlsx', LOTE_2);
     try {
@@ -250,7 +250,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     }
   });
 
-  it('sin reglas_damana.xlsx ni lotes de elicitación importa igual (corpus mínimo)', async () => {
+  it('without reglas_damana.xlsx or elicitation batches it still imports (minimal corpus)', async () => {
     const dirMinimo = fs.mkdtempSync(path.join(os.tmpdir(), 'corpus-min-'));
     try {
       escribirCsvs(dirMinimo);
@@ -265,7 +265,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     }
   });
 
-  it('guarda id_externo y estado de las oraciones (celdas multilínea intactas)', async () => {
+  it('stores id_externo and estado of the sentences (multi-line cells intact)', async () => {
     await servicio.importarTodo(dirTmp);
     const csv = filas('SELECT id_externo, damana, estado FROM oraciones WHERE id_externo LIKE ? ORDER BY rowid', 'o%');
     expect(csv[0].id_externo).toBe('o1');
@@ -274,7 +274,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     expect(csv[1].estado).toBe('revisar');
   });
 
-  it('tokeniza todas las fuentes conservando ʉ y ñ', async () => {
+  it('tokenizes all sources keeping ʉ and ñ', async () => {
     await servicio.importarTodo(dirTmp);
     const origenes = filas('SELECT DISTINCT tabla_origen AS t FROM tokens_damana ORDER BY t').map((f) => f.t);
     expect(origenes).toEqual(['conjugaciones', 'frases', 'oraciones', 'vocabulario']);
@@ -285,13 +285,13 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     expect(palabras).not.toContain('ningui');
   });
 
-  it('es idempotente: importar dos veces deja las mismas estadísticas', async () => {
+  it('is idempotent: importing twice leaves the same statistics', async () => {
     const primera = await servicio.importarTodo(dirTmp);
     const segunda = await servicio.importarTodo(dirTmp);
     expect(segunda).toEqual(primera);
   });
 
-  it('no toca traducciones, progreso SRS, validadas ni pendientes del traductor al reimportar', async () => {
+  it('does not touch translations, SRS progress, validated pairs or translator pending items on re-import', async () => {
     db.prepare(
       `INSERT INTO traducciones
          (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
@@ -317,7 +317,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     expect(db.prepare("SELECT veces_pedida, origen FROM pendientes WHERE palabra = 'ñame'").get()).toEqual({ veces_pedida: 1, origen: 'traductor' });
   });
 
-  it('cierra las pendientes abiertas que el vocabulario ya cubre (español y damana) y deja las demás', async () => {
+  it('closes open pending items the vocabulary already covers (Spanish and Damana) and leaves the rest', async () => {
     const repo = new PendientesRepository(db);
     repo.registrarPedida('aguas', 'espanol', 'las aguas del río'); // plural of «agua», which is in the CSV
     repo.registrarPedida('ñame', 'espanol', 'quiero ñame'); // not anywhere

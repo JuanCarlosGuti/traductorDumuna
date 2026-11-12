@@ -14,7 +14,7 @@ import { construirLibroParadigmas, PARADIGMAS } from './paradigmas';
 
 const argb = (celda: ExcelJS.Cell) => (celda.fill as ExcelJS.FillPattern | undefined)?.fgColor?.argb;
 
-describe('DudasService + libro de dudas', () => {
+describe('DudasService + doubts workbook', () => {
   let db: Database.Database;
   let servicio: DudasService;
 
@@ -47,7 +47,7 @@ describe('DudasService + libro de dudas', () => {
 
   afterEach(() => db.close());
 
-  it('junta en un informe las dudas de escritura, sinónimos, significados y entradas', () => {
+  it('gathers in one report the doubts about spelling, synonyms, meanings and entries', () => {
     const informe = servicio.generar();
 
     const nunka = informe.escritura.find((g) => g.formas.some((f) => f.forma === 'nunka'))!;
@@ -71,14 +71,14 @@ describe('DudasService + libro de dudas', () => {
     expect(informe.dudosas.map((d) => d.entrada.espanol)).toEqual(['tan']);
   });
 
-  it('no modifica ningún dato del corpus', () => {
+  it('does not modify any corpus data', () => {
     const antes = db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get();
     servicio.generar();
     expect(db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get()).toEqual(antes);
     expect(db.prepare("SELECT damana FROM vocabulario WHERE espanol = 'tan'").get()).toEqual({ damana: 'tan' });
   });
 
-  it('el libro trae una hoja por tipo de duda, con las casillas de respuesta en amarillo', async () => {
+  it('the workbook has one sheet per kind of doubt, with the answer cells in yellow', async () => {
     const libro = construirLibroDudas(servicio.generar(), new Date('2026-10-05T12:00:00.000Z'));
     expect(libro.worksheets.map((h) => h.name)).toEqual(Object.values(HOJAS_DUDAS));
 
@@ -102,8 +102,8 @@ describe('DudasService + libro de dudas', () => {
   });
 });
 
-describe('lote de gramática (paradigmas)', () => {
-  it('tiene ids únicos y estables, con variantes del formato de elicitación', () => {
+describe('grammar batch (paradigms)', () => {
+  it('has unique and stable ids, with variants of the elicitation format', () => {
     expect(PARADIGMAS.length).toBeGreaterThanOrEqual(100);
     expect(new Set(PARADIGMAS.map((p) => p.id)).size).toBe(PARADIGMAS.length);
     expect(PARADIGMAS[0]).toMatchObject({ id: 'g001', ejemploEs: 'Yo como yuca.' });
@@ -115,7 +115,7 @@ describe('lote de gramática (paradigmas)', () => {
     expect(variantes.size).toBe(6);
   });
 
-  it('el libro se lee con el mismo lector del importador y solo pide ejemplo_dm', async () => {
+  it('the workbook is read with the same reader as the importer and only asks for ejemplo_dm', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'paradigmas-'));
     try {
       const ruta = path.join(dir, 'formato_elicitacion_lote2_gramatica.xlsx');
@@ -134,7 +134,7 @@ describe('lote de gramática (paradigmas)', () => {
     }
   });
 
-  it('una fila llena produce una oración cotidiana y ninguna palabra ni pendiente (con ʉ desde u+)', () => {
+  it('a filled row produces an everyday sentence and no word or pending item (with ʉ from u+)', () => {
     const normal = PARADIGMAS.find((p) => !esFilaDePrueba(p.id))!;
     const fila = interpretarFila(
       { id: normal.id, ambito: 'gramatica', palabra_es: '', palabra_dm: '', ejemplo_es: normal.ejemploEs, ejemplo_dm: 'ra irrugwa zhu+nka', variante: normal.variante, notas: normal.etiqueta },
@@ -148,7 +148,7 @@ describe('lote de gramática (paradigmas)', () => {
     expect(plan.pendientes).toEqual([]);
   });
 
-  it('sin llenar no deja nada: ni oraciones ni pendientes', () => {
+  it('unfilled it leaves nothing: neither sentences nor pending items', () => {
     const filas = PARADIGMAS.map(
       (p) => interpretarFila({ id: p.id, ambito: 'gramatica', palabra_es: '', ejemplo_es: p.ejemploEs }, 'x')!,
     );

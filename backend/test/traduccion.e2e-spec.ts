@@ -10,7 +10,7 @@ import { TraduccionModule } from '../src/traduccion/traduccion.module';
 
 // E2E with no engine configured: the translator must degrade gracefully
 // (503 + instructions), never break the app. Validating does work without an engine.
-describe('Traductor (e2e, sin motor configurado)', () => {
+describe('Translator (e2e, no engine configured)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -33,12 +33,12 @@ describe('Traductor (e2e, sin motor configurado)', () => {
 
   afterAll(async () => app.close());
 
-  it('GET /api/traducir/estado reporta disponible: false sin motor', async () => {
+  it('GET /api/traducir/estado reports disponible: false without an engine', async () => {
     const res = await request(app.getHttpServer()).get('/api/traducir/estado').expect(200);
     expect(res.body).toEqual({ disponible: false, proveedor: null, modelo: null });
   });
 
-  it('POST /api/traducir responde 503 con instrucciones de configuración', async () => {
+  it('POST /api/traducir answers 503 with configuration instructions', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/traducir')
       .send({ texto: 'nʉnka', direccion: 'damana_a_espanol' })
@@ -48,7 +48,7 @@ describe('Traductor (e2e, sin motor configurado)', () => {
     expect(res.body.codigo).toBe('SIN_PROVEEDOR');
   });
 
-  it('valida el cuerpo: dirección inválida y texto vacío → 400', async () => {
+  it('validates the body: invalid direction and empty text → 400', async () => {
     await request(app.getHttpServer())
       .post('/api/traducir')
       .send({ texto: 'nʉnka', direccion: 'al_reves' })
@@ -59,7 +59,7 @@ describe('Traductor (e2e, sin motor configurado)', () => {
       .expect(400);
   });
 
-  it('POST /api/traducir/validar guarda el par confirmado o corregido (con ʉ y ñ intactas)', async () => {
+  it('POST /api/traducir/validar stores the confirmed or corrected pair (with ʉ and ñ intact)', async () => {
     const r1 = await request(app.getHttpServer())
       .post('/api/traducir/validar')
       .send({
@@ -79,7 +79,7 @@ describe('Traductor (e2e, sin motor configurado)', () => {
     expect(r2.body).toEqual({ guardada: true, total: 2 });
   });
 
-  it('validar rechaza un origen desconocido', async () => {
+  it('validar rejects an unknown origin', async () => {
     await request(app.getHttpServer())
       .post('/api/traducir/validar')
       .send({ texto: 'x', direccion: 'espanol_a_damana', traduccion: 'y', origen: 'dudosa' })

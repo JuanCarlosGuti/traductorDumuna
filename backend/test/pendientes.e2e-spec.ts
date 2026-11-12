@@ -7,7 +7,7 @@ import { DatabaseModule } from '../src/database/database.module';
 import { PendientesModule } from '../src/pendientes/pendientes.module';
 import { PendientesRepository } from '../src/pendientes/pendientes.repository';
 
-describe('Pendientes (e2e)', () => {
+describe('Pending items (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -21,12 +21,12 @@ describe('Pendientes (e2e)', () => {
 
   afterAll(async () => app.close());
 
-  it('GET /api/pendientes empieza vacío', async () => {
+  it('GET /api/pendientes starts empty', async () => {
     const res = await request(app.getHttpServer()).get('/api/pendientes').expect(200);
     expect(res.body).toEqual([]);
   });
 
-  it('lista las pendientes registradas, las más pedidas primero', async () => {
+  it('lists the recorded pending items, most requested first', async () => {
     const repo = app.get(PendientesRepository);
     repo.registrarPedida('vecina', 'espanol', 'mi vecina cocina');
     repo.registrarPedida('vecina', 'espanol', null);
@@ -39,7 +39,7 @@ describe('Pendientes (e2e)', () => {
     ]);
   });
 
-  it('POST /api/pendientes/exportar descarga el Excel del formato de elicitación y marca exportadas', async () => {
+  it('POST /api/pendientes/exportar downloads the elicitation-format Excel and marks them exported', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/pendientes/exportar')
       .buffer(true)

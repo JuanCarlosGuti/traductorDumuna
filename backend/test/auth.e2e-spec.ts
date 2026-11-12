@@ -72,7 +72,7 @@ async function crearApp(configAuth: ConfigAuth): Promise<{
   return { app, dirTmp };
 }
 
-describe('Autenticación (e2e)', () => {
+describe('Authentication (e2e)', () => {
   let app: INestApplication;
   let dirTmp: string;
 
@@ -91,21 +91,21 @@ describe('Autenticación (e2e)', () => {
       .send({ usuario: USUARIO, password: PASSWORD })
       .expect(200);
 
-  it('sin token, el corpus queda cerrado', async () => {
+  it('without a token, the corpus stays closed', async () => {
     await request(app.getHttpServer())
       .get('/api/buscar')
       .query({ q: 'nʉnka' })
       .expect(401);
   });
 
-  it('el estado de la auth es público: la app necesita saberlo antes de entrar', async () => {
+  it('the auth state is public: the app needs to know it before logging in', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/auth/estado')
       .expect(200);
     expect(res.body).toEqual({ activa: true });
   });
 
-  it('con las credenciales correctas devuelve token y abre el corpus', async () => {
+  it('with the correct credentials it returns a token and opens the corpus', async () => {
     const login = await entrar();
     expect(login.body.usuario).toBe(USUARIO);
     expect(typeof login.body.token).toBe('string');
@@ -118,14 +118,14 @@ describe('Autenticación (e2e)', () => {
     expect(res.body.total).toBeGreaterThan(0);
   });
 
-  it('la contraseña con u en vez de ʉ no entra', async () => {
+  it('the password with u instead of ʉ does not get in', async () => {
     await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ usuario: USUARIO, password: 'ñandú-unkua-2026' })
       .expect(401);
   });
 
-  it('el mensaje de error no revela si falló el usuario o la contraseña', async () => {
+  it('the error message does not reveal whether the user or the password failed', async () => {
     const malUsuario = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ usuario: 'otro', password: PASSWORD })
@@ -137,7 +137,7 @@ describe('Autenticación (e2e)', () => {
     expect(malUsuario.body.message).toBe(malPassword.body.message);
   });
 
-  it('un token manipulado no sirve', async () => {
+  it('a tampered token does not work', async () => {
     const { body } = await entrar();
     await request(app.getHttpServer())
       .get('/api/buscar')
@@ -146,7 +146,7 @@ describe('Autenticación (e2e)', () => {
       .expect(401);
   });
 
-  it('/api/auth/sesion confirma quién eres', async () => {
+  it('/api/auth/sesion confirms who you are', async () => {
     const { body } = await entrar();
     const res = await request(app.getHttpServer())
       .get('/api/auth/sesion')
@@ -155,7 +155,7 @@ describe('Autenticación (e2e)', () => {
     expect(res.body).toEqual({ usuario: USUARIO });
   });
 
-  it('tras demasiados intentos fallidos responde 429', async () => {
+  it('after too many failed attempts it answers 429', async () => {
     for (let i = 0; i < MAX_INTENTOS; i++) {
       await request(app.getHttpServer())
         .post('/api/auth/login')
@@ -168,7 +168,7 @@ describe('Autenticación (e2e)', () => {
       .expect(429);
   });
 
-  it('el guard es global: cierra todos los controladores, no solo uno', async () => {
+  it('the guard is global: it closes all controllers, not just one', async () => {
     // Routes from different controllers; none is marked as public.
     for (const ruta of ['/api/vocabulario', '/api/frases', '/api/gramatica/lemas']) {
       await request(app.getHttpServer()).get(ruta).expect(401);
@@ -176,7 +176,7 @@ describe('Autenticación (e2e)', () => {
   });
 });
 
-describe('Autenticación desactivada (desarrollo local)', () => {
+describe('Authentication disabled (local development)', () => {
   let app: INestApplication;
   let dirTmp: string;
 
@@ -189,14 +189,14 @@ describe('Autenticación desactivada (desarrollo local)', () => {
     fs.rmSync(dirTmp, { recursive: true, force: true });
   });
 
-  it('sin credenciales configuradas la API responde sin token', async () => {
+  it('with no credentials configured the API answers without a token', async () => {
     await request(app.getHttpServer())
       .get('/api/buscar')
       .query({ q: 'nʉnka' })
       .expect(200);
   });
 
-  it('y lo anuncia en /api/auth/estado para que la app no pida login', async () => {
+  it('and announces it at /api/auth/estado so the app does not ask for login', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/auth/estado')
       .expect(200);

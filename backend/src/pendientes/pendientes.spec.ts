@@ -5,7 +5,7 @@ import { clavePendiente, PendientesRepository } from './pendientes.repository';
 import { acortar, AMARILLO, filaDeElicitacion, PendientesService } from './pendientes.service';
 
 describe('clavePendiente', () => {
-  it('quita tildes y mayúsculas pero conserva ʉ y ñ', () => {
+  it('removes accents and capitals but keeps ʉ and ñ', () => {
     expect(clavePendiente(' Mamá ')).toBe('mama');
     expect(clavePendiente('Ñandú')).toBe('ñandu');
     expect(clavePendiente('kʉnʉnka')).toBe('kʉnʉnka');
@@ -25,7 +25,7 @@ describe('PendientesRepository', () => {
 
   afterEach(() => db.close());
 
-  it('registrarPedida crea la pendiente y suma veces en las siguientes, conservando el primer contexto', () => {
+  it('registrarPedida creates the pending item and adds to veces on later requests, keeping the first context', () => {
     repo.registrarPedida('vecina', 'espanol', 'mi vecina cocina', '2026-10-01T00:00:00.000Z');
     repo.registrarPedida('Vecina', 'espanol', 'otra frase', '2026-10-02T00:00:00.000Z');
     const [p] = repo.listar();
@@ -40,7 +40,7 @@ describe('PendientesRepository', () => {
     });
   });
 
-  it('una pendiente resuelta que se vuelve a pedir se reabre', () => {
+  it('a resolved pending item that is requested again is reopened', () => {
     repo.registrarPedida('ñame', 'espanol', null);
     expect(repo.marcarResuelta('ñame')).toBe(true);
     expect(repo.listar()[0].estado).toBe('resuelta');
@@ -48,7 +48,7 @@ describe('PendientesRepository', () => {
     expect(repo.listar()[0]).toMatchObject({ estado: 'pendiente', vecesPedida: 2 });
   });
 
-  it('registrarDeElicitacion solo inserta si no existía y no suma veces', () => {
+  it('registrarDeElicitacion only inserts if it did not exist and does not add to veces', () => {
     expect(repo.registrarDeElicitacion('hola', 'Hola, ¿cómo estás?')).toBe(true);
     expect(repo.registrarDeElicitacion('hola', 'otro contexto')).toBe(false);
     repo.registrarPedida('agua', 'espanol', 'quiero agua');
@@ -57,7 +57,7 @@ describe('PendientesRepository', () => {
     expect(repo.listar().find((p) => p.palabra === 'hola')).toMatchObject({ vecesPedida: 1, origen: 'elicitacion' });
   });
 
-  it('ordena por veces pedida descendente y lista abiertas sin las resueltas', () => {
+  it('sorts by times requested descending and lists open ones without the resolved', () => {
     repo.registrarPedida('uno', 'espanol', null, '2026-10-02T00:00:00.000Z');
     repo.registrarPedida('dos', 'espanol', null, '2026-10-01T00:00:00.000Z');
     repo.registrarPedida('dos', 'espanol', null, '2026-10-01T00:00:00.000Z');
@@ -67,7 +67,7 @@ describe('PendientesRepository', () => {
     expect(repo.listarAbiertas().map((p) => p.palabra)).toEqual(['dos', 'uno']);
   });
 
-  it('marcarExportadas solo cambia las que están pendientes', () => {
+  it('marcarExportadas only changes the ones that are pending', () => {
     repo.registrarPedida('a', 'espanol', null, '2026-10-02T00:00:00.000Z');
     repo.registrarPedida('b', 'espanol', null, '2026-10-01T00:00:00.000Z');
     repo.marcarResuelta('b', '2026-10-01T12:00:00.000Z');
@@ -79,7 +79,7 @@ describe('PendientesRepository', () => {
     ]);
   });
 
-  it('palabras vacías se ignoran', () => {
+  it('empty words are ignored', () => {
     repo.registrarPedida('   ', 'espanol', null);
     expect(repo.listar()).toEqual([]);
   });
@@ -99,12 +99,12 @@ describe('PendientesService', () => {
 
   afterEach(() => db.close());
 
-  it('acortar corta en límite de palabra y marca con «…»', () => {
+  it('acortar cuts at a word boundary and marks with «…»', () => {
     expect(acortar('hola mundo', 120)).toBe('hola mundo');
     expect(acortar('una frase bastante larga para el ejemplo', 20)).toBe('una frase bastante…');
   });
 
-  it('filaDeElicitacion: pendiente española llena palabra_es/ejemplo_es; damana llena palabra_dm/ejemplo_dm', () => {
+  it('filaDeElicitacion: a Spanish pending item fills palabra_es/ejemplo_es; a Damana one fills palabra_dm/ejemplo_dm', () => {
     repo.registrarPedida('vecina', 'espanol', 'mi vecina cocina');
     repo.registrarPedida('kʉnʉnka', 'damana', 'kʉnʉnka nʉnka');
     const es = repo.listar().find((p) => p.palabra === 'vecina')!;
@@ -120,7 +120,7 @@ describe('PendientesService', () => {
     expect(filaDeElicitacion(dm)).toMatchObject({ palabra_es: '', palabra_dm: 'kʉnʉnka', ejemplo_dm: 'kʉnʉnka nʉnka' });
   });
 
-  it('exportarLote genera el Excel del formato de elicitación, en amarillo lo que falta, y marca exportadas', async () => {
+  it('exportarLote generates the elicitation-format Excel, with the missing cells in yellow, and marks them exported', async () => {
     repo.registrarPedida('vecina', 'espanol', 'mi vecina cocina en la casa');
     repo.registrarPedida('vecina', 'espanol', null);
     repo.registrarPedida('ñame', 'espanol', 'quiero ñame');

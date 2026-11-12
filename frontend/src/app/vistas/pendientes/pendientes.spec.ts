@@ -43,7 +43,7 @@ const PENDIENTES: Pendiente[] = [
 ];
 
 describe('nombreDeAdjunto', () => {
-  it('saca el nombre del Content-Disposition o usa el de reserva', () => {
+  it('takes the name from Content-Disposition or uses the fallback one', () => {
     expect(nombreDeAdjunto('attachment; filename="formato_elicitacion_pendientes_2026-10-03.xlsx"', 'x.xlsx')).toBe(
       'formato_elicitacion_pendientes_2026-10-03.xlsx',
     );
@@ -64,7 +64,7 @@ describe('Pendientes', () => {
 
   afterEach(() => http.verify());
 
-  it('lista las abiertas ordenadas como vienen y oculta las resueltas por defecto', async () => {
+  it('lists the open ones in the order they come and hides the resolved by default', async () => {
     await arrancar();
     const filas = buscarTodos(fixture, 'tbody tr');
     expect(filas.length).toBe(2);
@@ -75,7 +75,7 @@ describe('Pendientes', () => {
     expect(texto(fixture)).toContain('Exportar lote (2)');
   });
 
-  it('«ver también las resueltas» las muestra', async () => {
+  it('«ver también las resueltas» shows them', async () => {
     await arrancar();
     const casilla = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('input[type=checkbox]')!;
     casilla.click();
@@ -84,14 +84,14 @@ describe('Pendientes', () => {
     expect(buscarTodos(fixture, 'tbody tr').length).toBe(3);
   });
 
-  it('sin pendientes lo dice y deshabilita la exportación', async () => {
+  it('without pending items it says so and disables the export', async () => {
     await arrancar([]);
     expect(texto(fixture)).toContain('No hay pendientes');
     const boton = buscarTodos(fixture, 'button').find((b) => /Exportar/.test(b.textContent ?? ''))!;
     expect((boton as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('exportar pide el Excel, lanza la descarga con el nombre del servidor y recarga la lista', async () => {
+  it('exporting requests the Excel, triggers the download with the server name and reloads the list', async () => {
     const crear = vi.fn(() => 'blob:falso');
     const revocar = vi.fn();
     (URL as unknown as { createObjectURL: unknown }).createObjectURL = crear;
@@ -123,7 +123,7 @@ describe('Pendientes', () => {
     }
   });
 
-  it('un error al cargar se muestra', async () => {
+  it('a loading error is shown', async () => {
     fixture = await montar(Pendientes);
     http = TestBed.inject(HttpTestingController);
     http.expectOne('/api/pendientes').flush({ message: 'base de datos bloqueada' }, { status: 500, statusText: 'Error' });

@@ -51,7 +51,7 @@ describe('PalabraService', () => {
 
   afterEach(() => db.close());
 
-  it('calcula frecuencia total y por fuente (caso con ʉ)', () => {
+  it('computes total and per-source frequency (case with ʉ)', () => {
     const ficha = servicio.ficha('nʉnka');
     expect(ficha.palabra).toBe('nʉnka');
     expect(ficha.frecuenciaTotal).toBe(4);
@@ -63,11 +63,11 @@ describe('PalabraService', () => {
     ]);
   });
 
-  it('normaliza el token de entrada (Nʉnka → nʉnka)', () => {
+  it('normalizes the input token (Nʉnka → nʉnka)', () => {
     expect(servicio.ficha('Nʉnka').palabra).toBe('nʉnka');
   });
 
-  it('trae la traducción directa del vocabulario (caso con ʉ)', () => {
+  it('brings the direct translation from the vocabulary (case with ʉ)', () => {
     const ficha = servicio.ficha('nʉnka');
     expect(ficha.entradasVocabulario).toEqual([
       { espanol: 'agua', categoria: 'Otros', notas: null, fuente: 'dic' },
@@ -75,7 +75,7 @@ describe('PalabraService', () => {
     expect(ficha.formasVerbales).toEqual([]);
   });
 
-  it('reconoce formas verbales conjugadas con su glosa y lema (caso con ñ)', () => {
+  it('recognizes conjugated verb forms with their gloss and lemma (case with ñ)', () => {
     const ficha = servicio.ficha('ñingui');
     expect(ficha.formasVerbales).toEqual([
       { damana: 'ñingui', espanol: 'él volvió', lema: 'volver' },
@@ -83,20 +83,20 @@ describe('PalabraService', () => {
     expect(ficha.entradasVocabulario).toEqual([]);
   });
 
-  it('palabra sin vocabulario ni conjugación: listas vacías pero candidatas presentes', () => {
+  it('word without vocabulary or conjugation: empty lists but candidates present', () => {
     const ficha = servicio.ficha('gontka');
     expect(ficha.entradasVocabulario).toEqual([]);
     expect(ficha.formasVerbales).toEqual([]);
     expect(ficha.traduccionesCandidatas.length).toBeGreaterThan(0);
   });
 
-  it('devuelve concordancias con <mark>', () => {
+  it('returns concordances with <mark>', () => {
     const ficha = servicio.ficha('nʉnka');
     expect(ficha.concordancias.length).toBeGreaterThan(0);
     expect(ficha.concordancias[0].fragmento).toContain('<mark>nʉnka</mark>');
   });
 
-  it('propone traducciones candidatas excluyendo stopwords', () => {
+  it('proposes candidate translations excluding stopwords', () => {
     const ficha = servicio.ficha('nʉnka');
     const palabras = ficha.traduccionesCandidatas.map((c) => c.palabra);
     // 'agua' co-occurs in sentence, phrase and vocabulary; 'el'/'de'/'del' are stopwords
@@ -106,14 +106,14 @@ describe('PalabraService', () => {
     expect(palabras).not.toContain('del');
   });
 
-  it('funciona con ñ y usa el español de la oración (caso con ñ)', () => {
+  it('works with ñ and uses the Spanish of the sentence (case with ñ)', () => {
     const ficha = servicio.ficha('ñingui');
     expect(ficha.frecuenciaTotal).toBe(2); // sentence + conjugation
     const palabras = ficha.traduccionesCandidatas.map((c) => c.palabra);
     expect(palabras).toContain('agua'); // from the parallel 'Dios hizo el agua del cielo'
   });
 
-  it('lanza 404 para palabras que no están en el corpus', () => {
+  it('throws 404 for words that are not in the corpus', () => {
     expect(() => servicio.ficha('inexistente')).toThrow(NotFoundException);
   });
 });

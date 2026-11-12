@@ -1,38 +1,38 @@
 import { chrF, ngramas, prepararTexto } from './chrf';
 
-describe('chrF (implementación propia)', () => {
-  it('prepara el texto: NFC, minúsculas, sin espacios ni puntuación', () => {
+describe('chrF (own implementation)', () => {
+  it('prepares the text: NFC, lowercase, no spaces or punctuation', () => {
     expect(prepararTexto('Nʉnka  Shkua.')).toBe('nʉnkashkua');
     expect(prepararTexto('¿Nʉnka, shkua?')).toBe('nʉnkashkua');
   });
 
-  it('cuenta n-gramas de caracteres', () => {
+  it('counts character n-grams', () => {
     const g = ngramas('abab', 2);
     expect(g.get('ab')).toBe(2);
     expect(g.get('ba')).toBe(1);
   });
 
-  it('texto idéntico → 1; sin nada en común → 0', () => {
+  it('identical text → 1; nothing in common → 0', () => {
     expect(chrF('nʉnka shkua', 'nʉnka shkua')).toBe(1);
     expect(chrF('xyz', 'abc')).toBe(0);
   });
 
-  it('es insensible a mayúsculas y espacios, pero no a las letras', () => {
+  it('is insensitive to capitals and spaces, but not to letters', () => {
     expect(chrF('NʉNKA SHKUA', 'nʉnka shkua')).toBe(1);
     expect(chrF('nʉnka shkua', 'nʉnka shkwa')).toBeLessThan(1);
   });
 
-  it('ʉ ≠ u: cambiar la ʉ por u baja el puntaje', () => {
+  it('ʉ ≠ u: replacing ʉ with u lowers the score', () => {
     const conU = chrF('nunka shkua gontka', 'nʉnka shkua gontka');
     expect(conU).toBeLessThan(1);
     expect(conU).toBeGreaterThan(0.6); // but it is still similar
   });
 
-  it('ñ ≠ n: ñingui y ningui no son iguales', () => {
+  it('ñ ≠ n: ñingui and ningui are not equal', () => {
     expect(chrF('ningui', 'ñingui')).toBeLessThan(1);
   });
 
-  it('una traducción parcial puntúa entre medias y la cobertura pesa más (beta = 2)', () => {
+  it('a partial translation scores in between and recall weighs more (beta = 2)', () => {
     const corta = chrF('nʉnka', 'nʉnka shkua gontka'); // precise but incomplete
     const larga = chrF('nʉnka shkua gontka ñingui tua', 'nʉnka shkua gontka'); // complete with extra
     expect(corta).toBeGreaterThan(0);
@@ -40,13 +40,13 @@ describe('chrF (implementación propia)', () => {
     expect(larga).toBeGreaterThan(corta);
   });
 
-  it('vacíos: ambos vacíos → 1, uno solo → 0', () => {
+  it('empties: both empty → 1, only one → 0', () => {
     expect(chrF('', '')).toBe(1);
     expect(chrF('', 'nʉnka')).toBe(0);
     expect(chrF('nʉnka', '')).toBe(0);
   });
 
-  it('textos más cortos que el orden máximo no se penalizan por falta de 6-gramas', () => {
+  it('texts shorter than the maximum order are not penalized for lacking 6-grams', () => {
     expect(chrF('ra', 'ra')).toBe(1);
   });
 });

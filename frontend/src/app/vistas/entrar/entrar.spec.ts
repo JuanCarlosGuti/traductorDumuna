@@ -57,12 +57,12 @@ describe('Entrar', () => {
     localStorage.clear();
   });
 
-  it('pinta los dos campos, con el de contraseña oculto', () => {
+  it('renders both fields, with the password one hidden', () => {
     expect(campo('usuario').type).toBe('text');
     expect(campo('password').type).toBe('password');
   });
 
-  it('entra con credenciales correctas y va al buscador', async () => {
+  it('logs in with correct credentials and goes to search', async () => {
     await escribir('juan', 'ñandú-ʉnkua');
     await enviar();
 
@@ -78,7 +78,7 @@ describe('Entrar', () => {
     expect(localStorage.getItem('damana.token')).toBe('abc');
   });
 
-  it('con credenciales malas avisa y NO navega', async () => {
+  it('with bad credentials it warns and does NOT navigate', async () => {
     await escribir('juan', 'mala');
     await enviar();
     http.expectOne('/api/auth/login').flush(
@@ -93,7 +93,7 @@ describe('Entrar', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('tras un fallo limpia la contraseña pero conserva el usuario', async () => {
+  it('after a failure it clears the password but keeps the user', async () => {
     await escribir('juan', 'mala');
     await enviar();
     http.expectOne('/api/auth/login').flush({}, { status: 401, statusText: 'Unauthorized' });
@@ -103,7 +103,7 @@ describe('Entrar', () => {
     expect(campo('usuario').value).toBe('juan');
   });
 
-  it('el bloqueo por intentos se explica distinto que una contraseña mala', async () => {
+  it('the attempt block is explained differently from a bad password', async () => {
     await escribir('juan', 'mala');
     await enviar();
     http.expectOne('/api/auth/login').flush({}, { status: 429, statusText: 'Too Many Requests' });
@@ -112,7 +112,7 @@ describe('Entrar', () => {
     expect(elemento().querySelector('.error')?.textContent).toContain('Demasiados intentos');
   });
 
-  it('si el servidor no responde lo dice en vez de culpar a las credenciales', async () => {
+  it('if the server does not respond it says so instead of blaming the credentials', async () => {
     await escribir('juan', 'x');
     await enviar();
     http.expectOne('/api/auth/login').error(new ProgressEvent('error'));
@@ -121,7 +121,7 @@ describe('Entrar', () => {
     expect(elemento().querySelector('.error')?.textContent).toContain('servidor');
   });
 
-  it('mientras entra deshabilita el botón: sin dobles envíos', async () => {
+  it('while logging in it disables the button: no double submissions', async () => {
     await escribir('juan', 'x');
     await enviar();
     const boton = elemento().querySelector('button[type="submit"]')!;

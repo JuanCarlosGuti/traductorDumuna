@@ -30,13 +30,13 @@ describe('sesionIniciada', () => {
     localStorage.clear();
   });
 
-  it('con sesión deja pasar sin preguntar al servidor', async () => {
+  it('with a session it lets through without asking the server', async () => {
     localStorage.setItem('damana.token', 't');
     expect(await ejecutar()).toBe(true);
     // No calls: the afterEach's http.verify() confirms it.
   });
 
-  it('sin sesión y con auth activa manda a /entrar', async () => {
+  it('without a session and with auth active it sends to /entrar', async () => {
     const resultado = ejecutar();
     http.expectOne('/api/auth/estado').flush({ activa: true });
 
@@ -45,19 +45,19 @@ describe('sesionIniciada', () => {
     expect(TestBed.inject(Router).serializeUrl(destino as UrlTree)).toBe('/entrar');
   });
 
-  it('sin sesión pero con la API abierta (local) deja pasar', async () => {
+  it('without a session but with the API open (local) it lets through', async () => {
     const resultado = ejecutar();
     http.expectOne('/api/auth/estado').flush({ activa: false });
     expect(await resultado).toBe(true);
   });
 
-  it('si no se puede consultar el estado, tira a lo seguro y pide login', async () => {
+  it('if the state cannot be queried, it plays safe and asks for login', async () => {
     const resultado = ejecutar();
     http.expectOne('/api/auth/estado').error(new ProgressEvent('error'));
     expect(await resultado).toBeInstanceOf(UrlTree);
   });
 
-  it('el estado se consulta una sola vez aunque se navegue varias', async () => {
+  it('the state is queried only once even when navigating several times', async () => {
     TestBed.inject(AuthService);
     const primera = ejecutar();
     http.expectOne('/api/auth/estado').flush({ activa: false });

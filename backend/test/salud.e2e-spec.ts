@@ -19,7 +19,7 @@ const config: ConfigAuth = {
 
 // The kamal-proxy healthcheck has no session: it must answer without a token
 // even if authentication is active, and must say 503 if there is no corpus.
-describe('Salud (e2e, con autenticación activa)', () => {
+describe('Health (e2e, with authentication active)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -33,12 +33,12 @@ describe('Salud (e2e, con autenticación activa)', () => {
 
   afterAll(async () => app.close());
 
-  it('sin corpus responde 503 (ese despliegue no debe recibir tráfico)', async () => {
+  it('without a corpus it answers 503 (that deployment must not receive traffic)', async () => {
     const res = await request(app.getHttpServer()).get('/api/salud').expect(503);
     expect(res.body.estado).toBe('sin_corpus');
   });
 
-  it('con corpus responde 200 sin token', async () => {
+  it('with a corpus it answers 200 without a token', async () => {
     const db = app.get<Database>(CONEXION_DB);
     db.prepare(
       "INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente) VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')",

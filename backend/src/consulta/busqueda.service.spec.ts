@@ -38,7 +38,7 @@ describe('BusquedaService', () => {
 
   afterEach(() => db.close());
 
-  it('encuentra en damana en las cuatro fuentes, con <mark> y ʉ intacta', () => {
+  it('finds in Damana across the four sources, with <mark> and ʉ intact', () => {
     const r = servicio.buscar({ q: 'nʉnka', idioma: Idioma.damana, limite: 100 });
     expect(r.modo).toBe('concordancia');
     expect(r.total).toBe(3); // sentence 1, phrase, vocabulary (nʉnkanka does NOT match nʉnka)
@@ -52,7 +52,7 @@ describe('BusquedaService', () => {
     }
   });
 
-  it('las conjugaciones son buscables con referencia «conjugación N (lema)»', () => {
+  it('conjugations are searchable with the reference «conjugación N (lema)»', () => {
     const r = servicio.buscar({ q: 'nʉnkanka', idioma: Idioma.damana, limite: 10 });
     expect(r.total).toBe(1);
     expect(r.resultados[0].fuente).toBe(FuenteCorpus.conjugaciones);
@@ -60,20 +60,20 @@ describe('BusquedaService', () => {
     expect(r.resultados[0].textoParalelo).toBe('él fue');
   });
 
-  it('no confunde ʉ con u ni ñ con n', () => {
+  it('does not confuse ʉ with u or ñ with n', () => {
     expect(servicio.buscar({ q: 'nunka', idioma: Idioma.damana, limite: 10 }).total).toBe(0);
     expect(servicio.buscar({ q: 'ningui', idioma: Idioma.damana, limite: 10 }).total).toBe(0);
     expect(servicio.buscar({ q: 'ñingui', idioma: Idioma.damana, limite: 10 }).total).toBe(1);
   });
 
-  it('busca en español sin tildes y devuelve el damana como paralelo', () => {
+  it('searches in Spanish without accents and returns the Damana as parallel', () => {
     const r = servicio.buscar({ q: 'jehova', idioma: Idioma.espanol, limite: 10 });
     expect(r.total).toBe(1);
     expect(r.resultados[0].fragmento).toContain('<mark>Jehová</mark>');
     expect(r.resultados[0].textoParalelo).toContain('Jehovága');
   });
 
-  it('filtra por fuente', () => {
+  it('filters by source', () => {
     const r = servicio.buscar({
       q: 'nʉnka',
       idioma: Idioma.damana,
@@ -84,19 +84,19 @@ describe('BusquedaService', () => {
     expect(r.resultados[0].referencia).toBe('frase 1 (Prueba)');
   });
 
-  it('la referencia de una oración marca el estado revisar', () => {
+  it('a sentence reference marks the revisar state', () => {
     const r = servicio.buscar({ q: 'ñingui', idioma: Idioma.damana, limite: 10 });
     expect(r.resultados[0].referencia).toBe('oración 2 (revisar)');
   });
 
-  it('respeta el límite pero informa el total real', () => {
+  it('respects the limit but reports the real total', () => {
     const r = servicio.buscar({ q: 'nʉnka', idioma: Idioma.damana, limite: 2 });
     expect(r.total).toBe(3);
     expect(r.resultados).toHaveLength(2);
   });
 
-  describe('modo similitud (consultas de varias palabras)', () => {
-    it('una frase damana devuelve oraciones similares con puntaje y palabras resaltadas', () => {
+  describe('similarity mode (multi-word queries)', () => {
+    it('a Damana phrase returns similar sentences with score and highlighted words', () => {
       const r = servicio.buscar({
         q: 'nʉnka kʉñingui',
         idioma: Idioma.damana,
@@ -113,7 +113,7 @@ describe('BusquedaService', () => {
       expect(primero.textoParalelo).toBe('Jehová hizo el agua');
     });
 
-    it('una frase en español encuentra por similitud (insensible a tildes)', () => {
+    it('a Spanish phrase finds by similarity (accent-insensitive)', () => {
       const r = servicio.buscar({
         q: 'jehova hizo agua',
         idioma: Idioma.espanol,
@@ -126,7 +126,7 @@ describe('BusquedaService', () => {
       expect(r.resultados[0].textoParalelo).toContain('Jehovága');
     });
 
-    it('filtra por fuente también en modo similitud', () => {
+    it('filters by source in similarity mode too', () => {
       const r = servicio.buscar({
         q: 'nʉnka nanu',
         idioma: Idioma.damana,
@@ -139,7 +139,7 @@ describe('BusquedaService', () => {
       }
     });
 
-    it('una frase sin palabras del corpus devuelve vacío sin romper', () => {
+    it('a phrase with no corpus words returns empty without breaking', () => {
       const r = servicio.buscar({
         q: 'zzz www qqq',
         idioma: Idioma.damana,

@@ -8,30 +8,30 @@ const senales = (puntajeMedio: number, fuenteTop: FuenteCorpus | null = FuenteCo
 });
 
 describe('evaluarApoyo', () => {
-  it('media alta sobre oraciones reales → bueno', () => {
+  it('high mean over real sentences → bueno', () => {
     // 0.551 is the mean measured on "¿Ñi guashi nʉnka?", well covered
     expect(evaluarApoyo(senales(0.551))).toEqual({ nivel: 'bueno', motivos: [] });
   });
 
-  it('media intermedia → parcial (sin motivos de alarma)', () => {
+  it('intermediate mean → parcial (no cause for alarm)', () => {
     // 0.252 is the mean measured on "zhakujtshega dzʉwa guma sheka"
     expect(evaluarApoyo(senales(0.252))).toEqual({ nivel: 'parcial', motivos: [] });
   });
 
-  it('media por debajo del umbral → revisar por similitud baja', () => {
+  it('mean below the threshold → revisar due to low similarity', () => {
     expect(evaluarApoyo(senales(0.15))).toEqual({
       nivel: 'revisar',
       motivos: ['similitud_baja'],
     });
   });
 
-  it('sin ejemplos recuperados → revisar acumulando ambos motivos', () => {
+  it('no examples retrieved → revisar accumulating both reasons', () => {
     const apoyo = evaluarApoyo({ puntajeMedio: 0, fuenteTop: null, ejemplosRecuperados: 0 });
     expect(apoyo.nivel).toBe('revisar');
     expect(apoyo.motivos).toEqual(['sin_ejemplos', 'similitud_baja']);
   });
 
-  it('todo el apoyo son conjugaciones → revisar aunque la media sea alta', () => {
+  it('all the support is conjugations → revisar even if the mean is high', () => {
     // The case that motivated the rule: "nujkunananka" scored 0.899 against its
     // own dictionary entry, with no real usage backing it.
     expect(
@@ -42,7 +42,7 @@ describe('evaluarApoyo', () => {
     ).toEqual({ nivel: 'revisar', motivos: ['apoyo_solo_de_diccionario'] });
   });
 
-  it('top de conjugaciones pero con oraciones debajo → NO es solo diccionario', () => {
+  it('conjugations on top but with sentences underneath → it is NOT dictionary-only', () => {
     // "naijkasheshisha" leads with its own conjugation (exact
     // match) and brings 6 examples of the verb in use thanks to root
     // matching: the support is real and the old warning was wrong.
@@ -56,7 +56,7 @@ describe('evaluarApoyo', () => {
     expect(apoyo.nivel).toBe('bueno');
   });
 
-  it('registros anteriores a la v5 (sin la señal) conservan la regla del top-1', () => {
+  it('records older than v5 (without the signal) keep the top-1 rule', () => {
     // ejemplosEnContexto arrives as null: there is no way to know what was underneath.
     const apoyo = evaluarApoyo({
       ...senales(0.5, FuenteCorpus.conjugaciones),
@@ -65,7 +65,7 @@ describe('evaluarApoyo', () => {
     expect(apoyo.motivos).toEqual(['apoyo_solo_de_diccionario']);
   });
 
-  it('sin ejemplos no se acusa además de «solo diccionario»', () => {
+  it('without examples it is not also accused of «solo diccionario»', () => {
     const apoyo = evaluarApoyo({
       puntajeMedio: 0,
       fuenteTop: null,
@@ -75,11 +75,11 @@ describe('evaluarApoyo', () => {
     expect(apoyo.motivos).toEqual(['sin_ejemplos', 'similitud_baja']);
   });
 
-  it('el top desde frases sí cuenta como apoyo real', () => {
+  it('a top from phrases does count as real support', () => {
     expect(evaluarApoyo(senales(0.551, FuenteCorpus.frases)).nivel).toBe('bueno');
   });
 
-  it('los umbrales son inclusivos hacia arriba', () => {
+  it('thresholds are inclusive upwards', () => {
     expect(evaluarApoyo(senales(UMBRAL_REVISAR)).nivel).toBe('parcial');
     expect(evaluarApoyo(senales(UMBRAL_REVISAR - 0.001)).nivel).toBe('revisar');
     expect(evaluarApoyo(senales(UMBRAL_BUENO)).nivel).toBe('bueno');

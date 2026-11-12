@@ -5,20 +5,20 @@ const glosario = [
   { espanol: 'otra vez', damana: 'ñingui' },
 ];
 
-describe('planificar (comando inverso)', () => {
-  it('agrega las filas nuevas', () => {
+describe('planificar (reverse command)', () => {
+  it('adds the new rows', () => {
     const r = planificar([{ espanol: 'pueblo', damana: 'gunamandzina' }], glosario);
     expect(r.agregadas).toEqual([{ espanol: 'pueblo', damana: 'gunamandzina' }]);
     expect(r.duplicadas).toEqual([]);
   });
 
-  it('omite lo que ya está en el glosario (caso con ʉ)', () => {
+  it('skips what is already in the glossary (case with ʉ)', () => {
     const r = planificar([{ espanol: 'agua', damana: 'nʉnka' }], glosario);
     expect(r.agregadas).toEqual([]);
     expect(r.duplicadas).toHaveLength(1);
   });
 
-  it('la comparación respeta ʉ ≠ u y ñ ≠ n', () => {
+  it('the comparison respects ʉ ≠ u and ñ ≠ n', () => {
     // 'nunka' is NOT 'nʉnka', so it is a new entry, not a duplicate
     const r = planificar(
       [
@@ -31,7 +31,7 @@ describe('planificar (comando inverso)', () => {
     expect(r.duplicadas).toEqual([]);
   });
 
-  it('ignora mayúsculas, tildes y espacios al comparar', () => {
+  it('ignores capitals, accents and spaces when comparing', () => {
     // Ʉ (U+0244) is the capital of ʉ (U+0289); it is built numerically
     // so as not to confuse it with Ʊ (U+028A), which is a different letter.
     const nunkaMayus = 'N' + String.fromCharCode(0x0244) + 'NKA';
@@ -40,7 +40,7 @@ describe('planificar (comando inverso)', () => {
     expect(r.agregadas).toEqual([]);
   });
 
-  it('no duplica dentro del propio Excel', () => {
+  it('does not duplicate within the Excel itself', () => {
     const r = planificar(
       [
         { espanol: 'pueblo', damana: 'gunamandzina' },
@@ -52,13 +52,13 @@ describe('planificar (comando inverso)', () => {
     expect(r.duplicadas).toHaveLength(1);
   });
 
-  it('corrige la ü de Word a ʉ igual que el importador', () => {
+  it('fixes the Word ü to ʉ like the importer', () => {
     const conDieresis = 'bug' + String.fromCharCode(0x00fc) + 'i';
     const r = planificar([{ espanol: 'arriba', damana: conDieresis }], glosario);
     expect(r.agregadas[0].damana).toBe('bugʉi');
   });
 
-  it('una misma palabra española puede tener otra traducción damana', () => {
+  it('the same Spanish word can have another Damana translation', () => {
     // real polysemy in the corpus: it must not be blocked by the Spanish side
     const r = planificar([{ espanol: 'agua', damana: 'dzira' }], glosario);
     expect(r.agregadas).toEqual([{ espanol: 'agua', damana: 'dzira' }]);
@@ -71,7 +71,7 @@ describe('construirLineas', () => {
     { espanol: 'casa', damana: 'ugunga' },
   ];
 
-  it('usa CRLF cuando el CSV existente usa CRLF', () => {
+  it('uses CRLF when the existing CSV uses CRLF', () => {
     const actual = 'espanol,damana,categoria,notas,fuente\r\nagua,nʉnka,,,dic\r\n';
     const texto = construirLineas(nuevas, actual);
     expect(texto).toBe(
@@ -82,19 +82,19 @@ describe('construirLineas', () => {
     expect((actual + texto).trim().split(/\r\n/)).toHaveLength(4);
   });
 
-  it('usa LF cuando el CSV existente usa LF', () => {
+  it('uses LF when the existing CSV uses LF', () => {
     const actual = 'espanol,damana,categoria,notas,fuente\nagua,nʉnka,,,dic\n';
     expect(construirLineas(nuevas, actual)).toBe(
       'pueblo,gunamandzina,,,lista automatica\ncasa,ugunga,,,lista automatica\n',
     );
   });
 
-  it('añade el salto que falta si el CSV no termina en nueva línea', () => {
+  it('adds the missing line break if the CSV does not end in a new line', () => {
     const actual = 'espanol,damana,categoria,notas,fuente\r\nagua,nʉnka,,,dic';
     expect(construirLineas(nuevas, actual).startsWith('\r\n')).toBe(true);
   });
 
-  it('escapa comas y comillas de los campos', () => {
+  it('escapes commas and quotes in fields', () => {
     const texto = construirLineas(
       [{ espanol: 'casa, choza', damana: 'dijo "hola"' }],
       'a\r\n',
@@ -102,7 +102,7 @@ describe('construirLineas', () => {
     expect(texto).toBe('"casa, choza","dijo ""hola""",,,lista automatica\r\n');
   });
 
-  it('sin filas nuevas no escribe nada', () => {
+  it('with no new rows it writes nothing', () => {
     expect(construirLineas([], 'a\r\n')).toBe('');
   });
 });

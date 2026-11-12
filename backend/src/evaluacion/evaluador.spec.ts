@@ -9,8 +9,8 @@ import {
   textoComparable,
 } from './evaluador';
 
-describe('coincidencia exacta', () => {
-  it('ignora mayúsculas, puntuación y espacios de más, pero no ʉ ni ñ', () => {
+describe('exact match', () => {
+  it('ignores capitals, punctuation and extra spaces, but not ʉ or ñ', () => {
     expect(textoComparable('  Nʉnka   shkua. ')).toBe('nʉnka shkua');
     expect(esCoincidenciaExacta('Nʉnka shkua.', 'nʉnka shkua')).toBe(true);
     expect(esCoincidenciaExacta('nunka shkua', 'nʉnka shkua')).toBe(false);
@@ -18,10 +18,10 @@ describe('coincidencia exacta', () => {
   });
 });
 
-describe('evaluarPrueba y resumen', () => {
+describe('evaluarPrueba and summary', () => {
   const prueba = { espanol: 'mi mamá cocina', damanaEsperado: 'ranzhe abu dugwa', ambito: 'familia' };
 
-  it('calcula exacta, chrF y la proporción de palabras sin equivalente', () => {
+  it('computes exact, chrF and the proportion of words without an equivalent', () => {
     const exacta = evaluarPrueba(prueba, { traduccion: 'Ranzhe abu dugwa.', palabrasSinEquivalente: [], confianza: 0.9 });
     expect(exacta.exacta).toBe(true);
     expect(exacta.chrf).toBeGreaterThan(0.99);
@@ -34,12 +34,12 @@ describe('evaluarPrueba y resumen', () => {
     expect(parcial.proporcionSinEquivalente).toBeCloseTo(1 / 3, 10);
   });
 
-  it('una prueba fallida cuenta como 0 y no se omite', () => {
+  it('a failed test counts as 0 and is not skipped', () => {
     const fallida = pruebaFallida(prueba, 'timeout');
     expect(fallida).toMatchObject({ exacta: false, chrf: 0, proporcionSinEquivalente: 1, error: 'timeout' });
   });
 
-  it('resume por ámbito y en total', () => {
+  it('summarizes by scope and in total', () => {
     const pruebas = [
       evaluarPrueba(prueba, { traduccion: 'ranzhe abu dugwa', palabrasSinEquivalente: [], confianza: 1 }),
       evaluarPrueba({ ...prueba, ambito: 'comida', espanol: 'como yuca', damanaEsperado: 'irrugwa zhant' }, { traduccion: '[yuca] zhant', palabrasSinEquivalente: ['yuca'], confianza: 0.2 }),
@@ -55,7 +55,7 @@ describe('evaluarPrueba y resumen', () => {
     expect(comida.porcentajeSinEquivalente).toBeCloseTo(75, 5); // (0.5 + 1) / 2
   });
 
-  it('renderiza el informe en Markdown con la tabla por ámbito y el detalle', () => {
+  it('renders the report in Markdown with the per-scope table and the detail', () => {
     const informe = construirInforme(
       [evaluarPrueba(prueba, { traduccion: 'ranzhe abu dugwa', palabrasSinEquivalente: [], confianza: 1 })],
       { fecha: new Date('2026-10-03T14:30:00.000Z'), proveedor: 'compatible', modelo: 'm' },
@@ -66,7 +66,7 @@ describe('evaluarPrueba y resumen', () => {
     expect(md).toContain('**mi mamá cocina** (familia)');
   });
 
-  it('el nombre del informe lleva fecha, hora y modelo saneado', () => {
+  it('the report name carries date, time and sanitized model', () => {
     expect(nombreBaseInforme(new Date('2026-10-03T14:30:00.000Z'), 'openai/gpt-oss-120b')).toBe('2026-10-03_1430_openai-gpt-oss-120b');
     expect(nombreBaseInforme(new Date('2026-10-03T14:30:00.000Z'), null)).toBe('2026-10-03_1430_sin-modelo');
   });

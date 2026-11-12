@@ -30,13 +30,13 @@ describe('Gramatica', () => {
 
   afterEach(() => http.verify());
 
-  it('lista los lemas con su número de formas', async () => {
+  it('lists the lemmas with their number of forms', async () => {
     await arrancar();
     expect(texto(fixture)).toContain('tener');
     expect(texto(fixture)).toContain('72');
   });
 
-  it('elegir un lema carga su tabla de conjugación', async () => {
+  it('choosing a lemma loads its conjugation table', async () => {
     await arrancar();
     const [, leer] = buscarTodos(fixture, '.lemas button');
     leer.click();
@@ -50,7 +50,7 @@ describe('Gramatica', () => {
     expect(buscarTodos(fixture, 'tbody tr').length).toBe(2);
   });
 
-  it('las formas damana van marcadas con lang="mbp" para el lector de pantalla', async () => {
+  it('Damana forms are marked with lang="mbp" for the screen reader', async () => {
     await arrancar();
     buscarTodos(fixture, '.lemas button')[1].click();
     await asentar(fixture);
@@ -61,7 +61,7 @@ describe('Gramatica', () => {
     expect(formas).toEqual(['nʉjkasheshisha', 'naijkasheshisha']);
   });
 
-  it('un lema que el backend no encuentra se avisa sin romper la lista', async () => {
+  it('a lemma the backend cannot find is reported without breaking the list', async () => {
     await arrancar();
     buscarTodos(fixture, '.lemas button')[1].click();
     await asentar(fixture);
@@ -72,12 +72,12 @@ describe('Gramatica', () => {
     expect(buscarTodos(fixture, '.lemas button').length).toBe(2); // the list is still there
   });
 
-  it('sin conjugaciones sugiere ejecutar el importador', async () => {
+  it('without conjugations it suggests running the importer', async () => {
     await arrancar([]);
     expect(texto(fixture)).toContain('¿Se ejecutó el importador?');
   });
 
-  it('si falla la carga inicial lo dice', async () => {
+  it('if the initial load fails it says so', async () => {
     fixture = await montar(Gramatica);
     http = TestBed.inject(HttpTestingController);
     http.expectOne('/api/gramatica/lemas').error(new ProgressEvent('error'));

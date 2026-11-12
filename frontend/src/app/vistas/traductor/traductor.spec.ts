@@ -73,7 +73,7 @@ describe('Traductor', () => {
 
   afterEach(() => http.verify());
 
-  it('manda el texto y la dirección elegida (español → damana por defecto)', async () => {
+  it('sends the text and the chosen direction (Spanish → Damana by default)', async () => {
     await arrancar();
     await escribir('mi mamá cocina en la casa');
     await traducir();
@@ -88,7 +88,7 @@ describe('Traductor', () => {
     expect(texto(fixture)).toContain('Ranzhe abu urragamba');
   });
 
-  it('mientras traduce avisa de la espera (Claude: 5-15 s), bloquea la caja y la libera al terminar', async () => {
+  it('while translating it warns about the wait (Claude: 5-15 s), locks the box and releases it when done', async () => {
     await arrancar({ disponible: true, proveedor: 'anthropic', modelo: 'claude-opus-5-5' });
     await escribir('mi mamá cocina en la casa');
     await traducir();
@@ -113,7 +113,7 @@ describe('Traductor', () => {
     expect((boton(/^\s*Traducir\s*$/) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('con un proveedor compatible el aviso nombra al modelo y no a Claude', async () => {
+  it('with a compatible provider the notice names the model and not Claude', async () => {
     await arrancar(); // AVAILABLE: compatible, gpt-oss-120b
     await escribir('nʉnka');
     await traducir();
@@ -124,13 +124,13 @@ describe('Traductor', () => {
     await asentar(fixture);
   });
 
-  it('no manda nada si el texto está vacío', async () => {
+  it('sends nothing if the text is empty', async () => {
     await arrancar();
     await traducir();
     http.expectNone('/api/traducir');
   });
 
-  it('muestra la glosa palabra por palabra bajo la traducción', async () => {
+  it('shows the word-by-word gloss under the translation', async () => {
     await arrancar();
     await traducirConRespuesta();
     const pares = buscarTodos(fixture, '.glosa .par').map((p) => [
@@ -146,7 +146,7 @@ describe('Traductor', () => {
     expect(buscarTodos(fixture, '.glosa .destino[lang="mbp"]').length).toBe(3);
   });
 
-  it('resalta las palabras sin equivalente, sin corchetes, y avisa que quedaron en Pendientes', async () => {
+  it('highlights the words without an equivalent, without brackets, and says they were left in Pendientes', async () => {
     await arrancar();
     await traducirConRespuesta();
     const marcadas = buscarTodos(fixture, '.traduccion .sin-equivalente').map((e) => e.textContent?.trim());
@@ -155,7 +155,7 @@ describe('Traductor', () => {
     expect(texto(fixture)).toContain('quedaron en Pendientes');
   });
 
-  it('muestra las reglas aplicadas, la confianza y el diccionario usado', async () => {
+  it('shows the applied rules, the confidence and the dictionary used', async () => {
     await arrancar();
     await traducirConRespuesta();
     expect(texto(fixture)).toContain('-nzhe (posesivo)');
@@ -165,7 +165,7 @@ describe('Traductor', () => {
     expect(texto(fixture)).toContain('posible');
   });
 
-  it('agrupa los ejemplos por dominio en bloques colapsables', async () => {
+  it('groups the examples by domain in collapsible blocks', async () => {
     await arrancar();
     await traducirConRespuesta();
     const titulos = buscarTodos(fixture, 'details.ejemplos summary').map((s) => s.textContent?.trim());
@@ -176,7 +176,7 @@ describe('Traductor', () => {
     ]);
   });
 
-  it('«esta traducción es correcta» guarda el par como confirmado', async () => {
+  it('«esta traducción es correcta» stores the pair as confirmed', async () => {
     await arrancar();
     await traducirConRespuesta();
     boton(/es correcta/).click();
@@ -195,7 +195,7 @@ describe('Traductor', () => {
     expect(texto(fixture)).toContain('Guardada como correcta (3 validadas)');
   });
 
-  it('«corregir» permite escribir la traducción correcta y la guarda como corregida (con ʉ)', async () => {
+  it('«corregir» lets the correct translation be typed and stores it as corrected (with ʉ)', async () => {
     await arrancar();
     await traducirConRespuesta();
     boton(/^\s*Corregir\s*$/).click();
@@ -217,14 +217,14 @@ describe('Traductor', () => {
     expect(texto(fixture)).toContain('Corrección guardada');
   });
 
-  it('con apoyo «revisar» muestra el aviso; con «bueno» no', async () => {
+  it('with «revisar» support it shows the warning; with «bueno» it does not', async () => {
     await arrancar();
     await traducirConRespuesta({ ...RESPUESTA, apoyo: { nivel: 'revisar', motivos: ['sin_ejemplos'] }, ejemplos: [] });
     expect(texto(fixture)).toContain('Poco apoyo del corpus');
     expect(texto(fixture)).toContain('No se encontraron ejemplos parecidos');
   });
 
-  it('intercambiar la dirección invierte el sentido de la traducción', async () => {
+  it('swapping the direction reverses the translation direction', async () => {
     await arrancar();
     boton(/⇄/).click();
     await asentar(fixture);
@@ -236,13 +236,13 @@ describe('Traductor', () => {
     await asentar(fixture);
   });
 
-  it('si el traductor no está configurado explica cómo configurarlo', async () => {
+  it('if the translator is not configured it explains how to configure it', async () => {
     await arrancar({ disponible: false, proveedor: null, modelo: null });
     expect(texto(fixture)).toContain('Falta configurar un motor de traducción');
     expect(buscarTodos(fixture, '.aviso').length).toBe(1);
   });
 
-  it('un error del backend se muestra con su mensaje', async () => {
+  it('a backend error is shown with its message', async () => {
     await arrancar();
     await escribir('nʉnka');
     await traducir();
@@ -254,7 +254,7 @@ describe('Traductor', () => {
     expect(texto(fixture)).toContain('El texto supera el máximo');
   });
 
-  it('si el backend no responde culpa a la conexión, no al texto', async () => {
+  it('if the backend does not respond it blames the connection, not the text', async () => {
     await arrancar();
     await escribir('nʉnka');
     await traducir();

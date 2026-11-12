@@ -33,7 +33,7 @@ function retrocederA(db: Database.Database, version: 4 | 5 | 6): void {
 }
 
 describe('ejecutarMigraciones', () => {
-  it('crea las tablas del corpus (v3 + v6) y los índices', () => {
+  it('creates the corpus tables (v3 + v6) and the indexes', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
 
@@ -64,7 +64,7 @@ describe('ejecutarMigraciones', () => {
     db.close();
   });
 
-  it('es idempotente: ejecutarla dos veces no falla ni duplica', () => {
+  it('is idempotent: running it twice neither fails nor duplicates', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     expect(() => ejecutarMigraciones(db)).not.toThrow();
@@ -72,7 +72,7 @@ describe('ejecutarMigraciones', () => {
     db.close();
   });
 
-  it('la v5 añade ejemplos_en_contexto y deja en null las filas ya registradas (base parada en v4)', () => {
+  it('v5 adds ejemplos_en_contexto and leaves already logged rows as null (database stopped at v4)', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     retrocederA(db, 4);
@@ -96,7 +96,7 @@ describe('ejecutarMigraciones', () => {
     db.close();
   });
 
-  it('la v6 añade dominio con valor por defecto a las filas existentes (base parada en v5)', () => {
+  it('v6 adds dominio with a default value to existing rows (database stopped at v5)', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     retrocederA(db, 5);
@@ -122,7 +122,7 @@ describe('ejecutarMigraciones', () => {
     db.close();
   });
 
-  it('la v7 añade las columnas de consumo y deja en null las filas ya registradas (base parada en v6)', () => {
+  it('v7 adds the usage columns and leaves already logged rows as null (database stopped at v6)', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     retrocederA(db, 6);
@@ -147,7 +147,7 @@ describe('ejecutarMigraciones', () => {
     db.close();
   });
 
-  it('pendientes y validadas restringen sus enumeraciones', () => {
+  it('pendientes and validadas restrict their enumerations', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     const pendiente = (estado: string) =>
@@ -169,7 +169,7 @@ describe('ejecutarMigraciones', () => {
     db.close();
   });
 
-  it('la migración v3 conserva el progreso SRS de una base v2', () => {
+  it('the v3 migration keeps the SRS progress of a v2 database', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     db.prepare(
@@ -184,7 +184,7 @@ describe('ejecutarMigraciones', () => {
     db.close();
   });
 
-  it('acepta texto con ʉ y ñ en las tablas (round-trip binario exacto)', () => {
+  it('accepts text with ʉ and ñ in the tables (exact binary round-trip)', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     db.prepare(
@@ -200,7 +200,7 @@ describe('ejecutarMigraciones', () => {
     db.close();
   });
 
-  it('oraciones exige estado aprobado o revisar', () => {
+  it('oraciones requires estado aprobado or revisar', () => {
     const db = new Database(':memory:');
     ejecutarMigraciones(db);
     const insertar = (estado: string) =>

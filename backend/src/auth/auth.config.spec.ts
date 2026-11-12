@@ -7,24 +7,24 @@ describe('leerConfigAuth', () => {
     AUTH_JWT_SECRET: 'secreto-largo-de-prueba',
   };
 
-  it('con credenciales completas queda activa', () => {
+  it('with complete credentials it is active', () => {
     const config = leerConfigAuth(credenciales as NodeJS.ProcessEnv);
     expect(config.activa).toBe(true);
     expect(config.usuario).toBe('juan');
     expect(config.duracionDias).toBe(30);
   });
 
-  it('sin credenciales queda desactivada fuera de producción', () => {
+  it('without credentials it is disabled outside production', () => {
     expect(leerConfigAuth({} as NodeJS.ProcessEnv).activa).toBe(false);
   });
 
-  it('en producción sin credenciales NO arranca: la API no puede quedar abierta', () => {
+  it('in production without credentials it does NOT start: the API cannot be left open', () => {
     expect(() =>
       leerConfigAuth({ NODE_ENV: 'production' } as NodeJS.ProcessEnv),
     ).toThrow(/AUTH_USUARIO/);
   });
 
-  it('en producción sin secreto de firma tampoco arranca', () => {
+  it('in production without a signing secret it does not start either', () => {
     expect(() =>
       leerConfigAuth({
         NODE_ENV: 'production',
@@ -34,7 +34,7 @@ describe('leerConfigAuth', () => {
     ).toThrow(/AUTH_JWT_SECRET/);
   });
 
-  it('un usuario en blanco no cuenta como credencial', () => {
+  it('a blank user does not count as a credential', () => {
     const config = leerConfigAuth({
       AUTH_USUARIO: '   ',
       AUTH_PASSWORD: 'x',
@@ -42,14 +42,14 @@ describe('leerConfigAuth', () => {
     expect(config.activa).toBe(false);
   });
 
-  it('en local inventa un secreto para poder firmar igualmente', () => {
+  it('locally it makes up a secret so it can still sign', () => {
     const config = leerConfigAuth(
       { AUTH_USUARIO: 'juan', AUTH_PASSWORD: 'x' } as NodeJS.ProcessEnv,
     );
     expect(config.secreto.length).toBeGreaterThanOrEqual(32);
   });
 
-  it('respeta AUTH_DIAS_SESION', () => {
+  it('honours AUTH_DIAS_SESION', () => {
     const config = leerConfigAuth({
       ...credenciales,
       AUTH_DIAS_SESION: '7',
@@ -58,16 +58,16 @@ describe('leerConfigAuth', () => {
   });
 });
 
-describe('leerConfigAuth en Render', () => {
+describe('leerConfigAuth on Render', () => {
   // Render sets RENDER=true by itself; NODE_ENV cannot be used there because
   // it would break `npm ci` (it would skip the build's devDependencies).
-  it('trata RENDER=true como producción y exige credenciales', () => {
+  it('treats RENDER=true as production and requires credentials', () => {
     expect(() =>
       leerConfigAuth({ RENDER: 'true' } as NodeJS.ProcessEnv),
     ).toThrow(/AUTH_USUARIO/);
   });
 
-  it('con credenciales en Render arranca y queda activa', () => {
+  it('with credentials on Render it starts and is active', () => {
     const config = leerConfigAuth({
       RENDER: 'true',
       AUTH_USUARIO: 'juan',

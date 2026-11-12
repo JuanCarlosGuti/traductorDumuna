@@ -38,26 +38,26 @@ describe('Diccionario', () => {
 
   afterEach(() => http.verify());
 
-  it('lista las palabras damana con su frecuencia', async () => {
+  it('lists the Damana words with their frequency', async () => {
     await arrancar([frecuencia('nʉnka', 283), frecuencia('ñingui', 120)]);
     expect(texto(fixture)).toContain('nʉnka');
     expect(texto(fixture)).toContain('283');
   });
 
-  it('el filtro ignora tildes pero NO confunde ʉ con u', async () => {
+  it('the filter ignores accents but does NOT confuse ʉ with u', async () => {
     await arrancar([frecuencia('nʉnka', 283), frecuencia('nunkuame', 241)]);
     await filtrar('nʉnka');
     expect(texto(fixture)).toContain('nʉnka');
     expect(texto(fixture)).not.toContain('nunkuame');
   });
 
-  it('filtrar por «nunka» no encuentra «nʉnka»: son palabras distintas', async () => {
+  it('filtering by «nunka» does not find «nʉnka»: they are different words', async () => {
     await arrancar([frecuencia('nʉnka', 283)]);
     await filtrar('nunka');
     expect(texto(fixture)).not.toContain('nʉnka');
   });
 
-  it('en modo español el filtro distingue «año» de «ano»', async () => {
+  it('in Spanish mode the filter tells «año» from «ano»', async () => {
     await arrancar([frecuencia('nʉnka', 283)]);
     // Careful: the Damana mode button says «damana → español», so searching
     // by the text «español» would catch the wrong one. Go by position.
@@ -70,7 +70,7 @@ describe('Diccionario', () => {
     expect(texto(fixture)).not.toContain('gunkua');
   });
 
-  it('pagina de 50 en 50 y el botón siguiente avanza', async () => {
+  it('pages 50 at a time and the next button advances', async () => {
     const muchas = Array.from({ length: 120 }, (_, i) =>
       frecuencia(`palabra${String(i).padStart(3, '0')}`, 120 - i),
     );
@@ -84,7 +84,7 @@ describe('Diccionario', () => {
     expect(texto(fixture)).not.toContain('palabra000');
   });
 
-  it('filtrar vuelve a la primera página', async () => {
+  it('filtering goes back to the first page', async () => {
     const muchas = Array.from({ length: 120 }, (_, i) =>
       frecuencia(`palabra${String(i).padStart(3, '0')}`, 120 - i),
     );

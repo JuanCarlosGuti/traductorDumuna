@@ -48,7 +48,7 @@ describe('NecesitoService', () => {
 
   afterEach(() => db.close());
 
-  it('lista palabras del corpus que no están en el glosario, por frecuencia', () => {
+  it('lists corpus words that are not in the glossary, by frequency', () => {
     insertarOracion('a b c', 'pueblo pueblo montaña');
     insertarOracion('d e', 'pueblo casa');
     const filas = servicio.calcular(HOY);
@@ -63,7 +63,7 @@ describe('NecesitoService', () => {
     });
   });
 
-  it('excluye lo que ya está en el glosario, stopwords y ruido de teclado', () => {
+  it('excludes what is already in the glossary, stopwords and keyboard noise', () => {
     insertarOracion('x', 'el agua de la zzzz montaña');
     const palabras = servicio.calcular(HOY).map((f) => f.espanol);
     expect(palabras).toContain('montaña');
@@ -72,7 +72,7 @@ describe('NecesitoService', () => {
     expect(palabras).not.toContain('zzzz'); // no vowels
   });
 
-  it('excluye probables nombres propios (solo con mayúscula inicial)', () => {
+  it('excludes probable proper names (initial capital only)', () => {
     insertarOracion('a', 'Jesús llegó');
     insertarOracion('b', 'Jesús habló');
     const palabras = servicio.calcular(HOY).map((f) => f.espanol);
@@ -80,7 +80,7 @@ describe('NecesitoService', () => {
     expect(palabras).toContain('llegó');
   });
 
-  it('excluye palabras que se escriben igual en damana (caso con ʉ)', () => {
+  it('excludes words that are written the same in Damana (case with ʉ)', () => {
     // 'nʉnka' is in the Damana glossary and also appears as a Damana token
     db.prepare(
       `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
@@ -92,7 +92,7 @@ describe('NecesitoService', () => {
     expect(palabras).toContain('grande');
   });
 
-  it('ignora las oraciones marcadas «revisar» (alineación dudosa)', () => {
+  it('ignores sentences marked «revisar» (doubtful alignment)', () => {
     insertarOracion('a', 'fiable', 'aprobado');
     insertarOracion('b', 'dudosa', 'revisar');
     const palabras = servicio.calcular(HOY).map((f) => f.espanol);
@@ -100,7 +100,7 @@ describe('NecesitoService', () => {
     expect(palabras).not.toContain('dudosa');
   });
 
-  it('prioriza las palabras de traducciones con poco apoyo sobre las del corpus', () => {
+  it('prioritizes words from poorly supported translations over corpus ones', () => {
     insertarOracion('x', 'pueblo pueblo pueblo pueblo pueblo'); // very frequent
     // Translation with no example at all → revisar level
     insertarTraduccion('quiero sanar', 'x', 'espanol_a_damana', 0, null, 0);
@@ -112,24 +112,24 @@ describe('NecesitoService', () => {
     expect(filas.find((f) => f.espanol === 'pueblo')?.prioridad).toBe(2);
   });
 
-  it('NO prioriza traducciones que sí tuvieron buen apoyo', () => {
+  it('does NOT prioritize translations that did have good support', () => {
     insertarTraduccion('sanar', 'x', 'espanol_a_damana', 0.55, 'oraciones', 8);
     expect(servicio.calcular(HOY)).toEqual([]);
   });
 
-  it('cuenta las veces que se pidió una palabra en traducciones distintas', () => {
+  it('counts the times a word was requested in different translations', () => {
     insertarTraduccion('sanar rápido', 'x', 'espanol_a_damana', 0, null, 0);
     insertarTraduccion('sanar pronto', 'y', 'espanol_a_damana', 0, null, 0);
     const sanar = servicio.calcular(HOY).find((f) => f.espanol === 'sanar');
     expect(sanar?.vecesVisto).toBe(2);
   });
 
-  it('respeta el tope de filas', () => {
+  it('respects the row cap', () => {
     insertarOracion('x', 'una dos tres cuatro cinco seis siete ocho nueve');
     expect(servicio.calcular(HOY, 3)).toHaveLength(3);
   });
 
-  it('acompaña cada palabra con una oración de ejemplo en ambos idiomas', () => {
+  it('accompanies each word with an example sentence in both languages', () => {
     insertarOracion('nʉnka gontka shkua', 'el agua hizo montaña');
     const fila = servicio.calcular(HOY).find((f) => f.espanol === 'montaña');
     expect(fila?.ejemploEspanol).toBe('el agua hizo montaña');
@@ -175,7 +175,7 @@ describe('NecesitoService.calcularDamana', () => {
 
   afterEach(() => db.close());
 
-  it('propone las palabras damana sin traducción, por frecuencia', () => {
+  it('proposes Damana words without a translation, by frequency', () => {
     const filas = servicio.calcularDamana();
     expect(filas.map((f) => f.damana)).toEqual(['gontka']);
     expect(filas[0]).toMatchObject({
@@ -187,14 +187,14 @@ describe('NecesitoService.calcularDamana', () => {
     });
   });
 
-  it('excluye lo que ya está en el glosario (caso con ʉ), las conjugaciones y los nombres propios', () => {
+  it('excludes what is already in the glossary (case with ʉ), conjugations and proper names', () => {
     const palabras = servicio.calcularDamana().map((f) => f.damana);
     expect(palabras).not.toContain('nʉnka'); // in the glossary
     expect(palabras).not.toContain('zhaguasheka'); // already has a gloss
     expect(palabras).not.toContain('jehovaga'); // proper name
   });
 
-  it('respeta el tope de filas', () => {
+  it('respects the row cap', () => {
     token('otra', 'otra', 1);
     expect(servicio.calcularDamana(1)).toHaveLength(1);
   });

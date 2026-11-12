@@ -23,14 +23,14 @@ describe('GramaticaService', () => {
 
   afterEach(() => db.close());
 
-  it('lista los lemas en orden alfabético con su número de formas', () => {
+  it('lists lemmas in alphabetical order with their number of forms', () => {
     expect(servicio.lemas()).toEqual([
       { lema: 'tener', formas: 2 },
       { lema: 'volver', formas: 1 },
     ]);
   });
 
-  it('devuelve la tabla de conjugación de un lema (formas con ʉ intactas)', () => {
+  it('returns the conjugation table of a lemma (forms with ʉ intact)', () => {
     const tabla = servicio.tablaDe('tener');
     expect(tabla.lema).toBe('tener');
     expect(tabla.conjugaciones).toHaveLength(2);
@@ -41,11 +41,11 @@ describe('GramaticaService', () => {
     });
   });
 
-  it('conserva la ñ en las formas (caso con ñ)', () => {
+  it('keeps the ñ in the forms (case with ñ)', () => {
     expect(servicio.tablaDe('volver').conjugaciones[0].damana).toBe('ñingunka');
   });
 
-  it('lanza 404 para un lema sin conjugaciones', () => {
+  it('throws 404 for a lemma without conjugations', () => {
     expect(() => servicio.tablaDe('inexistente')).toThrow(NotFoundException);
   });
 });

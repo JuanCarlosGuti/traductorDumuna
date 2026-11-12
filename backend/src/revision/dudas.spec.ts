@@ -25,7 +25,7 @@ const entrada = (
   fuente = 'diccionario wiwa',
 ): EntradaLexica => ({ espanol, damana, categoria: null, notas, fuente });
 
-describe('detectarVariantes (misma palabra, varias escrituras)', () => {
+describe('detectarVariantes (same word, several spellings)', () => {
   const grupos = detectarVariantes([
     forma('nʉnka', 275),
     forma('nunka', 2),
@@ -40,7 +40,7 @@ describe('detectarVariantes (misma palabra, varias escrituras)', () => {
     forma('mu', 3),
   ]);
 
-  it('agrupa por alternancia y ordena por uso, la forma más frecuente primero', () => {
+  it('groups by alternation and sorts by usage, most frequent form first', () => {
     expect(grupos.map((g) => g.formas.map((f) => f.forma))).toEqual([
       ['nʉnka', 'nunka'],
       ['terruandzina', 'terruanyina'],
@@ -50,7 +50,7 @@ describe('detectarVariantes (misma palabra, varias escrituras)', () => {
     expect(grupos[0].total).toBe(277);
   });
 
-  it('nunca junta ñ con n, ni propone palabras de menos de 4 letras', () => {
+  it('never merges ñ with n, nor proposes words shorter than 4 letters', () => {
     const todas = grupos.flatMap((g) => g.formas.map((f) => f.forma));
     expect(todas).not.toContain('ñingui');
     expect(todas).not.toContain('ningui');
@@ -58,8 +58,8 @@ describe('detectarVariantes (misma palabra, varias escrituras)', () => {
   });
 });
 
-describe('detectarParecidas (una letra de diferencia y el mismo significado)', () => {
-  it('propone el par solo si comparten significado', () => {
+describe('detectarParecidas (one letter of difference and the same meaning)', () => {
+  it('proposes the pair only if they share a meaning', () => {
     const grupos = detectarParecidas([
       forma('kunkushina', 0, ['Dios']),
       forma('kunkujshina', 118, ['jehova', 'para dios']),
@@ -75,7 +75,7 @@ describe('detectarParecidas (una letra de diferencia y el mismo significado)', (
   });
 });
 
-describe('detectarSinonimos (una palabra española, varias en damana)', () => {
+describe('detectarSinonimos (one Spanish word, several in Damana)', () => {
   const grupos = detectarSinonimos([
     entrada('Grande', 'Aikuia'),
     entrada('Grande', 'Alkwega'),
@@ -86,19 +86,19 @@ describe('detectarSinonimos (una palabra española, varias en damana)', () => {
     entrada('Año', 'Kʉgui'),
   ]);
 
-  it('agrupa por cada alternativa del español', () => {
+  it('groups by each Spanish alternative', () => {
     expect(grupos.map((g) => [g.espanol, g.opciones.map((o) => o.damana)])).toEqual([
       ['Grande', ['Aikuia', 'Alkwega']],
       ['Igual', ['Anzhengwi', 'zhʉntshijki']],
     ]);
   });
 
-  it('deja fuera lo que es solo otra escritura (Dzuia / Dzwia va en la hoja de escritura)', () => {
+  it('leaves out what is just another spelling (Dzuia / Dzwia goes on the spelling sheet)', () => {
     expect(grupos.some((g) => g.espanol === 'Día')).toBe(false);
   });
 });
 
-describe('detectarPolisemia (una forma damana, varios significados)', () => {
+describe('detectarPolisemia (one Damana form, several meanings)', () => {
   const grupos = detectarPolisemia([
     entrada('Familia', 'Kawa'),
     entrada('Amigo', 'Kawa'),
@@ -109,7 +109,7 @@ describe('detectarPolisemia (una forma damana, varios significados)', () => {
     entrada('Agua', 'Dzira'),
   ]);
 
-  it('marca los grupos que solo se distinguen por la tilde y los pone primero', () => {
+  it('flags the groups told apart only by the accent and puts them first', () => {
     expect(grupos.map((g) => [g.clave, g.soloTilde])).toEqual([
       ['ako', true],
       ['kawa', false],
@@ -118,7 +118,7 @@ describe('detectarPolisemia (una forma damana, varios significados)', () => {
     expect(grupos[0].sentidos.map((s) => s.damana)).toEqual(['Ako', 'Akó']);
   });
 
-  it('una palabra con un solo significado no entra', () => {
+  it('a word with a single meaning does not go in', () => {
     expect(grupos.some((g) => g.clave === 'dzira')).toBe(false);
   });
 });
@@ -137,24 +137,24 @@ describe('detectarEntradasDudosas', () => {
   ]);
   const de = (espanol: string) => dudosas.find((d) => d.entrada.espanol === espanol);
 
-  it('detecta la nota corrida de fila y dice de cuál vecina parece ser', () => {
+  it('detects the note shifted to another row and says which neighbour it seems to belong to', () => {
     expect(de('pedazo')!.motivos).toEqual(['sin_forma', 'nota_de_otra_palabra']);
     expect(de('pedazo')!.pista).toContain('pastores');
     expect(de('pastores')!.motivos).toEqual(['nota_de_otra_palabra']);
     expect(de('pastores')!.pista).toContain('nuestros = nabinzhe');
   });
 
-  it('una nota que sí habla de su palabra solo queda por confirmar', () => {
+  it('a note that does talk about its own word only needs confirming', () => {
     expect(de('nuestros')).toMatchObject({ motivos: ['nota_por_confirmar'], pista: '' });
   });
 
-  it('igual que el español, sin forma, varias formas en una casilla y español poco claro', () => {
+  it('same as the Spanish, no form, several forms in one cell and unclear Spanish', () => {
     expect(de('tan')!.motivos).toEqual(['igual_que_espanol', 'sin_forma']);
     expect(de('quería')!.motivos).toEqual(['varias_formas', 'nota_por_confirmar']);
     expect(de('Verb: Hacer')!.motivos).toEqual(['espanol_poco_claro']);
   });
 
-  it('lo que está claro no se lista (ni las notas de categoría del diccionario)', () => {
+  it('what is clear is not listed (nor the dictionary category notes)', () => {
     expect(de('Agua')).toBeUndefined();
     expect(de('año')).toBeUndefined();
     // a sentence's comma is punctuation, not two forms in one cell
@@ -192,19 +192,19 @@ describe('detectarTerminaciones', () => {
     { minimoRaices: 3 },
   );
 
-  it('cuenta en cuántas palabras base aparece cada terminación y descarta las raras', () => {
+  it('counts in how many base words each ending appears and discards the rare ones', () => {
     expect(terminaciones.map((t) => [t.terminacion, t.raices])).toEqual([
       ['mba', 4],
       ['nzhe', 3],
     ]);
   });
 
-  it('respeta ʉ ≠ u al reconocer la raíz', () => {
+  it('respects ʉ ≠ u when recognizing the root', () => {
     const nzhe = terminaciones.find((t) => t.terminacion === 'nzhe')!;
     expect(nzhe.ejemplos.map((e) => e.raiz)).not.toContain('kʉnsi');
   });
 
-  it('trae los ejemplos más frecuentes con su oración y lo que ya sabemos', () => {
+  it('brings the most frequent examples with their sentence and what we already know', () => {
     const mba = terminaciones[0];
     expect(mba.yaSabemos).toBe('en el diccionario: En');
     expect(mba.ejemplos[0]).toMatchObject({
@@ -216,7 +216,7 @@ describe('detectarTerminaciones', () => {
     expect(mba.ejemplos).toHaveLength(3);
   });
 
-  it('prefiere el ejemplo cuya oración menciona el significado de la palabra base', () => {
+  it('prefers the example whose sentence mentions the meaning of the base word', () => {
     const [ga] = detectarTerminaciones(
       [
         { raiz: 'anzhʉn', significado: 'sueño' },

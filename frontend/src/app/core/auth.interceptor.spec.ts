@@ -46,14 +46,14 @@ describe('authInterceptor', () => {
     await entrando;
   };
 
-  it('sin sesión no añade cabecera', () => {
+  it('without a session it adds no header', () => {
     void firstValueFrom(http.get('/api/vocabulario'));
     const peticion = control.expectOne('/api/vocabulario');
     expect(peticion.request.headers.has('Authorization')).toBe(false);
     peticion.flush([]);
   });
 
-  it('con sesión añade Authorization: Bearer', async () => {
+  it('with a session it adds Authorization: Bearer', async () => {
     await conSesion();
     void firstValueFrom(http.get('/api/vocabulario'));
     const peticion = control.expectOne('/api/vocabulario');
@@ -61,7 +61,7 @@ describe('authInterceptor', () => {
     peticion.flush([]);
   });
 
-  it('no manda el token a servidores ajenos a la API', async () => {
+  it('does not send the token to servers other than the API', async () => {
     await conSesion();
     void firstValueFrom(http.get('https://example.com/algo'));
     const peticion = control.expectOne('https://example.com/algo');
@@ -69,7 +69,7 @@ describe('authInterceptor', () => {
     peticion.flush({});
   });
 
-  it('un 401 cierra la sesión y lleva al login', async () => {
+  it('a 401 logs out and leads to login', async () => {
     await conSesion();
     const llamada = firstValueFrom(http.get('/api/vocabulario')).catch(() => null);
     control
@@ -82,7 +82,7 @@ describe('authInterceptor', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/entrar']);
   });
 
-  it('un 401 del propio login NO redirige: ya se está en la pantalla', async () => {
+  it('a 401 from login itself does NOT redirect: we are already on that screen', async () => {
     const intento = auth.entrar('juan', 'mala').catch(() => null);
     control
       .expectOne('/api/auth/login')
@@ -91,7 +91,7 @@ describe('authInterceptor', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('otros errores no cierran la sesión', async () => {
+  it('other errors do not log out', async () => {
     await conSesion();
     const llamada = firstValueFrom(http.get('/api/vocabulario')).catch(() => null);
     control

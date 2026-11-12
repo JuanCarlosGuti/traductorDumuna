@@ -12,7 +12,7 @@ import { ImportadorService } from '../src/importador/importador.service';
 
 const BOM = String.fromCharCode(0xfeff);
 
-describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
+describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
   let dirTmp: string;
   let app: INestApplication;
 
@@ -72,7 +72,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
   });
 
   describe('GET /api/buscar', () => {
-    it('concordancia damana con ʉ: <mark>, referencia y texto paralelo', async () => {
+    it('Damana concordance with ʉ: <mark>, reference and parallel text', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/buscar')
         .query({ q: 'nʉnka' })
@@ -91,7 +91,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       expect(referencias).toContain('oración 2 (revisar)');
     });
 
-    it('nunca degrada ʉ a u: buscar nunka no encuentra nada', async () => {
+    it('never degrades ʉ to u: searching nunka finds nothing', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/buscar')
         .query({ q: 'nunka' })
@@ -99,7 +99,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       expect(res.body.total).toBe(0);
     });
 
-    it('busca en español (insensible a tildes) con el damana como paralelo', async () => {
+    it('searches in Spanish (accent-insensitive) with the Damana as parallel', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/buscar')
         .query({ q: 'jehova', idioma: 'espanol' })
@@ -109,7 +109,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       expect(res.body.resultados[0].textoParalelo).toContain('Jehovága');
     });
 
-    it('filtra por fuente, incluidas las conjugaciones', async () => {
+    it('filters by source, conjugations included', async () => {
       const frases = await request(app.getHttpServer())
         .get('/api/buscar')
         .query({ q: 'nʉnka', fuente: 'frases' })
@@ -126,7 +126,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       expect(conjugaciones.body.resultados[0].textoParalelo).toBe('yo tuve');
     });
 
-    it('una frase de varias palabras busca por similitud con puntaje y resaltado', async () => {
+    it('a multi-word phrase searches by similarity with score and highlighting', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/buscar')
         .query({ q: 'jehova hizo el agua', idioma: 'espanol' })
@@ -141,7 +141,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       expect(primero.textoParalelo).toContain('Jehovága');
     });
 
-    it('valida idioma y q: 400 para valores inválidos', async () => {
+    it('validates idioma and q: 400 for invalid values', async () => {
       await request(app.getHttpServer())
         .get('/api/buscar')
         .query({ q: 'nʉnka', idioma: 'klingon' })
@@ -155,7 +155,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
   });
 
   describe('GET /api/palabra/:token', () => {
-    it('ficha completa de una palabra con ʉ', async () => {
+    it('full card of a word with ʉ', async () => {
       const res = await request(app.getHttpServer())
         .get(`/api/palabra/${encodeURIComponent('nʉnka')}`)
         .expect(200);
@@ -177,13 +177,13 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       expect(candidatas).not.toContain('del');
     });
 
-    it('404 para palabras fuera del corpus', async () => {
+    it('404 for words outside the corpus', async () => {
       await request(app.getHttpServer()).get('/api/palabra/inexistente').expect(404);
     });
   });
 
   describe('GET /api/frecuencias', () => {
-    it('excluye probables nombres propios y trae la categoría del vocabulario', async () => {
+    it('excludes probable proper names and brings the vocabulary category', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/frecuencias')
         .expect(200);
@@ -198,7 +198,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       });
     });
 
-    it('respeta limite y valida que sea entero positivo', async () => {
+    it('respects limite and validates that it is a positive integer', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/frecuencias')
         .query({ limite: 1 })
@@ -212,12 +212,12 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
   });
 
   describe('GET /api/gramatica', () => {
-    it('lista los lemas con su número de formas', async () => {
+    it('lists the lemmas with their number of forms', async () => {
       const res = await request(app.getHttpServer()).get('/api/gramatica/lemas').expect(200);
       expect(res.body).toEqual([{ lema: 'tener', formas: 2 }]);
     });
 
-    it('devuelve la tabla completa de un lema (formas con ʉ intactas)', async () => {
+    it('returns the full table of a lemma (forms with ʉ intact)', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/gramatica/lemas/tener')
         .expect(200);
@@ -230,13 +230,13 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       });
     });
 
-    it('404 para un lema inexistente', async () => {
+    it('404 for a nonexistent lemma', async () => {
       await request(app.getHttpServer()).get('/api/gramatica/lemas/volar').expect(404);
     });
   });
 
-  describe('listados completos', () => {
-    it('GET /api/vocabulario devuelve todas las entradas con id y categoría', async () => {
+  describe('full listings', () => {
+    it('GET /api/vocabulario returns all entries with id and category', async () => {
       const res = await request(app.getHttpServer()).get('/api/vocabulario').expect(200);
       expect(res.body).toHaveLength(2);
       expect(res.body[0]).toMatchObject({
@@ -247,7 +247,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       });
     });
 
-    it('GET /api/frases devuelve todas las frases con id', async () => {
+    it('GET /api/frases returns all phrases with id', async () => {
       const res = await request(app.getHttpServer()).get('/api/frases').expect(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0]).toMatchObject({

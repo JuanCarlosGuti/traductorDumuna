@@ -61,7 +61,7 @@ describe('SRS (e2e, corpus v3)', () => {
     fs.rmSync(dirTmp, { recursive: true, force: true });
   });
 
-  it('GET /api/srs/siguiente entrega el vocabulario primero (con ʉ)', async () => {
+  it('GET /api/srs/siguiente serves the vocabulary first (with ʉ)', async () => {
     const res = await request(app.getHttpServer()).get('/api/srs/siguiente').expect(200);
     expect(res.body.tarjeta).toMatchObject({
       palabra: 'nʉnka',
@@ -71,7 +71,7 @@ describe('SRS (e2e, corpus v3)', () => {
     expect(res.body.nuevas).toBeGreaterThan(0);
   });
 
-  it('POST /api/srs/respuesta actualiza el progreso y avanza el mazo', async () => {
+  it('POST /api/srs/respuesta updates the progress and advances the deck', async () => {
     const r1 = await request(app.getHttpServer())
       .post('/api/srs/respuesta')
       .send({ palabra: 'nʉnka', calificacion: 'bien' })
@@ -84,7 +84,7 @@ describe('SRS (e2e, corpus v3)', () => {
     expect(res.body.tarjeta.traduccion).toContain('candidatas');
   });
 
-  it('valida la calificación y la palabra', async () => {
+  it('validates the grade and the word', async () => {
     await request(app.getHttpServer())
       .post('/api/srs/respuesta')
       .send({ palabra: 'nʉnka', calificacion: 'regular' })

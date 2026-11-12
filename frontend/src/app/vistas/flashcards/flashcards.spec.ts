@@ -23,20 +23,20 @@ describe('Flashcards', () => {
 
   afterEach(() => http.verify());
 
-  it('muestra la palabra damana pero no su traducción hasta revelar', async () => {
+  it('shows the Damana word but not its translation until revealed', async () => {
     await cargar();
     expect(texto(fixture)).toContain('nʉnka');
     expect(texto(fixture)).not.toContain('agua');
   });
 
-  it('la barra espaciadora revela la traducción', async () => {
+  it('the space bar reveals the translation', async () => {
     await cargar();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
     await asentar(fixture);
     expect(texto(fixture)).toContain('agua');
   });
 
-  it('calificar envía la respuesta y pide la siguiente tarjeta', async () => {
+  it('grading sends the answer and requests the next card', async () => {
     await cargar();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
     await asentar(fixture);
@@ -53,14 +53,14 @@ describe('Flashcards', () => {
     await asentar(fixture);
   });
 
-  it('no se puede calificar sin haber revelado', async () => {
+  it('grading is not possible without revealing first', async () => {
     await cargar();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: '3' }));
     await asentar(fixture);
     http.expectNone('/api/srs/respuesta');
   });
 
-  it('las teclas se ignoran mientras se escribe en un campo', async () => {
+  it('keys are ignored while typing in a field', async () => {
     await cargar();
     const campo = document.createElement('input');
     document.body.appendChild(campo);
@@ -72,12 +72,12 @@ describe('Flashcards', () => {
     campo.remove();
   });
 
-  it('con el mazo vacío no revienta y lo dice', async () => {
+  it('with an empty deck it does not crash and says so', async () => {
     await cargar({ tarjeta: null, pendientes: 0, nuevas: 0 });
     expect(buscarTodos(fixture, 'button').length).toBeLessThan(4);
   });
 
-  it('si el backend falla avisa en vez de quedarse en blanco', async () => {
+  it('if the backend fails it warns instead of staying blank', async () => {
     fixture = await montar(Flashcards);
     http = TestBed.inject(HttpTestingController);
     http.expectOne('/api/srs/siguiente').error(new ProgressEvent('error'));

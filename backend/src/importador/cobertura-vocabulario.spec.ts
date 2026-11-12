@@ -12,17 +12,17 @@ describe('CoberturaVocabulario', () => {
     { espanol: 'Sal', damana: 'Nʉngu' },
   ]);
 
-  it('cubre la misma palabra sin importar mayúsculas ni tildes', () => {
+  it('covers the same word regardless of capitals and accents', () => {
     expect(cobertura.cubreEspanol('AGUA')).toBe(true);
     expect(cobertura.cubreEspanol('año')).toBe(true);
     expect(cobertura.cubreEspanol('hola')).toBe(true);
   });
 
-  it('ñ ≠ n: «ano» no está cubierta aunque «año» sí', () => {
+  it('ñ ≠ n: «ano» is not covered even though «año» is', () => {
     expect(cobertura.cubreEspanol('ano')).toBe(false);
   });
 
-  it('cubre por las alternativas del lado español: comas, «o» y paréntesis', () => {
+  it('covers via the alternatives on the Spanish side: commas, «o» and parentheses', () => {
     expect(cobertura.cubreEspanol('lo mismo')).toBe(true);
     expect(cobertura.cubreEspanol('esa')).toBe(true);
     expect(cobertura.cubreEspanol('tierra')).toBe(true);
@@ -31,18 +31,18 @@ describe('CoberturaVocabulario', () => {
     expect(cobertura.cubreEspanol('sal (de cocina)')).toBe(true);
   });
 
-  it('cubre el plural de una palabra suelta (flores → flor) pero no inventa frases', () => {
+  it('covers the plural of a single word (flores → flor) but does not make up phrases', () => {
     expect(cobertura.cubreEspanol('flores')).toBe(true);
     expect(cobertura.cubreEspanol('aguas')).toBe(true);
     expect(cobertura.cubreEspanol('flor de agua')).toBe(false);
   });
 
-  it('no cubre lo que no está', () => {
+  it('does not cover what is not there', () => {
     expect(cobertura.cubreEspanol('vecina')).toBe(false);
     expect(cobertura.cubreEspanol('')).toBe(false);
   });
 
-  it('en damana compara la forma normalizada y respeta ʉ ≠ u', () => {
+  it('in Damana it compares the normalized form and respects ʉ ≠ u', () => {
     expect(cobertura.cubreDamana('Nʉnka')).toBe(true);
     expect(cobertura.cubreDamana('nunka')).toBe(false);
     expect(cobertura.cubreDamana('kʉgui')).toBe(true);

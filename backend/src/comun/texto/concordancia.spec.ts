@@ -5,40 +5,40 @@ import {
 } from './concordancia';
 
 describe('buscarOcurrencias', () => {
-  it('encuentra sin importar mayúsculas ni tildes: jehova ↔ Jehová', () => {
+  it('finds regardless of capitals and accents: jehova ↔ Jehová', () => {
     const texto = 'Jehová Kunkujshina naingontka, jehovága no';
     const oc = buscarOcurrencias(texto, 'jehova');
     expect(oc).toHaveLength(1);
     expect(oc[0]).toEqual({ inicio: 0, fin: 6, palabra: 'Jehová' });
   });
 
-  it('conserva ʉ: nʉnka no matchea nunka ni al revés', () => {
+  it('keeps ʉ: nʉnka does not match nunka or vice versa', () => {
     const texto = 'nʉnka nunka nʉnka';
     expect(buscarOcurrencias(texto, 'nʉnka')).toHaveLength(2);
     expect(buscarOcurrencias(texto, 'nunka')).toHaveLength(1);
   });
 
-  it('conserva ñ: ñingui no matchea ningui', () => {
+  it('keeps ñ: ñingui does not match ningui', () => {
     const texto = 'Ñingui tua ningui';
     const oc = buscarOcurrencias(texto, 'ñingui');
     expect(oc).toHaveLength(1);
     expect(oc[0].palabra).toBe('Ñingui');
   });
 
-  it('matchea palabras completas, no substrings', () => {
+  it('matches whole words, not substrings', () => {
     const oc = buscarOcurrencias('kʉnʉnka nʉnka', 'nʉnka');
     expect(oc).toHaveLength(1);
     expect(oc[0].inicio).toBe(8);
   });
 
-  it('recorta apóstrofes de borde pero conserva los internos', () => {
+  it('trims edge apostrophes but keeps internal ones', () => {
     const oc = buscarOcurrencias("'shke'ta' awa", "shke'ta");
     expect(oc).toHaveLength(1);
     expect(oc[0].palabra).toBe("shke'ta");
     expect(oc[0].inicio).toBe(1);
   });
 
-  it('los índices sobreviven a signos ¿? y números', () => {
+  it('indexes survive ¿? signs and numbers', () => {
     const texto = '¿Masheshishka 42 nanu?';
     const oc = buscarOcurrencias(texto, 'nanu');
     expect(texto.slice(oc[0].inicio, oc[0].fin)).toBe('nanu');
@@ -46,7 +46,7 @@ describe('buscarOcurrencias', () => {
 });
 
 describe('marcarOcurrencias', () => {
-  it('marca todas las ocurrencias de varias palabras (con ʉ y ñ)', () => {
+  it('marks all occurrences of several words (with ʉ and ñ)', () => {
     const texto = 'nʉnka gontka ñingui nʉnka';
     const ocurrencias = [
       ...buscarOcurrencias(texto, 'nʉnka'),
@@ -57,11 +57,11 @@ describe('marcarOcurrencias', () => {
     );
   });
 
-  it('sin ocurrencias devuelve el texto escapado y con espacios colapsados', () => {
+  it('with no occurrences returns the text escaped and with spaces collapsed', () => {
     expect(marcarOcurrencias('a <b>\ncosa', [])).toBe('a &lt;b&gt; cosa');
   });
 
-  it('ignora ocurrencias solapadas', () => {
+  it('ignores overlapping occurrences', () => {
     const texto = 'nʉnka';
     const oc = buscarOcurrencias(texto, 'nʉnka');
     expect(marcarOcurrencias(texto, [...oc, ...oc])).toBe('<mark>nʉnka</mark>');
@@ -69,13 +69,13 @@ describe('marcarOcurrencias', () => {
 });
 
 describe('extraerFragmento', () => {
-  it('envuelve la palabra en <mark> sin recortar textos cortos', () => {
+  it('wraps the word in <mark> without trimming short texts', () => {
     const texto = 'naka kʉñingui gontka';
     const [oc] = buscarOcurrencias(texto, 'kʉñingui');
     expect(extraerFragmento(texto, oc)).toBe('naka <mark>kʉñingui</mark> gontka');
   });
 
-  it('corta en límite de palabra a ±radio y marca con …', () => {
+  it('cuts at a word boundary at ±radio and marks with …', () => {
     const relleno = 'palabra '.repeat(40); // 320 characters
     const texto = `${relleno}nʉnka ${relleno}`.trim();
     const [oc] = buscarOcurrencias(texto, 'nʉnka');
@@ -91,7 +91,7 @@ describe('extraerFragmento', () => {
     }
   });
 
-  it('colapsa saltos de línea del contexto a espacios', () => {
+  it('collapses context line breaks to spaces', () => {
     const texto = 'primera línea\nsegunda ñingui línea\ntercera';
     const [oc] = buscarOcurrencias(texto, 'ñingui');
     expect(extraerFragmento(texto, oc)).toBe(
@@ -99,7 +99,7 @@ describe('extraerFragmento', () => {
     );
   });
 
-  it('escapa HTML del corpus fuera y dentro del <mark>', () => {
+  it('escapes corpus HTML outside and inside the <mark>', () => {
     const texto = 'a <b> nʉnka & c';
     const [oc] = buscarOcurrencias(texto, 'nʉnka');
     expect(extraerFragmento(texto, oc)).toBe(
