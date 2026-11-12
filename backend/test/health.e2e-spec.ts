@@ -10,11 +10,11 @@ import { DatabaseModule } from '../src/database/database.module';
 import { HealthModule } from '../src/health/health.module';
 
 const config: ConfigAuth = {
-  activa: true,
-  usuario: 'juan',
+  active: true,
+  user: 'juan',
   password: 'ñandú-ʉnkua-2026',
-  secreto: 'secreto-e2e-suficientemente-largo-para-firmar',
-  duracionDias: 30,
+  secret: 'secreto-e2e-suficientemente-largo-para-firmar',
+  durationDays: 30,
 };
 
 // The kamal-proxy healthcheck has no session: it must answer without a token
@@ -24,7 +24,7 @@ describe('Health (e2e, with authentication active)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AuthModule.forRoot(config), DatabaseModule.forRoot({ rutaDb: ':memory:' }), HealthModule],
+      imports: [AuthModule.forRoot(config), DatabaseModule.forRoot({ dbPath: ':memory:' }), HealthModule],
     }).compile();
     app = moduleRef.createNestApplication();
     configureApp(app);
@@ -34,8 +34,8 @@ describe('Health (e2e, with authentication active)', () => {
   afterAll(async () => app.close());
 
   it('without a corpus it answers 503 (that deployment must not receive traffic)', async () => {
-    const res = await request(app.getHttpServer()).get('/api/salud').expect(503);
-    expect(res.body.estado).toBe('sin_corpus');
+    const res = await request(app.getHttpServer()).get('/api/health').expect(503);
+    expect(res.body.status).toBe('sin_corpus');
   });
 
   it('with a corpus it answers 200 without a token', async () => {
@@ -43,7 +43,7 @@ describe('Health (e2e, with authentication active)', () => {
     db.prepare(
       "INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente) VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')",
     ).run();
-    const res = await request(app.getHttpServer()).get('/api/salud').expect(200);
-    expect(res.body).toEqual({ estado: 'ok' });
+    const res = await request(app.getHttpServer()).get('/api/health').expect(200);
+    expect(res.body).toEqual({ status: 'ok' });
   });
 });

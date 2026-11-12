@@ -99,7 +99,7 @@ The app ships as a single Docker image deployed with Kamal 2 from GitHub Actions
 
 ## Contributing and language policy
 
-Issues and pull requests are welcome. Comments, tests and code names are in English; the API routes and the data field names (JSON, database columns, CSV headers) are still in Spanish (see the roadmap). New code and all documentation should be written in English. The Damana data itself stays in Damana and Spanish.
+Issues and pull requests are welcome. The code, tests, comments and the HTTP API are in English. Database columns, CSV/Excel headers, stored values and the user interface stay in Spanish on purpose: they are language data shared with the speakers. New code and all documentation should be written in English. The Damana data itself stays in Damana and Spanish.
 
 ## License
 

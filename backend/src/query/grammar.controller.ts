@@ -9,24 +9,24 @@ import {
 import { LemmaDto, ConjugationTableDto } from './dto/query.dto';
 import { GrammarService } from './grammar.service';
 
-@ApiTags('gramatica')
-@Controller('gramatica')
+@ApiTags('grammar')
+@Controller('grammar')
 export class GrammarController {
   constructor(private readonly grammar: GrammarService) {}
 
-  @Get('lemas')
+  @Get('lemmas')
   @ApiOperation({ summary: 'Lemas verbales con conjugaciones en el corpus' })
   @ApiOkResponse({ type: [LemmaDto] })
   lemmas(): LemmaDto[] {
     return this.grammar.lemmas();
   }
 
-  @Get('lemas/:lema')
+  @Get('lemmas/:lemma')
   @ApiOperation({ summary: 'Tabla de conjugación de un lema (forma damana, glosa, notas)' })
   @ApiParam({ name: 'lema', example: 'tener' })
   @ApiOkResponse({ type: ConjugationTableDto })
   @ApiNotFoundResponse({ description: 'Lema sin conjugaciones en el corpus' })
-  table(@Param('lema') lemma: string): ConjugationTableDto {
+  table(@Param('lemma') lemma: string): ConjugationTableDto {
     return this.grammar.tableOf(lemma);
   }
 }

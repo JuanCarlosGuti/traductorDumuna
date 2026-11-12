@@ -3,14 +3,14 @@ import { normalize } from '../common/text/normalizer';
 
 /** An Excel sheet read as text rows, indexed by header. */
 export interface ReadSheet {
-  nombre: string;
+  name: string;
   /** Headers exactly as they appear in row 1. */
-  encabezados: string[];
+  headers: string[];
   /**
    * Each row as an object { normalizedHeader → text }. Rows without
    * any cell with text are skipped; empty ones in between do not cut it off.
    */
-  filas: Record<string, string>[];
+  rows: Record<string, string>[];
 }
 
 /**
@@ -75,7 +75,7 @@ function readSheet(sheet: ExcelJS.Worksheet): ReadSheet {
     if (withText) rows.push(logEntry);
   });
 
-  return { nombre: sheet.name, encabezados: headings.filter(Boolean), filas: rows };
+  return { name: sheet.name, headers: headings.filter(Boolean), rows: rows };
 }
 
 /**

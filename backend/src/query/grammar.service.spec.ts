@@ -25,24 +25,24 @@ describe('GrammarService', () => {
 
   it('lists lemmas in alphabetical order with their number of forms', () => {
     expect(service.lemmas()).toEqual([
-      { lema: 'tener', formas: 2 },
-      { lema: 'volver', formas: 1 },
+      { lemma: 'tener', forms: 2 },
+      { lemma: 'volver', forms: 1 },
     ]);
   });
 
   it('returns the conjugation table of a lemma (forms with ʉ intact)', () => {
     const table = service.tableOf('tener');
-    expect(table.lema).toBe('tener');
-    expect(table.conjugaciones).toHaveLength(2);
-    expect(table.conjugaciones[0]).toMatchObject({
+    expect(table.lemma).toBe('tener');
+    expect(table.conjugations).toHaveLength(2);
+    expect(table.conjugations[0]).toMatchObject({
       damana: 'nujkunʉnanka',
-      espanol: 'yo tuve',
-      notas: 'con ʉ',
+      spanish: 'yo tuve',
+      notes: 'con ʉ',
     });
   });
 
   it('keeps the ñ in the forms (case with ñ)', () => {
-    expect(service.tableOf('volver').conjugaciones[0].damana).toBe('ñingunka');
+    expect(service.tableOf('volver').conjugations[0].damana).toBe('ñingunka');
   });
 
   it('throws 404 for a lemma without conjugations', () => {

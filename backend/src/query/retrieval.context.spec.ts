@@ -28,33 +28,33 @@ const fragment = (
   damana = `${wordOf(id)} nʉnka`,
   spanish = `frase ${id} agua`,
 ): RetrievedFragment => ({
-  fuente: domain === CorpusDomain.gramatica ? CorpusSource.conjugaciones : CorpusSource.oraciones,
-  dominio: domain,
+  source: domain === CorpusDomain.gramatica ? CorpusSource.conjugaciones : CorpusSource.oraciones,
+  domain: domain,
   id,
-  referencia: `oración ${id}`,
+  reference: `oración ${id}`,
   damana,
-  espanol: spanish,
-  peso: 1,
-  puntaje: score,
+  spanish: spanish,
+  weight: 1,
+  score: score,
 });
 
 describe('isAlmostEqual', () => {
   it('same Damana except capitals/punctuation → almost equal', () => {
-    expect(isAlmostEqual({ damana: 'Nʉnka shkua.', espanol: 'a' }, { damana: 'nʉnka shkua', espanol: 'b' })).toBe(true);
+    expect(isAlmostEqual({ damana: 'Nʉnka shkua.', spanish: 'a' }, { damana: 'nʉnka shkua', spanish: 'b' })).toBe(true);
   });
 
   it('same Spanish → almost equal even if the Damana changes', () => {
-    expect(isAlmostEqual({ damana: 'x y', espanol: 'El agua es una' }, { damana: 'z w', espanol: 'el agua es una' })).toBe(true);
+    expect(isAlmostEqual({ damana: 'x y', spanish: 'El agua es una' }, { damana: 'z w', spanish: 'el agua es una' })).toBe(true);
   });
 
   it('almost all Damana words in common (Jaccard ≥ 0.8) → almost equal', () => {
-    const a = { damana: 'a b c d e', espanol: 'uno' };
-    const b = { damana: 'a b c d e f', espanol: 'dos' };
+    const a = { damana: 'a b c d e', spanish: 'uno' };
+    const b = { damana: 'a b c d e f', spanish: 'dos' };
     expect(isAlmostEqual(a, b)).toBe(true);
   });
 
   it('ʉ ≠ u: «nʉnka shkua» and «nunka shkua» are NOT almost equal', () => {
-    expect(isAlmostEqual({ damana: 'nʉnka shkua', espanol: 'a' }, { damana: 'nunka shkua', espanol: 'b' })).toBe(false);
+    expect(isAlmostEqual({ damana: 'nʉnka shkua', spanish: 'a' }, { damana: 'nunka shkua', spanish: 'b' })).toBe(false);
   });
 });
 
@@ -66,14 +66,14 @@ describe('splitByDomain (prompt quotas)', () => {
       ...Array.from({ length: 7 }, (_, i) => fragment(300 + i, CorpusDomain.biblico, 0.95 - i * 0.01)),
     ];
     const r = splitByDomain(candidates);
-    const counter = (d: CorpusDomain) => r.filter((f) => f.dominio === d).length;
+    const counter = (d: CorpusDomain) => r.filter((f) => f.domain === d).length;
     expect(counter(CorpusDomain.cotidiano)).toBe(EVERYDAY_QUOTA);
     expect(counter(CorpusDomain.gramatica)).toBe(GRAMMAR_QUOTA);
     expect(counter(CorpusDomain.biblico)).toBe(REDUCED_BIBLICAL_QUOTA);
     expect(r.length).toBeLessThanOrEqual(MAX_EXAMPLES);
     // everyday ones go first even if the biblical ones score higher
-    expect(r[0].dominio).toBe(CorpusDomain.cotidiano);
-    expect(r.at(-1)!.dominio).toBe(CorpusDomain.biblico);
+    expect(r[0].domain).toBe(CorpusDomain.cotidiano);
+    expect(r.at(-1)!.domain).toBe(CorpusDomain.biblico);
   });
 
   it('with few everyday ones the biblical ones keep their quota of 4', () => {
@@ -82,8 +82,8 @@ describe('splitByDomain (prompt quotas)', () => {
       ...Array.from({ length: 7 }, (_, i) => fragment(300 + i, CorpusDomain.biblico, 0.8 - i * 0.01)),
     ];
     const r = splitByDomain(candidates);
-    expect(r.filter((f) => f.dominio === CorpusDomain.biblico)).toHaveLength(BIBLICAL_QUOTA);
-    expect(r.filter((f) => f.dominio === CorpusDomain.cotidiano)).toHaveLength(3);
+    expect(r.filter((f) => f.domain === CorpusDomain.biblico)).toHaveLength(BIBLICAL_QUOTA);
+    expect(r.filter((f) => f.domain === CorpusDomain.cotidiano)).toHaveLength(3);
   });
 
   it('discards near-duplicates keeping the one with the highest score', () => {
@@ -148,13 +148,13 @@ describe('RetrievalService.recuperarContexto', () => {
 
   it('Spanish → Damana: per-word dictionary, possessive feature, -nzhe rule and examples by domain', () => {
     const c = service.retrieveContext('mi mamá cocina en la casa', Language.espanol);
-    expect(c.diccionario.find((a) => a.palabra === 'mamá')).toMatchObject({ damana: 'Abu', coincidencia: 'exacta' });
-    expect(c.diccionario.find((a) => a.palabra === 'casa')).toMatchObject({ damana: 'Urraga' });
-    expect(c.diccionario.find((a) => a.palabra === 'cocina')).toMatchObject({ damana: 'Dugua', coincidencia: 'posible' });
-    expect(c.disparadores).toEqual(['posesivo']);
-    expect(c.reglas.map((r) => r.forma)).toEqual(['-nzhe']);
-    expect(c.nombresPropios).toEqual([]);
-    const domains = c.ejemplos.map((e) => e.dominio);
+    expect(c.dictionary.find((a) => a.word === 'mamá')).toMatchObject({ damana: 'Abu', match: 'exacta' });
+    expect(c.dictionary.find((a) => a.word === 'casa')).toMatchObject({ damana: 'Urraga' });
+    expect(c.dictionary.find((a) => a.word === 'cocina')).toMatchObject({ damana: 'Dugua', match: 'posible' });
+    expect(c.triggers).toEqual(['posesivo']);
+    expect(c.rules.map((r) => r.form)).toEqual(['-nzhe']);
+    expect(c.properNames).toEqual([]);
+    const domains = c.examples.map((e) => e.domain);
     expect(domains).toContain(CorpusDomain.cotidiano);
     // everyday ones go before the biblical ones
     expect(domains.indexOf(CorpusDomain.cotidiano)).toBeLessThan(
@@ -164,20 +164,20 @@ describe('RetrievalService.recuperarContexto', () => {
 
   it('recognizes the proper name under any of its spellings and returns the corpus one', () => {
     const c = service.retrieveContext('Jehova hizo el agua', Language.espanol);
-    expect(c.nombresPropios).toEqual([{ enTexto: 'Jehova', espanol: 'Jehová', damana: 'Jehová' }]);
+    expect(c.properNames).toEqual([{ inText: 'Jehova', spanish: 'Jehová', damana: 'Jehová' }]);
   });
 
   it('Damana → Spanish: the rule is triggered by suffix (terruandzina → -ndzina) and the dictionary by token with ʉ', () => {
     const c = service.retrieveContext('terruandzina nʉnka', Language.damana);
-    expect(c.reglas.map((r) => r.forma)).toEqual(['-ndzina']);
-    expect(c.disparadores).toEqual(['plural']);
-    expect(c.diccionario.find((a) => a.palabra === 'nʉnka')).toMatchObject({ espanol: 'Agua', coincidencia: 'exacta' });
-    expect(c.ejemplos.some((e) => e.dominio === CorpusDomain.gramatica)).toBe(true);
+    expect(c.rules.map((r) => r.form)).toEqual(['-ndzina']);
+    expect(c.triggers).toEqual(['plural']);
+    expect(c.dictionary.find((a) => a.word === 'nʉnka')).toMatchObject({ spanish: 'Agua', match: 'exacta' });
+    expect(c.examples.some((e) => e.domain === CorpusDomain.gramatica)).toBe(true);
   });
 
   it('never confuses ʉ with u: «nunka» finds neither dictionary nor examples', () => {
     const c = service.retrieveContext('nunka', Language.damana);
-    expect(c.diccionario).toEqual([]);
-    expect(c.ejemplos).toEqual([]);
+    expect(c.dictionary).toEqual([]);
+    expect(c.examples).toEqual([]);
   });
 });

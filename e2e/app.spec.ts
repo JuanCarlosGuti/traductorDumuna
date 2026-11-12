@@ -25,10 +25,10 @@ test.describe('Without a session', () => {
   });
 
   test('the new API rejects requests without a token', async ({ request }) => {
-    expect((await request.get('/api/pendientes')).status()).toBe(401);
-    expect((await request.post('/api/pendientes/exportar')).status()).toBe(401);
+    expect((await request.get('/api/pending')).status()).toBe(401);
+    expect((await request.post('/api/pending/export')).status()).toBe(401);
     expect(
-      (await request.post('/api/traducir/validar', { data: { texto: 'x', direccion: 'espanol_a_damana', traduccion: 'y', origen: 'confirmada' } })).status(),
+      (await request.post('/api/translate/validate', { data: { text: 'x', direction: 'espanol_a_damana', translation: 'y', origin: 'confirmada' } })).status(),
     ).toBe(401);
   });
 });

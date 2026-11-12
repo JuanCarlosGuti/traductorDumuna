@@ -24,7 +24,7 @@ const PUBLIC_PATH = path.resolve(__dirname, '..', 'public');
     // after it. If credentials are missing in production, startup blows up
     // here on purpose (see readAuthConfig).
     AuthModule.forRoot(),
-    DatabaseModule.forRoot({ rutaDb: defaultDbPath() }),
+    DatabaseModule.forRoot({ dbPath: defaultDbPath() }),
     ImporterModule,
     QueryModule,
     SrsModule,

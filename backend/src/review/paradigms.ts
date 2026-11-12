@@ -5,10 +5,10 @@ export type ParadigmVariant = '' | 'pasado' | 'futuro' | 'negativo' | 'plural' |
 
 export interface ParadigmRow {
   id: string;
-  ejemploEs: string;
-  variante: ParadigmVariant;
+  exampleEs: string;
+  variant: ParadigmVariant;
   /** Which cell of the paradigm it is: «comer · yo · presente». */
-  etiqueta: string;
+  label: string;
 }
 
 type Row = [oracion: string, variante: ParadigmVariant, etiqueta: string];
@@ -146,11 +146,11 @@ const ROWS: Row[] = [
   ['Él dice que viene mañana.', 'futuro', 'dos verbos · decir que'],
 ];
 
-export const PARADIGMS: ParadigmRow[] = ROWS.map(([ejemploEs, variante, etiqueta], i) => ({
+export const PARADIGMS: ParadigmRow[] = ROWS.map(([exampleEs, variant, label], i) => ({
   id: `g${String(i + 1).padStart(3, '0')}`,
-  ejemploEs,
-  variante,
-  etiqueta,
+  exampleEs,
+  variant,
+  label,
 }));
 
 export const PARADIGMS_FILE = 'formato_elicitacion_lote2_gramatica.xlsx';
@@ -200,10 +200,10 @@ export function buildParadigmsWorkbook(): ExcelJS.Workbook {
       ambito: 'gramatica',
       palabra_es: '',
       palabra_dm: '',
-      ejemplo_es: p.ejemploEs,
+      ejemplo_es: p.exampleEs,
       ejemplo_dm: '',
-      variante: p.variante,
-      notas: p.etiqueta,
+      variante: p.variant,
+      notas: p.label,
     });
     row.alignment = { vertical: 'top', wrapText: true };
     row.getCell('ejemplo_dm').fill = {

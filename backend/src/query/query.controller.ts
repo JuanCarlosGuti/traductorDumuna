@@ -20,7 +20,7 @@ import {
 import { FrequenciesService } from './frequencies.service';
 import { WordService } from './word.service';
 
-@ApiTags('consulta')
+@ApiTags('query')
 @Controller()
 export class QueryController {
   constructor(
@@ -30,7 +30,7 @@ export class QueryController {
     private readonly repo: CorpusRepository,
   ) {}
 
-  @Get('buscar')
+  @Get('search')
   @ApiOperation({
     summary: 'Concordancia de una palabra',
     description:
@@ -40,13 +40,13 @@ export class QueryController {
   search(@Query() query: SearchQueryDto): SearchResponseDto {
     return this.searchService.search({
       q: query.q,
-      idioma: query.idioma,
-      fuente: query.fuente,
-      limite: query.limite,
+      language: query.language,
+      source: query.source,
+      limit: query.limit,
     });
   }
 
-  @Get('palabra/:token')
+  @Get('word/:token')
   @ApiOperation({
     summary: 'Ficha de una palabra damana',
     description:
@@ -59,7 +59,7 @@ export class QueryController {
     return this.word.wordCard(token);
   }
 
-  @Get('frecuencias')
+  @Get('frequencies')
   @ApiOperation({
     summary: 'Palabras damana por frecuencia descendente',
     description:
@@ -67,17 +67,17 @@ export class QueryController {
   })
   @ApiOkResponse({ type: [FrequencyDto] })
   listFrequencies(@Query() query: FrequenciesQueryDto): FrequencyDto[] {
-    return this.frequencies.listAll(query.limite);
+    return this.frequencies.listAll(query.limit);
   }
 
-  @Get('vocabulario')
+  @Get('vocabulary')
   @ApiOperation({ summary: 'Listado completo del vocabulario' })
   @ApiOkResponse({ type: [VocabularyDto] })
   listVocabulary(): VocabularyDto[] {
     return this.repo.listVocabulary();
   }
 
-  @Get('frases')
+  @Get('phrases')
   @ApiOperation({ summary: 'Listado completo de las frases' })
   @ApiOkResponse({ type: [PhraseDto] })
   listPhrases(): PhraseDto[] {

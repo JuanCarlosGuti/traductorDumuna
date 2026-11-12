@@ -30,16 +30,16 @@ export class DictionaryView {
   protected readonly filteredWords = computed(() => {
     const filterText = normalize(this.filterText().trim());
     if (!filterText) return this.words();
-    return this.words().filter((f) => f.palabra.includes(filterText));
+    return this.words().filter((f) => f.word.includes(filterText));
   });
 
   /** Spanish → Damana: vocabulary filtered by the Spanish side, sorted. */
   protected readonly filteredEntries = computed(() => {
     const filterText = normalize(this.filterText().trim());
     const entries = filterText
-      ? this.vocabulary().filter((e) => normalize(e.espanol).includes(filterText))
+      ? this.vocabulary().filter((e) => normalize(e.spanish).includes(filterText))
       : this.vocabulary();
-    return [...entries].sort((a, b) => a.espanol.localeCompare(b.espanol, 'es'));
+    return [...entries].sort((a, b) => a.spanish.localeCompare(b.spanish, 'es'));
   });
 
   protected readonly totalRows = computed(() =>

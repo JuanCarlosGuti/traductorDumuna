@@ -3,9 +3,9 @@ import { ApiService } from '../../core/api.service';
 import { Grade, SrsStatus } from '../../core/models';
 
 interface GradeOption {
-  clave: Grade;
-  etiqueta: string;
-  tecla: string;
+  key: Grade;
+  label: string;
+  hotkey: string;
 }
 
 @Component({
@@ -23,10 +23,10 @@ export class Flashcards {
   protected readonly error = signal('');
 
   protected readonly options: GradeOption[] = [
-    { clave: 'otra_vez', etiqueta: 'Otra vez', tecla: '1' },
-    { clave: 'dificil', etiqueta: 'Difícil', tecla: '2' },
-    { clave: 'bien', etiqueta: 'Bien', tecla: '3' },
-    { clave: 'facil', etiqueta: 'Fácil', tecla: '4' },
+    { key: 'otra_vez', label: 'Otra vez', hotkey: '1' },
+    { key: 'dificil', label: 'Difícil', hotkey: '2' },
+    { key: 'bien', label: 'Bien', hotkey: '3' },
+    { key: 'facil', label: 'Fácil', hotkey: '4' },
   ];
 
   constructor() {
@@ -47,15 +47,15 @@ export class Flashcards {
   }
 
   protected reveal(): void {
-    if (this.status()?.tarjeta) this.revealed.set(true);
+    if (this.status()?.card) this.revealed.set(true);
   }
 
   protected async answer(grade: Grade): Promise<void> {
-    const card = this.status()?.tarjeta;
+    const card = this.status()?.card;
     if (!card || !this.revealed() || this.busy()) return;
     this.busy.set(true);
     try {
-      await this.api.srsAnswer(card.palabra, grade);
+      await this.api.srsAnswer(card.word, grade);
       await this.load();
     } catch {
       this.error.set('No se pudo guardar la respuesta.');
@@ -72,10 +72,10 @@ export class Flashcards {
       this.reveal();
       return;
     }
-    const option = this.options.find((o) => o.tecla === event.key);
+    const option = this.options.find((o) => o.hotkey === event.key);
     if (option && this.revealed()) {
       event.preventDefault();
-      void this.answer(option.clave);
+      void this.answer(option.key);
     }
   }
 }

@@ -7,30 +7,30 @@
   <p>Esta palabra no aparece en el corpus damana.</p>
 } @else if (wordCard(); as f) {
   <header class="encabezado">
-    <h1 lang="mbp">{{ f.palabra }}</h1>
+    <h1 lang="mbp">{{ f.word }}</h1>
     <p class="suave">
-      {{ f.frecuenciaTotal }} {{ f.frecuenciaTotal === 1 ? 'aparición' : 'apariciones' }}:
-      @for (ff of f.frecuenciaPorFuente; track ff.fuente) {
-        <span class="chip">{{ ff.fuente }} · {{ ff.frecuencia }}</span>
+      {{ f.totalFrequency }} {{ f.totalFrequency === 1 ? 'aparición' : 'apariciones' }}:
+      @for (ff of f.frequencyBySource; track ff.source) {
+        <span class="chip">{{ ff.source }} · {{ ff.frequency }}</span>
       }
     </p>
   </header>
 
-  @if (f.entradasVocabulario.length > 0 || f.formasVerbales.length > 0) {
+  @if (f.vocabularyEntries.length > 0 || f.verbForms.length > 0) {
     <section class="panel traduccion-directa">
       <h2>Traducción</h2>
-      @for (e of f.entradasVocabulario; track $index) {
+      @for (e of f.vocabularyEntries; track $index) {
         <p class="entrada">
-          <strong>{{ e.espanol }}</strong>
-          @if (e.categoria) { <span class="chip">{{ e.categoria }}</span> }
-          @if (e.notas) { <span class="suave chiquito"> — {{ e.notas }}</span> }
+          <strong>{{ e.spanish }}</strong>
+          @if (e.category) { <span class="chip">{{ e.category }}</span> }
+          @if (e.notes) { <span class="suave chiquito"> — {{ e.notes }}</span> }
         </p>
       }
-      @for (v of f.formasVerbales; track $index) {
+      @for (v of f.verbForms; track $index) {
         <p class="entrada">
-          <strong lang="mbp">{{ v.damana }}</strong> = {{ v.espanol }}
+          <strong lang="mbp">{{ v.damana }}</strong> = {{ v.spanish }}
           <span class="suave chiquito"> — verbo</span>
-          <a [routerLink]="['/gramatica']">{{ v.lema }}</a>
+          <a [routerLink]="['/gramatica']">{{ v.lemma }}</a>
         </p>
       }
     </section>
@@ -39,7 +39,7 @@
   <section>
     <h2>Traducciones candidatas</h2>
     <p class="suave chiquito">
-      @if (f.entradasVocabulario.length === 0 && f.formasVerbales.length === 0) {
+      @if (f.vocabularyEntries.length === 0 && f.verbForms.length === 0) {
         Esta palabra no está en el vocabulario; estas son las palabras
         españolas que más co-ocurren en los textos paralelos (estimación
         estadística). Clic para buscarlas en español.
@@ -49,9 +49,9 @@
       }
     </p>
     <div class="candidatas">
-      @for (c of f.traduccionesCandidatas; track c.palabra) {
-        <button type="button" class="boton-suave" (click)="searchInSpanish(c.palabra)">
-          {{ c.palabra }} <span class="suave">· {{ c.coocurrencias }}</span>
+      @for (c of f.candidateTranslations; track c.word) {
+        <button type="button" class="boton-suave" (click)="searchInSpanish(c.word)">
+          {{ c.word }} <span class="suave">· {{ c.cooccurrences }}</span>
         </button>
       } @empty {
         <p class="suave">Sin candidatas.</p>
@@ -61,13 +61,13 @@
 
   <section>
     <h2>Concordancias</h2>
-    @for (c of f.concordancias; track $index) {
+    @for (c of f.concordances; track $index) {
       <article class="panel concordancia">
-        <header class="suave chiquito">{{ c.referencia }}</header>
+        <header class="suave chiquito">{{ c.reference }}</header>
         <p lang="mbp">
-          <app-clickable-fragment [html]="c.fragmento" (word)="viewWord($event)" />
+          <app-clickable-fragment [html]="c.fragment" (word)="viewWord($event)" />
         </p>
-        <p class="suave paralelo">{{ c.textoParalelo }}</p>
+        <p class="suave paralelo">{{ c.parallelText }}</p>
       </article>
     }
   </section>

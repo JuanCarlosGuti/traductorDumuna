@@ -7,21 +7,21 @@ export type ValidationOrigin = 'confirmada' | 'corregida';
 
 export interface ValidatedPair {
   id: number;
-  creadoEn: string;
-  espanol: string;
+  createdAt: string;
+  spanish: string;
   damana: string;
-  direccion: TranslationDirection;
-  origen: ValidationOrigin;
-  traduccionModelo: string | null;
+  direction: TranslationDirection;
+  origin: ValidationOrigin;
+  modelTranslation: string | null;
 }
 
 export interface NewValidated {
-  espanol: string;
+  spanish: string;
   damana: string;
-  direccion: TranslationDirection;
-  origen: ValidationOrigin;
+  direction: TranslationDirection;
+  origin: ValidationOrigin;
   /** What the model proposed (equal to the pair if it was confirmed). */
-  traduccionModelo: string | null;
+  modelTranslation: string | null;
 }
 
 /**
@@ -41,11 +41,11 @@ export class ValidatedRepository {
       )
       .run(
         now.toISOString(),
-        newItem.espanol,
+        newItem.spanish,
         newItem.damana,
-        newItem.direccion,
-        newItem.origen,
-        newItem.traduccionModelo,
+        newItem.direction,
+        newItem.origin,
+        newItem.modelTranslation,
       );
   }
 
@@ -63,12 +63,12 @@ export class ValidatedRepository {
         .all() as any[]
     ).map((f) => ({
       id: f.id,
-      creadoEn: f.creado_en,
-      espanol: f.espanol,
+      createdAt: f.creado_en,
+      spanish: f.espanol,
       damana: f.damana,
-      direccion: f.direccion,
-      origen: f.origen,
-      traduccionModelo: f.traduccion_modelo,
+      direction: f.direccion,
+      origin: f.origen,
+      modelTranslation: f.traduccion_modelo,
     }));
   }
 }

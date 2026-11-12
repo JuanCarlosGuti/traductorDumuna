@@ -25,32 +25,32 @@ export const RULES_FILE = 'reglas_damana.xlsx';
 export const ELICITATION_PATTERN = /^formato_elicitacion.*\.xlsx$/i;
 
 export interface ElicitationStats {
-  archivos: number;
-  filas: number;
-  vocabulario: number;
-  oraciones: number;
-  pruebas: number;
-  pendientes: number;
-  resueltas: number;
+  files: number;
+  rows: number;
+  vocabulary: number;
+  sentences: number;
+  tests: number;
+  pending: number;
+  resolved: number;
   /** Unfilled rows whose word is already in the vocabulary: not requested. */
-  cubiertasPorVocabulario: number;
+  coveredByVocabulary: number;
   /** Pending items that were already open and the vocabulary covers: closed. */
-  cerradasPorVocabulario: number;
-  idsRepetidos: number;
+  closedByVocabulary: number;
+  repeatedIds: number;
 }
 
 export interface ImportStats {
-  oraciones: number;
-  frases: number;
-  vocabulario: number;
-  conjugaciones: number;
-  reglas: number;
-  nombresPropios: number;
-  elicitacion: ElicitationStats;
+  sentences: number;
+  phrases: number;
+  vocabulary: number;
+  conjugations: number;
+  rules: number;
+  properNames: number;
+  elicitation: ElicitationStats;
   /** Rows left in pruebas_traduccion.csv after merging. */
-  pruebasEnArchivo: number;
+  testsInFile: number;
   totalTokens: number;
-  topPalabras: { palabra: string; frecuencia: number }[];
+  topWords: { palabra: string; frecuencia: number }[];
 }
 
 interface SentenceRow {
@@ -85,22 +85,22 @@ interface ConjugationRow {
 }
 
 interface RuleRow {
-  tipo: string;
-  forma: string;
-  significado: string;
-  ejemploBase: string;
-  ejemploRegla: string;
-  traduccionEjemplo: string;
-  notas: string;
-  disparador: string | null;
+  type: string;
+  form: string;
+  meaning: string;
+  baseExample: string;
+  ruleExample: string;
+  exampleTranslation: string;
+  notes: string;
+  trigger: string | null;
 }
 
 interface ProperNameRow {
   damana: string;
-  espanol: string;
-  seEscribeIgual: boolean;
-  otrasGrafias: string;
-  notas: string;
+  spanish: string;
+  sameSpelling: boolean;
+  otherSpellings: string;
+  notes: string;
 }
 
 /** The biblical booklet (lfb) is the only «biblical» corpus; the rest is everyday. */
@@ -142,8 +142,11 @@ export class ImporterService {
     // charge per word): an unfilled row whose word already exists is not
     // recorded as pending, and open pending items that the vocabulary
     // covers are closed.
-    const coverage = new VocabularyCoverage([...vocabulary, ...plan.vocabulario]);
-    const coveredByVocabulary = plan.pendientes.filter((p) => coverage.coversSpanish(p.palabra)).length;
+    const coverage = new VocabularyCoverage([
+      ...vocabulary.map((v) => ({ spanish: v.espanol, damana: v.damana })),
+      ...plan.vocabulary,
+    ]);
+    const coveredByVocabulary = plan.pending.filter((p) => coverage.coversSpanish(p.word)).length;
     let closedByVocabulary = 0;
 
     const insertAll = this.db.transaction(() => {
@@ -220,14 +223,14 @@ export class ImporterService {
       );
       for (const r of rules) {
         insRule.run(
-          r.tipo || null,
-          r.forma,
-          r.significado || null,
-          r.ejemploBase || null,
-          r.ejemploRegla || null,
-          r.traduccionEjemplo || null,
-          r.notas || null,
-          r.disparador,
+          r.type || null,
+          r.form,
+          r.meaning || null,
+          r.baseExample || null,
+          r.ruleExample || null,
+          r.exampleTranslation || null,
+          r.notes || null,
+          r.trigger,
         );
       }
 
@@ -236,45 +239,45 @@ export class ImporterService {
          VALUES (?, ?, ?, ?, ?)`,
       );
       for (const n of names) {
-        insName.run(n.damana, n.espanol, n.seEscribeIgual ? 1 : 0, n.otrasGrafias || null, n.notas || null);
+        insName.run(n.damana, n.spanish, n.sameSpelling ? 1 : 0, n.otherSpellings || null, n.notes || null);
       }
 
       // Elicitation: vocabulary and everyday sentences (tests do NOT
       // go into the database: they live only in pruebas_traduccion.csv).
-      for (const v of plan.vocabulario) {
-        const info = insVocabulary.run(v.espanol, v.damana, v.categoria, v.notas || null, v.fuente);
+      for (const v of plan.vocabulary) {
+        const info = insVocabulary.run(v.spanish, v.damana, v.category, v.notes || null, v.source);
         this.tokenize(v.damana, 'vocabulario', info.lastInsertRowid as number);
       }
-      for (const o of plan.oraciones) {
+      for (const o of plan.sentences) {
         const info = insSentence.run(
-          o.idExterno,
+          o.externalId,
           o.damana,
-          o.espanol,
+          o.spanish,
           'aprobado',
-          o.fuente,
+          o.source,
           CorpusDomain.cotidiano,
         );
         this.tokenize(o.damana, 'oraciones', info.lastInsertRowid as number);
       }
-      for (const p of plan.pendientes) {
-        if (coverage.coversSpanish(p.palabra)) continue;
-        this.pendingItems.recordFromElicitation(p.palabra, p.contexto, now);
+      for (const p of plan.pending) {
+        if (coverage.coversSpanish(p.word)) continue;
+        this.pendingItems.recordFromElicitation(p.word, p.context, now);
       }
-      for (const word of plan.resueltas) {
+      for (const word of plan.resolved) {
         this.pendingItems.markResolved(word, now);
       }
       for (const p of this.pendingItems.listOpen()) {
-        if (coverage.covers(p.palabra, p.idioma) && this.pendingItems.markResolved(p.palabra, now)) {
+        if (coverage.covers(p.word, p.language) && this.pendingItems.markResolved(p.word, now)) {
           closedByVocabulary += 1;
         }
       }
     });
     insertAll();
 
-    const testCases = writeTests(dataDir, plan.pruebas);
+    const testCases = writeTests(dataDir, plan.tests);
     return this.statistics(rules.length, names.length, elicitation, plan, testCases.total, {
-      cubiertasPorVocabulario: coveredByVocabulary,
-      cerradasPorVocabulario: closedByVocabulary,
+      coveredByVocabulary: coveredByVocabulary,
+      closedByVocabulary: closedByVocabulary,
     });
   }
 
@@ -300,35 +303,35 @@ export class ImporterService {
       return { reglas: [], nombres: [] };
     }
     const sheets = await readWorkbook(filePath);
-    const rulesSheet = sheets.find((h) => headerKey(h.nombre).includes('regla'));
-    const namesSheet = sheets.find((h) => headerKey(h.nombre).includes('nombre'));
+    const rulesSheet = sheets.find((h) => headerKey(h.name).includes('regla'));
+    const namesSheet = sheets.find((h) => headerKey(h.name).includes('nombre'));
 
-    const rules: RuleRow[] = (rulesSheet?.filas ?? [])
+    const rules: RuleRow[] = (rulesSheet?.rows ?? [])
       .map((f) => {
         const kind = column(f, 'tipo');
         const meaning = column(f, 'significado', 'que hace');
         return {
-          tipo: kind,
-          forma: column(f, 'forma'),
-          significado: meaning,
-          ejemploBase: column(f, 'palabra base', 'base'),
-          ejemploRegla: column(f, 'con la regla'),
-          traduccionEjemplo: column(f, 'traduccion'),
-          notas: column(f, 'notas'),
-          disparador: inferTrigger(kind, meaning),
+          type: kind,
+          form: column(f, 'forma'),
+          meaning: meaning,
+          baseExample: column(f, 'palabra base', 'base'),
+          ruleExample: column(f, 'con la regla'),
+          exampleTranslation: column(f, 'traduccion'),
+          notes: column(f, 'notas'),
+          trigger: inferTrigger(kind, meaning),
         };
       })
-      .filter((r) => r.forma.length > 0);
+      .filter((r) => r.form.length > 0);
 
-    const names: ProperNameRow[] = (namesSheet?.filas ?? [])
+    const names: ProperNameRow[] = (namesSheet?.rows ?? [])
       .map((f) => ({
         damana: fixDamanaSpelling(column(f, 'damana', 'como aparece')),
-        espanol: column(f, 'espanol', 'nombre en'),
-        seEscribeIgual: !/^no/i.test(column(f, 'igual').trim()),
-        otrasGrafias: column(f, 'grafias'),
-        notas: column(f, 'notas'),
+        spanish: column(f, 'espanol', 'nombre en'),
+        sameSpelling: !/^no/i.test(column(f, 'igual').trim()),
+        otherSpellings: column(f, 'grafias'),
+        notes: column(f, 'notas'),
       }))
-      .filter((n) => n.damana.length > 0 && n.espanol.length > 0);
+      .filter((n) => n.damana.length > 0 && n.spanish.length > 0);
 
     return { reglas: rules, nombres: names };
   }
@@ -353,7 +356,7 @@ export class ImporterService {
         this.logger.warn(`${file}: ninguna hoja tiene la columna palabra_es; se omite.`);
         continue;
       }
-      for (const raw of sheet.filas) {
+      for (const raw of sheet.rows) {
         const row = parseRow(raw, file);
         if (row) rows.push(row);
       }
@@ -367,7 +370,7 @@ export class ImporterService {
        VALUES (?, ?, ?, ?, ?)`,
     );
     for (const token of tokenizeDamana(text)) {
-      insToken.run(token.normalizada, token.original, sourceTable, sourceId, token.posicion);
+      insToken.run(token.normalized, token.original, sourceTable, sourceId, token.position);
     }
   }
 
@@ -377,7 +380,7 @@ export class ImporterService {
     elicitation: { archivos: string[]; filas: ElicitationRow[] },
     plan: ElicitationPlan,
     testsInFile: number,
-    coverage: { cubiertasPorVocabulario: number; cerradasPorVocabulario: number },
+    coverage: { coveredByVocabulary: number; closedByVocabulary: number },
   ): ImportStats {
     const count = (table: string): number =>
       (this.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
@@ -393,32 +396,32 @@ export class ImporterService {
       .all() as { palabra: string; frecuencia: number }[];
 
     return {
-      oraciones: count('oraciones'),
-      frases: count('frases'),
-      vocabulario: count('vocabulario'),
-      conjugaciones: count('conjugaciones'),
-      reglas: rules,
-      nombresPropios: properNames,
-      elicitacion: {
-        archivos: elicitation.archivos.length,
-        filas: elicitation.filas.length,
-        vocabulario: plan.vocabulario.length,
-        oraciones: plan.oraciones.length,
-        pruebas: plan.pruebas.length,
-        pendientes: plan.pendientes.length - coverage.cubiertasPorVocabulario,
-        resueltas: plan.resueltas.length,
-        cubiertasPorVocabulario: coverage.cubiertasPorVocabulario,
-        cerradasPorVocabulario: coverage.cerradasPorVocabulario,
-        idsRepetidos: plan.idsRepetidos,
+      sentences: count('oraciones'),
+      phrases: count('frases'),
+      vocabulary: count('vocabulario'),
+      conjugations: count('conjugaciones'),
+      rules: rules,
+      properNames: properNames,
+      elicitation: {
+        files: elicitation.archivos.length,
+        rows: elicitation.filas.length,
+        vocabulary: plan.vocabulary.length,
+        sentences: plan.sentences.length,
+        tests: plan.tests.length,
+        pending: plan.pending.length - coverage.coveredByVocabulary,
+        resolved: plan.resolved.length,
+        coveredByVocabulary: coverage.coveredByVocabulary,
+        closedByVocabulary: coverage.closedByVocabulary,
+        repeatedIds: plan.repeatedIds,
       },
-      pruebasEnArchivo: testsInFile,
+      testsInFile: testsInFile,
       totalTokens: count('tokens_damana'),
-      topPalabras: topWords,
+      topWords: topWords,
     };
   }
 }
 
 function hasColumns(sheet: ReadSheet, ...columns: string[]): boolean {
-  const keys = new Set(sheet.encabezados.map(headerKey));
+  const keys = new Set(sheet.headers.map(headerKey));
   return columns.every((c) => keys.has(c));
 }

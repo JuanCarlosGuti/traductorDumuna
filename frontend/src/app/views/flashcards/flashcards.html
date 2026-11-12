@@ -8,27 +8,27 @@
   <p class="error">{{ error() }}</p>
 } @else if (status(); as e) {
   <p class="contadores suave">
-    pendientes: <strong>{{ e.pendientes }}</strong> · nuevas:
-    <strong>{{ e.nuevas }}</strong>
+    pendientes: <strong>{{ e.pendingCards }}</strong> · nuevas:
+    <strong>{{ e.newCards }}</strong>
   </p>
 
-  @if (e.tarjeta; as t) {
+  @if (e.card; as t) {
     <div class="tarjeta panel">
-      <span class="tipo suave">{{ t.tipo === 'vocabulario' ? 'vocabulario' : 'palabra frecuente' }}</span>
-      <p class="anverso" lang="mbp">{{ t.palabra }}</p>
+      <span class="tipo suave">{{ t.type === 'vocabulario' ? 'vocabulario' : 'palabra frecuente' }}</span>
+      <p class="anverso" lang="mbp">{{ t.word }}</p>
 
       @if (revealed()) {
-        <p class="reverso">{{ t.traduccion }}</p>
+        <p class="reverso">{{ t.translation }}</p>
         <div class="calificaciones">
-          @for (o of options; track o.clave) {
+          @for (o of options; track o.key) {
             <button
               type="button"
               class="boton-suave"
-              [class.peligro]="o.clave === 'otra_vez'"
+              [class.peligro]="o.key === 'otra_vez'"
               [disabled]="busy()"
-              (click)="answer(o.clave)"
+              (click)="answer(o.key)"
             >
-              {{ o.etiqueta }} <kbd>{{ o.tecla }}</kbd>
+              {{ o.label }} <kbd>{{ o.hotkey }}</kbd>
             </button>
           }
         </div>

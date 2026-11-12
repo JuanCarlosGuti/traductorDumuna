@@ -12,7 +12,7 @@ import { PARADIGMS_FILE, buildParadigmsWorkbook, PARADIGMS } from './paradigms';
 
 // Own CLI module: read-only over the already imported corpus.
 @Module({
-  imports: [DatabaseModule.forRoot({ rutaDb: defaultDbPath() }), QueryModule],
+  imports: [DatabaseModule.forRoot({ dbPath: defaultDbPath() }), QueryModule],
 })
 class DoubtsCliModule {}
 
@@ -32,12 +32,12 @@ async function main(): Promise<void> {
   await buildDoubtsWorkbook(report, today).xlsx.writeFile(doubtsPath);
 
   console.log('\n=== Dudas para aclarar con hablantes ===');
-  console.log(`1 escritura (misma palabra, varias grafías):   ${report.escritura.length} grupos`);
-  console.log(`2 mismo significado (español → varias damana): ${report.sinonimos.length} grupos`);
-  console.log(`3 varios significados (damana → varios):       ${report.polisemia.length} grupos`);
-  console.log(`     de ellos, solo cambia la tilde:           ${report.polisemia.filter((g) => g.soloTilde).length}`);
-  console.log(`4 entradas por aclarar:                        ${report.dudosas.length}`);
-  console.log(`5 terminaciones frecuentes:                    ${report.terminaciones.length}`);
+  console.log(`1 escritura (misma palabra, varias grafías):   ${report.spelling.length} grupos`);
+  console.log(`2 mismo significado (español → varias damana): ${report.synonyms.length} grupos`);
+  console.log(`3 varios significados (damana → varios):       ${report.polysemy.length} grupos`);
+  console.log(`     de ellos, solo cambia la tilde:           ${report.polysemy.filter((g) => g.accentOnly).length}`);
+  console.log(`4 entradas por aclarar:                        ${report.doubtful.length}`);
+  console.log(`5 terminaciones frecuentes:                    ${report.endings.length}`);
   console.log(`\nDocumento: ${doubtsPath}`);
 
   // The grammar batch is not regenerated if it already exists: it may be filled in.

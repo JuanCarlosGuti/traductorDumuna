@@ -13,7 +13,7 @@ function field(value: string): string {
 }
 
 function key(p: TranslationTest): string {
-  return `${normalize(p.espanol.trim())}|${normalize(p.damanaEsperado.trim())}`;
+  return `${normalize(p.spanish.trim())}|${normalize(p.expectedDamana.trim())}`;
 }
 
 /** Reads the tests CSV (espanol, damana_esperado, ambito); empty if it does not exist. */
@@ -28,9 +28,9 @@ export function readTests(dataDir: string): TranslationTest[] {
   return rows
     .filter((f) => f.espanol && f.damana_esperado)
     .map((f) => ({
-      espanol: f.espanol,
-      damanaEsperado: f.damana_esperado,
-      ambito: f.ambito || 'otro',
+      spanish: f.espanol,
+      expectedDamana: f.damana_esperado,
+      scope: f.ambito || 'otro',
     }));
 }
 
@@ -42,7 +42,7 @@ export function readTests(dataDir: string): TranslationTest[] {
 export function writeTests(
   dataDir: string,
   newItems: TranslationTest[],
-): { total: number; agregadas: number } {
+): { total: number; added: number } {
   const existing = readTests(dataDir);
   const seen = new Set(existing.map(key));
   const added = newItems.filter((p) => {
@@ -54,8 +54,8 @@ export function writeTests(
   const all = [...existing, ...added];
   const lines = [
     'espanol,damana_esperado,ambito',
-    ...all.map((p) => [field(p.espanol), field(p.damanaEsperado), field(p.ambito)].join(',')),
+    ...all.map((p) => [field(p.spanish), field(p.expectedDamana), field(p.scope)].join(',')),
   ];
   fs.writeFileSync(path.join(dataDir, TESTS_FILE), BOM + lines.join(EOL) + EOL, 'utf8');
-  return { total: all.length, agregadas: added.length };
+  return { total: all.length, added: added.length };
 }

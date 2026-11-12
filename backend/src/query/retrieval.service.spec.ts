@@ -67,32 +67,32 @@ describe('RetrievalService (corpus v3)', () => {
     for (const r of results) {
       expect(r.damana).toContain('nʉnka');
     }
-    const scores = results.map((r) => r.puntaje);
+    const scores = results.map((r) => r.score);
     expect([...scores].sort((a, b) => b - a)).toEqual(scores);
   });
 
   it('a sentence with estado=revisar scores half the identical approved one and comes after it', () => {
     const results = service.similar('nʉnka shkua gontka', Language.damana, 8);
-    const approved = results.find((r) => r.referencia === 'oración 1')!;
-    const review = results.find((r) => r.referencia === 'oración 2 (revisar)')!;
+    const approved = results.find((r) => r.reference === 'oración 1')!;
+    const review = results.find((r) => r.reference === 'oración 2 (revisar)')!;
     expect(approved).toBeDefined();
     expect(review).toBeDefined();
-    expect(review.puntaje).toBeCloseTo(approved.puntaje * REVIEW_WEIGHT, 10);
+    expect(review.score).toBeCloseTo(approved.score * REVIEW_WEIGHT, 10);
     expect(results.indexOf(approved)).toBeLessThan(results.indexOf(review));
   });
 
   it('the vocabulary does NOT take part in retrieval (it goes separately in the prompt)', () => {
     const results = service.similar('nʉnka', Language.damana, 8);
-    expect(results.some((r) => r.fuente === 'vocabulario')).toBe(false);
+    expect(results.some((r) => r.source === 'vocabulario')).toBe(false);
     expect(results.length).toBeGreaterThan(0); // but it does find sentences
   });
 
   it('conjugations do take part (case with ʉ in the verb form)', () => {
     const results = service.similar('nujkunʉnanka', Language.damana, 8);
     expect(results).toHaveLength(1);
-    expect(results[0].fuente).toBe('conjugaciones');
-    expect(results[0].referencia).toBe('conjugación 1 (tener)');
-    expect(results[0].espanol).toBe('yo tuve');
+    expect(results[0].source).toBe('conjugaciones');
+    expect(results[0].reference).toBe('conjugación 1 (tener)');
+    expect(results[0].spanish).toBe('yo tuve');
   });
 
   it('never confuses ʉ with u: searching "nunka" retrieves nothing', () => {
@@ -133,9 +133,9 @@ describe('RetrievalService (corpus v3)', () => {
       const service = prepareVerb();
       // 'naijkasheshisha' is in no sentence: it used to return 0 results
       const results = service.similar('naijkasheshisha', Language.damana, 8);
-      const sentences = results.filter((r) => r.fuente === 'oraciones');
+      const sentences = results.filter((r) => r.source === 'oraciones');
       expect(sentences.length).toBeGreaterThan(0);
-      expect(sentences.every((r) => r.porLema === 'leer')).toBe(true);
+      expect(sentences.every((r) => r.byLemma === 'leer')).toBe(true);
     });
 
     it('a direct match beats a verbal relative', () => {
@@ -143,9 +143,9 @@ describe('RetrievalService (corpus v3)', () => {
       const results = service.similar('nʉjkasheshisha', Language.damana, 8);
       const direct = results.find((r) => r.damana.includes('nʉjkasheshisha'))!;
       const byLemma = results.find((r) => r.damana.includes('mʉjkasheshisha'))!;
-      expect(direct.puntaje).toBeGreaterThan(byLemma.puntaje);
-      expect(direct.porLema).toBeUndefined();
-      expect(byLemma.porLema).toBe('leer');
+      expect(direct.score).toBeGreaterThan(byLemma.score);
+      expect(direct.byLemma).toBeUndefined();
+      expect(byLemma.byLemma).toBe('leer');
     });
 
     it('the relative never outranks the direct match of the conjugation', () => {
@@ -153,35 +153,35 @@ describe('RetrievalService (corpus v3)', () => {
       const results = service.similar('naijkasheshisha', Language.damana, 8);
       // The conjugations entry itself matches directly (1.0);
       // sentences arrive via the lemma and are discounted by LEMMA_WEIGHT.
-      const direct = results.find((r) => r.fuente === 'conjugaciones')!;
-      const byLemma = results.filter((r) => r.fuente === 'oraciones');
-      expect(direct.porLema).toBeUndefined();
+      const direct = results.find((r) => r.source === 'conjugaciones')!;
+      const byLemma = results.filter((r) => r.source === 'oraciones');
+      expect(direct.byLemma).toBeUndefined();
       expect(results.indexOf(direct)).toBe(0);
       for (const r of byLemma) {
-        expect(r.puntaje).toBeLessThanOrEqual(LEMMA_WEIGHT);
-        expect(r.puntaje).toBeLessThan(direct.puntaje);
+        expect(r.score).toBeLessThanOrEqual(LEMMA_WEIGHT);
+        expect(r.score).toBeLessThan(direct.score);
       }
     });
 
     it('does not bring sibling conjugations: they would take slots without teaching context', () => {
       const service = prepareVerb();
       const results = service.similar('naijkasheshisha', Language.damana, 8);
-      const conjugations = results.filter((r) => r.fuente === 'conjugaciones');
+      const conjugations = results.filter((r) => r.source === 'conjugaciones');
       expect(conjugations).toHaveLength(1); // only the direct match
       expect(conjugations[0].damana).toBe('naijkasheshisha');
-      expect(conjugations[0].porLema).toBeUndefined();
+      expect(conjugations[0].byLemma).toBeUndefined();
     });
 
     it('without verbs in the query the result does not change', () => {
       const service = prepareVerb();
       const results = service.similar('nʉnka shkua gontka', Language.damana, 8);
-      expect(results.every((r) => r.porLema === undefined)).toBe(true);
+      expect(results.every((r) => r.byLemma === undefined)).toBe(true);
     });
 
     it('does not expand in the Spanish direction (lemmas are for Damana forms)', () => {
       const service = prepareVerb();
       const results = service.similar('leer este texto', Language.espanol, 8);
-      expect(results.every((r) => r.porLema === undefined)).toBe(true);
+      expect(results.every((r) => r.byLemma === undefined)).toBe(true);
     });
   });
 

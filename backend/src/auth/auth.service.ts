@@ -9,8 +9,8 @@ export const MAX_ATTEMPTS = 8;
 export const BLOCK_MS = 10 * 60 * 1000;
 
 interface Attempts {
-  fallos: number;
-  ultimo: number;
+  failures: number;
+  last: number;
 }
 
 /**
@@ -40,7 +40,7 @@ export class AuthService {
    * time would reveal when the user was right.
    */
   verify(user: string, password: string): boolean {
-    const userOk = safeEqual(user, this.config.usuario);
+    const userOk = safeEqual(user, this.config.user);
     const passwordOk = safeEqual(password, this.config.password);
     return userOk && passwordOk;
   }
@@ -62,20 +62,20 @@ export class AuthService {
   blocked(ip: string, now: number = Date.now()): boolean {
     const attempts = this.attemptsByIp.get(ip);
     if (!attempts) return false;
-    if (now - attempts.ultimo > BLOCK_MS) {
+    if (now - attempts.last > BLOCK_MS) {
       this.attemptsByIp.delete(ip);
       return false;
     }
-    return attempts.fallos >= MAX_ATTEMPTS;
+    return attempts.failures >= MAX_ATTEMPTS;
   }
 
   recordFailure(ip: string, now: number = Date.now()): void {
     this.purge(now);
     const attempts = this.attemptsByIp.get(ip);
-    const valid = attempts && now - attempts.ultimo <= BLOCK_MS;
+    const valid = attempts && now - attempts.last <= BLOCK_MS;
     this.attemptsByIp.set(ip, {
-      fallos: valid ? attempts.fallos + 1 : 1,
-      ultimo: now,
+      failures: valid ? attempts.failures + 1 : 1,
+      last: now,
     });
   }
 
@@ -86,7 +86,7 @@ export class AuthService {
   /** Keeps the map from growing without bound with IPs that no longer matter. */
   private purge(now: number): void {
     for (const [ip, attempts] of this.attemptsByIp) {
-      if (now - attempts.ultimo > BLOCK_MS) this.attemptsByIp.delete(ip);
+      if (now - attempts.last > BLOCK_MS) this.attemptsByIp.delete(ip);
     }
   }
 }

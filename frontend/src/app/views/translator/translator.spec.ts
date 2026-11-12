@@ -5,35 +5,35 @@ import { TranslatorStatus, TranslationResponse } from '../../core/models';
 import { TranslatorView } from './translator';
 
 const AVAILABLE: TranslatorStatus = {
-  disponible: true,
-  proveedor: 'compatible',
-  modelo: 'gpt-oss-120b',
+  available: true,
+  provider: 'compatible',
+  model: 'gpt-oss-120b',
 };
 
 const RESPONSE: TranslationResponse = {
-  traduccion: 'Ranzhe abu urragamba [vecina] dugwa',
-  glosa: [
-    { origen: 'mi', destino: 'Ranzhe' },
-    { origen: 'mamá', destino: 'abu' },
-    { origen: 'cocina', destino: 'dugwa' },
+  translation: 'Ranzhe abu urragamba [vecina] dugwa',
+  gloss: [
+    { origin: 'mi', target: 'Ranzhe' },
+    { origin: 'mamá', target: 'abu' },
+    { origin: 'cocina', target: 'dugwa' },
   ],
-  palabrasSinEquivalente: ['vecina'],
-  reglasAplicadas: ['-nzhe (posesivo)'],
-  confianza: 0.72,
-  explicacionBreve: 'Diccionario más regla del posesivo.',
-  apoyo: { nivel: 'bueno', motivos: [] },
-  ejemplos: [
-    { fuente: 'oraciones', dominio: 'cotidiano', referencia: 'oración 9', damana: 'Abu urragamba nuka', espanol: 'mamá está en la casa', puntaje: 0.9 },
-    { fuente: 'conjugaciones', dominio: 'gramatica', referencia: 'conjugación 2 (cocinar)', damana: 'dugwa', espanol: 'cocina', puntaje: 0.5 },
-    { fuente: 'oraciones', dominio: 'biblico', referencia: 'oración 1', damana: 'Jehová nʉnka gontka', espanol: 'Jehová hizo el agua', puntaje: 0.3 },
+  wordsWithoutEquivalent: ['vecina'],
+  appliedRules: ['-nzhe (posesivo)'],
+  confidence: 0.72,
+  briefExplanation: 'Diccionario más regla del posesivo.',
+  support: { level: 'bueno', reasons: [] },
+  examples: [
+    { source: 'oraciones', domain: 'cotidiano', reference: 'oración 9', damana: 'Abu urragamba nuka', spanish: 'mamá está en la casa', score: 0.9 },
+    { source: 'conjugaciones', domain: 'gramatica', reference: 'conjugación 2 (cocinar)', damana: 'dugwa', spanish: 'cocina', score: 0.5 },
+    { source: 'oraciones', domain: 'biblico', reference: 'oración 1', damana: 'Jehová nʉnka gontka', spanish: 'Jehová hizo el agua', score: 0.3 },
   ],
-  diccionario: [
-    { palabra: 'mamá', espanol: 'mamá', damana: 'Abu', categoria: 'Personas y familia', coincidencia: 'exacta' },
-    { palabra: 'cocina', espanol: 'Cocinar', damana: 'Dugua', categoria: 'Verbos', coincidencia: 'posible' },
+  dictionary: [
+    { word: 'mamá', spanish: 'mamá', damana: 'Abu', category: 'Personas y familia', match: 'exacta' },
+    { word: 'cocina', spanish: 'Cocinar', damana: 'Dugua', category: 'Verbos', match: 'posible' },
   ],
-  nombresPropios: [],
-  reglas: [{ forma: '-nzhe', significado: 'posesivo / "de"', ejemplo: 'Kunkujshina → Kunkujshinanzhe = de Dios', disparador: 'posesivo' }],
-  disparadores: ['posesivo'],
+  properNames: [],
+  rules: [{ form: '-nzhe', meaning: 'posesivo / "de"', example: 'Kunkujshina → Kunkujshinanzhe = de Dios', trigger: 'posesivo' }],
+  triggers: ['posesivo'],
 };
 
 describe('Traductor', () => {
@@ -43,7 +43,7 @@ describe('Traductor', () => {
   const start = async (status: TranslatorStatus = AVAILABLE) => {
     fixture = await mount(TranslatorView);
     http = TestBed.inject(HttpTestingController);
-    http.expectOne('/api/traducir/estado').flush(status);
+    http.expectOne('/api/translate/status').flush(status);
     await settle(fixture);
   };
 
@@ -64,7 +64,7 @@ describe('Traductor', () => {
   const translateWithResponse = async (response: TranslationResponse = RESPONSE) => {
     await type('mi mamá cocina en la casa');
     await translate();
-    http.expectOne('/api/traducir').flush(response);
+    http.expectOne('/api/translate').flush(response);
     await settle(fixture);
   };
 
@@ -78,10 +78,10 @@ describe('Traductor', () => {
     await type('mi mamá cocina en la casa');
     await translate();
 
-    const httpRequest = http.expectOne('/api/traducir');
+    const httpRequest = http.expectOne('/api/translate');
     expect(httpRequest.request.body).toEqual({
-      texto: 'mi mamá cocina en la casa',
-      direccion: 'espanol_a_damana',
+      text: 'mi mamá cocina en la casa',
+      direction: 'espanol_a_damana',
     });
     httpRequest.flush(RESPONSE);
     await settle(fixture);
@@ -89,7 +89,7 @@ describe('Traductor', () => {
   });
 
   it('while translating it warns about the wait (Claude: 5-15 s), locks the box and releases it when done', async () => {
-    await start({ disponible: true, proveedor: 'anthropic', modelo: 'claude-opus-5-5' });
+    await start({ available: true, provider: 'anthropic', model: 'claude-opus-5-5' });
     await type('mi mamá cocina en la casa');
     await translate();
 
@@ -102,7 +102,7 @@ describe('Traductor', () => {
     expect(notice.getAttribute('role')).toBe('status');
     expect(notice.textContent).toContain('Traduciendo con Claude… suele tardar entre 5 y 15 s');
 
-    http.expectOne('/api/traducir').flush(RESPONSE);
+    http.expectOne('/api/translate').flush(RESPONSE);
     await settle(fixture);
 
     // Done: typing is possible again (with ʉ) and the notice disappears.
@@ -120,14 +120,14 @@ describe('Traductor', () => {
     const notice = (fixture.nativeElement as HTMLElement).querySelector('.espera')!;
     expect(notice.textContent).toContain('Traduciendo con gpt-oss-120b…');
     expect(notice.textContent).not.toContain('Claude');
-    http.expectOne('/api/traducir').flush(RESPONSE);
+    http.expectOne('/api/translate').flush(RESPONSE);
     await settle(fixture);
   });
 
   it('sends nothing if the text is empty', async () => {
     await start();
     await translate();
-    http.expectNone('/api/traducir');
+    http.expectNone('/api/translate');
   });
 
   it('shows the word-by-word gloss under the translation', async () => {
@@ -182,15 +182,15 @@ describe('Traductor', () => {
     button(/es correcta/).click();
     await settle(fixture);
 
-    const httpRequest = http.expectOne('/api/traducir/validar');
+    const httpRequest = http.expectOne('/api/translate/validate');
     expect(httpRequest.request.body).toEqual({
-      texto: 'mi mamá cocina en la casa',
-      direccion: 'espanol_a_damana',
-      traduccion: 'Ranzhe abu urragamba [vecina] dugwa',
-      origen: 'confirmada',
-      traduccionModelo: 'Ranzhe abu urragamba [vecina] dugwa',
+      text: 'mi mamá cocina en la casa',
+      direction: 'espanol_a_damana',
+      translation: 'Ranzhe abu urragamba [vecina] dugwa',
+      origin: 'confirmada',
+      modelTranslation: 'Ranzhe abu urragamba [vecina] dugwa',
     });
-    httpRequest.flush({ guardada: true, total: 3 });
+    httpRequest.flush({ saved: true, total: 3 });
     await settle(fixture);
     expect(text(fixture)).toContain('Guardada como correcta (3 validadas)');
   });
@@ -209,17 +209,17 @@ describe('Traductor', () => {
     button(/Guardar corrección/).click();
     await settle(fixture);
 
-    const httpRequest = http.expectOne('/api/traducir/validar');
-    expect(httpRequest.request.body.origen).toBe('corregida');
-    expect(httpRequest.request.body.traduccion).toBe('Ranzhe abu urragamba anzhirru kʉdugwa');
-    httpRequest.flush({ guardada: true, total: 1 });
+    const httpRequest = http.expectOne('/api/translate/validate');
+    expect(httpRequest.request.body.origin).toBe('corregida');
+    expect(httpRequest.request.body.translation).toBe('Ranzhe abu urragamba anzhirru kʉdugwa');
+    httpRequest.flush({ saved: true, total: 1 });
     await settle(fixture);
     expect(text(fixture)).toContain('Corrección guardada');
   });
 
   it('with «revisar» support it shows the warning; with «bueno» it does not', async () => {
     await start();
-    await translateWithResponse({ ...RESPONSE, apoyo: { nivel: 'revisar', motivos: ['sin_ejemplos'] }, ejemplos: [] });
+    await translateWithResponse({ ...RESPONSE, support: { level: 'revisar', reasons: ['sin_ejemplos'] }, examples: [] });
     expect(text(fixture)).toContain('Poco apoyo del corpus');
     expect(text(fixture)).toContain('No se encontraron ejemplos parecidos');
   });
@@ -230,14 +230,14 @@ describe('Traductor', () => {
     await settle(fixture);
     await type('nʉnka shkua');
     await translate();
-    const httpRequest = http.expectOne('/api/traducir');
-    expect(httpRequest.request.body.direccion).toBe('damana_a_espanol');
+    const httpRequest = http.expectOne('/api/translate');
+    expect(httpRequest.request.body.direction).toBe('damana_a_espanol');
     httpRequest.flush(RESPONSE);
     await settle(fixture);
   });
 
   it('if the translator is not configured it explains how to configure it', async () => {
-    await start({ disponible: false, proveedor: null, modelo: null });
+    await start({ available: false, provider: null, model: null });
     expect(text(fixture)).toContain('Falta configurar un motor de traducción');
     expect(queryAll(fixture, '.aviso').length).toBe(1);
   });
@@ -246,7 +246,7 @@ describe('Traductor', () => {
     await start();
     await type('nʉnka');
     await translate();
-    http.expectOne('/api/traducir').flush(
+    http.expectOne('/api/translate').flush(
       { message: 'El texto supera el máximo' },
       { status: 400, statusText: 'Bad Request' },
     );
@@ -258,7 +258,7 @@ describe('Traductor', () => {
     await start();
     await type('nʉnka');
     await translate();
-    http.expectOne('/api/traducir').error(new ProgressEvent('error'));
+    http.expectOne('/api/translate').error(new ProgressEvent('error'));
     await settle(fixture);
     expect(text(fixture)).toContain('No se pudo contactar');
   });

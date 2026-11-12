@@ -15,12 +15,12 @@ import {
 } from './dto/translation.dto';
 import { TranslationService } from './translation.service';
 
-@ApiTags('traduccion')
-@Controller('traducir')
+@ApiTags('translation')
+@Controller('translate')
 export class TranslationController {
   constructor(private readonly translation: TranslationService) {}
 
-  @Get('estado')
+  @Get('status')
   @ApiOperation({
     summary: 'Disponibilidad y motor del traductor',
     description:
@@ -30,9 +30,9 @@ export class TranslationController {
   status(): TranslatorStatusDto {
     const config = this.translation.configuration();
     return {
-      disponible: this.translation.available(),
-      proveedor: config.proveedor,
-      modelo: config.proveedor ? config.modelo : null,
+      available: this.translation.available(),
+      provider: config.provider,
+      model: config.provider ? config.model : null,
     };
   }
 
@@ -49,7 +49,7 @@ export class TranslationController {
     return this.translation.translate(dto);
   }
 
-  @Post('validar')
+  @Post('validate')
   @ApiOperation({
     summary: 'Guardar una traducción confirmada o corregida',
     description:

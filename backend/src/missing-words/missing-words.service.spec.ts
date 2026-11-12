@@ -52,20 +52,20 @@ describe('MissingWordsService', () => {
     insertSentence('a b c', 'pueblo pueblo montaña');
     insertSentence('d e', 'pueblo casa');
     const rows = service.compute(TODAY);
-    expect(rows.map((f) => f.espanol)).toEqual(['pueblo', 'casa', 'montaña']);
+    expect(rows.map((f) => f.spanish)).toEqual(['pueblo', 'casa', 'montaña']);
     expect(rows[0]).toMatchObject({
-      espanol: 'pueblo',
+      spanish: 'pueblo',
       damana: '',
-      motivo: 'en_corpus_sin_glosario',
-      prioridad: 2,
-      vecesVisto: 3,
-      fecha: TODAY,
+      reason: 'en_corpus_sin_glosario',
+      priority: 2,
+      timesSeen: 3,
+      date: TODAY,
     });
   });
 
   it('excludes what is already in the glossary, stopwords and keyboard noise', () => {
     insertSentence('x', 'el agua de la zzzz montaña');
-    const words = service.compute(TODAY).map((f) => f.espanol);
+    const words = service.compute(TODAY).map((f) => f.spanish);
     expect(words).toContain('montaña');
     expect(words).not.toContain('agua'); // already in the glossary
     expect(words).not.toContain('el'); // stopword
@@ -75,7 +75,7 @@ describe('MissingWordsService', () => {
   it('excludes probable proper names (initial capital only)', () => {
     insertSentence('a', 'Jesús llegó');
     insertSentence('b', 'Jesús habló');
-    const words = service.compute(TODAY).map((f) => f.espanol);
+    const words = service.compute(TODAY).map((f) => f.spanish);
     expect(words).not.toContain('jesús');
     expect(words).toContain('llegó');
   });
@@ -87,7 +87,7 @@ describe('MissingWordsService', () => {
        VALUES ('ciudad', 'ciudad', 'oraciones', 1, 0)`,
     ).run();
     insertSentence('ciudad guma', 'ciudad grande');
-    const words = service.compute(TODAY).map((f) => f.espanol);
+    const words = service.compute(TODAY).map((f) => f.spanish);
     expect(words).not.toContain('ciudad'); // written the same in Damana
     expect(words).toContain('grande');
   });
@@ -95,7 +95,7 @@ describe('MissingWordsService', () => {
   it('ignores sentences marked «revisar» (doubtful alignment)', () => {
     insertSentence('a', 'fiable', 'aprobado');
     insertSentence('b', 'dudosa', 'revisar');
-    const words = service.compute(TODAY).map((f) => f.espanol);
+    const words = service.compute(TODAY).map((f) => f.spanish);
     expect(words).toContain('fiable');
     expect(words).not.toContain('dudosa');
   });
@@ -105,11 +105,11 @@ describe('MissingWordsService', () => {
     // Translation with no example at all → revisar level
     insertTranslation('quiero sanar', 'x', 'espanol_a_damana', 0, null, 0);
     const rows = service.compute(TODAY);
-    expect(rows[0].prioridad).toBe(1);
-    expect(['quiero', 'sanar']).toContain(rows[0].espanol);
-    expect(rows[0].motivo).toBe('traduccion_con_poco_apoyo');
+    expect(rows[0].priority).toBe(1);
+    expect(['quiero', 'sanar']).toContain(rows[0].spanish);
+    expect(rows[0].reason).toBe('traduccion_con_poco_apoyo');
     // 'pueblo' is still there, but later
-    expect(rows.find((f) => f.espanol === 'pueblo')?.prioridad).toBe(2);
+    expect(rows.find((f) => f.spanish === 'pueblo')?.priority).toBe(2);
   });
 
   it('does NOT prioritize translations that did have good support', () => {
@@ -120,8 +120,8 @@ describe('MissingWordsService', () => {
   it('counts the times a word was requested in different translations', () => {
     insertTranslation('sanar rápido', 'x', 'espanol_a_damana', 0, null, 0);
     insertTranslation('sanar pronto', 'y', 'espanol_a_damana', 0, null, 0);
-    const sanitize = service.compute(TODAY).find((f) => f.espanol === 'sanar');
-    expect(sanitize?.vecesVisto).toBe(2);
+    const sanitize = service.compute(TODAY).find((f) => f.spanish === 'sanar');
+    expect(sanitize?.timesSeen).toBe(2);
   });
 
   it('respects the row cap', () => {
@@ -131,9 +131,9 @@ describe('MissingWordsService', () => {
 
   it('accompanies each word with an example sentence in both languages', () => {
     insertSentence('nʉnka gontka shkua', 'el agua hizo montaña');
-    const row = service.compute(TODAY).find((f) => f.espanol === 'montaña');
-    expect(row?.ejemploEspanol).toBe('el agua hizo montaña');
-    expect(row?.ejemploDamana).toBe('nʉnka gontka shkua');
+    const row = service.compute(TODAY).find((f) => f.spanish === 'montaña');
+    expect(row?.spanishExample).toBe('el agua hizo montaña');
+    expect(row?.damanaExample).toBe('nʉnka gontka shkua');
   });
 });
 
@@ -180,10 +180,10 @@ describe('MissingWordsService.calcularDamana', () => {
     expect(rows.map((f) => f.damana)).toEqual(['gontka']);
     expect(rows[0]).toMatchObject({
       damana: 'gontka',
-      espanol: '', // the column the speaker fills in
-      vecesVisto: 3,
-      ejemploDamana: 'gontka nʉnka Jehovága zhaguasheka',
-      ejemploEspanol: 'hizo el agua',
+      spanish: '', // the column the speaker fills in
+      timesSeen: 3,
+      damanaExample: 'gontka nʉnka Jehovága zhaguasheka',
+      spanishExample: 'hizo el agua',
     });
   });
 

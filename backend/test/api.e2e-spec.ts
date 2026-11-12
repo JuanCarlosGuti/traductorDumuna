@@ -55,7 +55,7 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
 
     const moduleRef = await Test.createTestingModule({
       imports: [
-        DatabaseModule.forRoot({ rutaDb: ':memory:' }),
+        DatabaseModule.forRoot({ dbPath: ':memory:' }),
         ImporterModule,
         QueryModule,
       ],
@@ -71,29 +71,29 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
     fs.rmSync(dirTmp, { recursive: true, force: true });
   });
 
-  describe('GET /api/buscar', () => {
+  describe('GET /api/search', () => {
     it('Damana concordance with ʉ: <mark>, reference and parallel text', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/buscar')
+        .get('/api/search')
         .query({ q: 'nʉnka' })
         .expect(200);
       expect(res.body.total).toBe(4); // 2 sentences, 1 phrase, 1 vocabulary
-      const sentence = res.body.resultados[0];
-      expect(sentence.fuente).toBe('oraciones');
-      expect(sentence.referencia).toBe('oración 1');
-      expect(sentence.fragmento).toContain('<mark>nʉnka</mark>');
-      expect(sentence.textoParalelo).toContain('Jehová hizo el agua');
-      const sources = res.body.resultados.map((r: any) => r.fuente);
+      const sentence = res.body.results[0];
+      expect(sentence.source).toBe('oraciones');
+      expect(sentence.reference).toBe('oración 1');
+      expect(sentence.fragment).toContain('<mark>nʉnka</mark>');
+      expect(sentence.parallelText).toContain('Jehová hizo el agua');
+      const sources = res.body.results.map((r: any) => r.source);
       expect(sources).toContain('frases');
       expect(sources).toContain('vocabulario');
       // the sentence with doubtful alignment is flagged
-      const references = res.body.resultados.map((r: any) => r.referencia);
+      const references = res.body.results.map((r: any) => r.reference);
       expect(references).toContain('oración 2 (revisar)');
     });
 
     it('never degrades ʉ to u: searching nunka finds nothing', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/buscar')
+        .get('/api/search')
         .query({ q: 'nunka' })
         .expect(200);
       expect(res.body.total).toBe(0);
@@ -101,158 +101,158 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
 
     it('searches in Spanish (accent-insensitive) with the Damana as parallel', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/buscar')
-        .query({ q: 'jehova', idioma: 'espanol' })
+        .get('/api/search')
+        .query({ q: 'jehova', language: 'espanol' })
         .expect(200);
       expect(res.body.total).toBe(1);
-      expect(res.body.resultados[0].fragmento).toContain('<mark>Jehová</mark>');
-      expect(res.body.resultados[0].textoParalelo).toContain('Jehovága');
+      expect(res.body.results[0].fragment).toContain('<mark>Jehová</mark>');
+      expect(res.body.results[0].parallelText).toContain('Jehovága');
     });
 
     it('filters by source, conjugations included', async () => {
       const phrases = await request(app.getHttpServer())
-        .get('/api/buscar')
-        .query({ q: 'nʉnka', fuente: 'frases' })
+        .get('/api/search')
+        .query({ q: 'nʉnka', source: 'frases' })
         .expect(200);
       expect(phrases.body.total).toBe(1);
-      expect(phrases.body.resultados[0].referencia).toBe('frase 1 (Prueba)');
+      expect(phrases.body.results[0].reference).toBe('frase 1 (Prueba)');
 
       const conjugations = await request(app.getHttpServer())
-        .get('/api/buscar')
-        .query({ q: 'nujkunʉnanka', fuente: 'conjugaciones' })
+        .get('/api/search')
+        .query({ q: 'nujkunʉnanka', source: 'conjugaciones' })
         .expect(200);
       expect(conjugations.body.total).toBe(1);
-      expect(conjugations.body.resultados[0].referencia).toBe('conjugación 1 (tener)');
-      expect(conjugations.body.resultados[0].textoParalelo).toBe('yo tuve');
+      expect(conjugations.body.results[0].reference).toBe('conjugación 1 (tener)');
+      expect(conjugations.body.results[0].parallelText).toBe('yo tuve');
     });
 
     it('a multi-word phrase searches by similarity with score and highlighting', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/buscar')
-        .query({ q: 'jehova hizo el agua', idioma: 'espanol' })
+        .get('/api/search')
+        .query({ q: 'jehova hizo el agua', language: 'espanol' })
         .expect(200);
-      expect(res.body.modo).toBe('similitud');
+      expect(res.body.mode).toBe('similitud');
       expect(res.body.total).toBeGreaterThan(0);
-      const firstItem = res.body.resultados[0];
-      expect(firstItem.referencia).toBe('oración 1');
-      expect(firstItem.puntaje).toBeGreaterThan(0);
-      expect(firstItem.fragmento).toContain('<mark>Jehová</mark>');
-      expect(firstItem.fragmento).toContain('<mark>agua</mark>');
-      expect(firstItem.textoParalelo).toContain('Jehovága');
+      const firstItem = res.body.results[0];
+      expect(firstItem.reference).toBe('oración 1');
+      expect(firstItem.score).toBeGreaterThan(0);
+      expect(firstItem.fragment).toContain('<mark>Jehová</mark>');
+      expect(firstItem.fragment).toContain('<mark>agua</mark>');
+      expect(firstItem.parallelText).toContain('Jehovága');
     });
 
     it('validates idioma and q: 400 for invalid values', async () => {
       await request(app.getHttpServer())
-        .get('/api/buscar')
-        .query({ q: 'nʉnka', idioma: 'klingon' })
+        .get('/api/search')
+        .query({ q: 'nʉnka', language: 'klingon' })
         .expect(400);
       await request(app.getHttpServer())
-        .get('/api/buscar')
-        .query({ q: 'nʉnka', fuente: 'capitulos' })
+        .get('/api/search')
+        .query({ q: 'nʉnka', source: 'capitulos' })
         .expect(400);
-      await request(app.getHttpServer()).get('/api/buscar').expect(400);
+      await request(app.getHttpServer()).get('/api/search').expect(400);
     });
   });
 
-  describe('GET /api/palabra/:token', () => {
+  describe('GET /api/word/:token', () => {
     it('full card of a word with ʉ', async () => {
       const res = await request(app.getHttpServer())
-        .get(`/api/palabra/${encodeURIComponent('nʉnka')}`)
+        .get(`/api/word/${encodeURIComponent('nʉnka')}`)
         .expect(200);
-      expect(res.body.palabra).toBe('nʉnka');
-      expect(res.body.entradasVocabulario).toEqual([
-        { espanol: 'agua', categoria: 'Otros', notas: '', fuente: 'dic' },
+      expect(res.body.word).toBe('nʉnka');
+      expect(res.body.vocabularyEntries).toEqual([
+        { spanish: 'agua', category: 'Otros', notes: '', source: 'dic' },
       ]);
-      expect(res.body.frecuenciaTotal).toBe(4);
-      expect(res.body.frecuenciaPorFuente).toEqual([
-        { fuente: 'frases', frecuencia: 1 },
-        { fuente: 'oraciones', frecuencia: 2 },
-        { fuente: 'vocabulario', frecuencia: 1 },
+      expect(res.body.totalFrequency).toBe(4);
+      expect(res.body.frequencyBySource).toEqual([
+        { source: 'frases', frequency: 1 },
+        { source: 'oraciones', frequency: 2 },
+        { source: 'vocabulario', frequency: 1 },
       ]);
-      expect(res.body.concordancias.length).toBeLessThanOrEqual(10);
-      expect(res.body.concordancias[0].fragmento).toContain('<mark>nʉnka</mark>');
-      expect(res.body.traduccionesCandidatas[0].palabra).toBe('agua');
-      const candidateWords = res.body.traduccionesCandidatas.map((c: any) => c.palabra);
+      expect(res.body.concordances.length).toBeLessThanOrEqual(10);
+      expect(res.body.concordances[0].fragment).toContain('<mark>nʉnka</mark>');
+      expect(res.body.candidateTranslations[0].word).toBe('agua');
+      const candidateWords = res.body.candidateTranslations.map((c: any) => c.word);
       expect(candidateWords).not.toContain('el');
       expect(candidateWords).not.toContain('del');
     });
 
     it('404 for words outside the corpus', async () => {
-      await request(app.getHttpServer()).get('/api/palabra/inexistente').expect(404);
+      await request(app.getHttpServer()).get('/api/word/inexistente').expect(404);
     });
   });
 
-  describe('GET /api/frecuencias', () => {
+  describe('GET /api/frequencies', () => {
     it('excludes probable proper names and brings the vocabulary category', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/frecuencias')
+        .get('/api/frequencies')
         .expect(200);
-      const words = res.body.map((f: any) => f.palabra);
+      const words = res.body.map((f: any) => f.word);
       expect(words).toContain('nʉnka');
       expect(words).not.toContain('jehovaga'); // only 'Jehovága'
       expect(res.body[0]).toEqual({
-        palabra: 'nʉnka',
-        frecuencia: 4,
-        traduccion: 'agua',
-        categoria: 'Otros',
+        word: 'nʉnka',
+        frequency: 4,
+        translation: 'agua',
+        category: 'Otros',
       });
     });
 
     it('respects limite and validates that it is a positive integer', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/frecuencias')
-        .query({ limite: 1 })
+        .get('/api/frequencies')
+        .query({ limit: 1 })
         .expect(200);
       expect(res.body).toHaveLength(1);
       await request(app.getHttpServer())
-        .get('/api/frecuencias')
-        .query({ limite: 'muchas' })
+        .get('/api/frequencies')
+        .query({ limit: 'muchas' })
         .expect(400);
     });
   });
 
-  describe('GET /api/gramatica', () => {
+  describe('GET /api/grammar', () => {
     it('lists the lemmas with their number of forms', async () => {
-      const res = await request(app.getHttpServer()).get('/api/gramatica/lemas').expect(200);
-      expect(res.body).toEqual([{ lema: 'tener', formas: 2 }]);
+      const res = await request(app.getHttpServer()).get('/api/grammar/lemmas').expect(200);
+      expect(res.body).toEqual([{ lemma: 'tener', forms: 2 }]);
     });
 
     it('returns the full table of a lemma (forms with ʉ intact)', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/gramatica/lemas/tener')
+        .get('/api/grammar/lemmas/tener')
         .expect(200);
-      expect(res.body.lema).toBe('tener');
-      expect(res.body.conjugaciones).toHaveLength(2);
-      expect(res.body.conjugaciones[0]).toMatchObject({
+      expect(res.body.lemma).toBe('tener');
+      expect(res.body.conjugations).toHaveLength(2);
+      expect(res.body.conjugations[0]).toMatchObject({
         damana: 'nujkunʉnanka',
-        espanol: 'yo tuve',
-        lema: 'tener',
+        spanish: 'yo tuve',
+        lemma: 'tener',
       });
     });
 
     it('404 for a nonexistent lemma', async () => {
-      await request(app.getHttpServer()).get('/api/gramatica/lemas/volar').expect(404);
+      await request(app.getHttpServer()).get('/api/grammar/lemmas/volar').expect(404);
     });
   });
 
   describe('full listings', () => {
-    it('GET /api/vocabulario returns all entries with id and category', async () => {
-      const res = await request(app.getHttpServer()).get('/api/vocabulario').expect(200);
+    it('GET /api/vocabulary returns all entries with id and category', async () => {
+      const res = await request(app.getHttpServer()).get('/api/vocabulary').expect(200);
       expect(res.body).toHaveLength(2);
       expect(res.body[0]).toMatchObject({
         id: 1,
-        espanol: 'agua',
+        spanish: 'agua',
         damana: 'nʉnka',
-        categoria: 'Otros',
+        category: 'Otros',
       });
     });
 
-    it('GET /api/frases returns all phrases with id', async () => {
-      const res = await request(app.getHttpServer()).get('/api/frases').expect(200);
+    it('GET /api/phrases returns all phrases with id', async () => {
+      const res = await request(app.getHttpServer()).get('/api/phrases').expect(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0]).toMatchObject({
         id: 1,
-        fuente: 'Prueba',
+        source: 'Prueba',
         damana: '¿Zhinzhoma nʉnka nanu?',
       });
     });

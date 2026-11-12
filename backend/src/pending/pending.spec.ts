@@ -30,22 +30,22 @@ describe('PendingRepository', () => {
     repo.recordRequested('Vecina', 'espanol', 'otra frase', '2026-10-02T00:00:00.000Z');
     const [p] = repo.listAll();
     expect(p).toMatchObject({
-      palabra: 'vecina',
-      idioma: 'espanol',
-      contexto: 'mi vecina cocina',
-      vecesPedida: 2,
-      estado: 'pendiente',
-      origen: 'traductor',
-      actualizadoEn: '2026-10-02T00:00:00.000Z',
+      word: 'vecina',
+      language: 'espanol',
+      context: 'mi vecina cocina',
+      timesRequested: 2,
+      status: 'pendiente',
+      origin: 'traductor',
+      updatedAt: '2026-10-02T00:00:00.000Z',
     });
   });
 
   it('a resolved pending item that is requested again is reopened', () => {
     repo.recordRequested('ñame', 'espanol', null);
     expect(repo.markResolved('ñame')).toBe(true);
-    expect(repo.listAll()[0].estado).toBe('resuelta');
+    expect(repo.listAll()[0].status).toBe('resuelta');
     repo.recordRequested('ñame', 'espanol', null);
-    expect(repo.listAll()[0]).toMatchObject({ estado: 'pendiente', vecesPedida: 2 });
+    expect(repo.listAll()[0]).toMatchObject({ status: 'pendiente', timesRequested: 2 });
   });
 
   it('recordFromElicitation only inserts if it did not exist and does not add to veces', () => {
@@ -53,8 +53,8 @@ describe('PendingRepository', () => {
     expect(repo.recordFromElicitation('hola', 'otro contexto')).toBe(false);
     repo.recordRequested('agua', 'espanol', 'quiero agua');
     expect(repo.recordFromElicitation('agua', 'El agua está fría.')).toBe(false);
-    expect(repo.listAll().find((p) => p.palabra === 'agua')).toMatchObject({ vecesPedida: 1, origen: 'traductor' });
-    expect(repo.listAll().find((p) => p.palabra === 'hola')).toMatchObject({ vecesPedida: 1, origen: 'elicitacion' });
+    expect(repo.listAll().find((p) => p.word === 'agua')).toMatchObject({ timesRequested: 1, origin: 'traductor' });
+    expect(repo.listAll().find((p) => p.word === 'hola')).toMatchObject({ timesRequested: 1, origin: 'elicitacion' });
   });
 
   it('sorts by times requested descending and lists open ones without the resolved', () => {
@@ -63,8 +63,8 @@ describe('PendingRepository', () => {
     repo.recordRequested('dos', 'espanol', null, '2026-10-01T00:00:00.000Z');
     repo.recordRequested('tres', 'damana', null, '2026-10-01T00:00:00.000Z');
     repo.markResolved('tres', '2026-10-01T12:00:00.000Z');
-    expect(repo.listAll().map((p) => p.palabra)).toEqual(['dos', 'uno', 'tres']);
-    expect(repo.listOpen().map((p) => p.palabra)).toEqual(['dos', 'uno']);
+    expect(repo.listAll().map((p) => p.word)).toEqual(['dos', 'uno', 'tres']);
+    expect(repo.listOpen().map((p) => p.word)).toEqual(['dos', 'uno']);
   });
 
   it('markExported only changes the ones that are pending', () => {
@@ -73,7 +73,7 @@ describe('PendingRepository', () => {
     repo.markResolved('b', '2026-10-01T12:00:00.000Z');
     const ids = repo.listAll().map((p) => p.id);
     repo.markExported(ids, '2026-10-03T00:00:00.000Z');
-    expect(repo.listAll().map((p) => [p.palabra, p.estado])).toEqual([
+    expect(repo.listAll().map((p) => [p.word, p.status])).toEqual([
       ['a', 'exportada'],
       ['b', 'resuelta'],
     ]);
@@ -107,8 +107,8 @@ describe('PendingService', () => {
   it('elicitationRow: a Spanish pending item fills palabra_es/ejemplo_es; a Damana one fills palabra_dm/ejemplo_dm', () => {
     repo.recordRequested('vecina', 'espanol', 'mi vecina cocina');
     repo.recordRequested('kʉnʉnka', 'damana', 'kʉnʉnka nʉnka');
-    const es = repo.listAll().find((p) => p.palabra === 'vecina')!;
-    const dm = repo.listAll().find((p) => p.palabra === 'kʉnʉnka')!;
+    const es = repo.listAll().find((p) => p.word === 'vecina')!;
+    const dm = repo.listAll().find((p) => p.word === 'kʉnʉnka')!;
     expect(elicitationRow(es)).toMatchObject({
       id: `pend_${es.id}`,
       palabra_es: 'vecina',
@@ -126,11 +126,11 @@ describe('PendingService', () => {
     repo.recordRequested('ñame', 'espanol', 'quiero ñame');
 
     const batch = await service.exportBatch(new Date('2026-10-03T12:00:00.000Z'));
-    expect(batch.nombreArchivo).toBe('formato_elicitacion_pendientes_2026-10-03.xlsx');
-    expect(batch.filas).toBe(2);
+    expect(batch.fileName).toBe('formato_elicitacion_pendientes_2026-10-03.xlsx');
+    expect(batch.rows).toBe(2);
 
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(batch.contenido as unknown as ExcelJS.Buffer);
+    await workbook.xlsx.load(batch.content as unknown as ExcelJS.Buffer);
     const sheet = workbook.getWorksheet('elicitacion')!;
     const headings = (sheet.getRow(1).values as string[]).slice(1);
     expect(headings).toEqual(['id', 'ambito', 'palabra_es', 'palabra_dm', 'ejemplo_es', 'ejemplo_dm', 'variante', 'notas']);
@@ -143,6 +143,6 @@ describe('PendingService', () => {
     expect(sheet.getRow(3).getCell(3).value).toBe('ñame'); // the ñ intact
     expect(workbook.getWorksheet('instrucciones')).toBeDefined();
 
-    expect(repo.listAll().map((p) => p.estado)).toEqual(['exportada', 'exportada']);
+    expect(repo.listAll().map((p) => p.status)).toEqual(['exportada', 'exportada']);
   });
 });

@@ -4,8 +4,8 @@ import { firstValueFrom } from 'rxjs';
 
 interface LoginResponse {
   token: string;
-  usuario: string;
-  duracionDias: number;
+  user: string;
+  durationDays: number;
 }
 
 const TOKEN_KEY = 'damana.token';
@@ -36,8 +36,8 @@ export class AuthService {
     const known = this._requiresSession();
     if (known !== null) return known;
     try {
-      const { activa: active } = await firstValueFrom(
-        this.http.get<{ activa: boolean }>('/api/auth/estado'),
+      const { active } = await firstValueFrom(
+        this.http.get<{ active: boolean }>('/api/auth/status'),
       );
       this._requiresSession.set(active);
       return active;
@@ -50,12 +50,12 @@ export class AuthService {
 
   async signIn(user: string, password: string): Promise<void> {
     const res = await firstValueFrom(
-      this.http.post<LoginResponse>('/api/auth/login', { usuario: user, password }),
+      this.http.post<LoginResponse>('/api/auth/login', { user, password }),
     );
     save(TOKEN_KEY, res.token);
-    save(USER_KEY, res.usuario);
+    save(USER_KEY, res.user);
     this._token.set(res.token);
-    this._user.set(res.usuario);
+    this._user.set(res.user);
   }
 
   signOut(): void {

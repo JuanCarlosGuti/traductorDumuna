@@ -19,7 +19,7 @@ experiencia en TypeScript/Angular y backend.
   imprime). Archivos: `Dockerfile`, `config/deploy.yml`, `.kamal/secrets`,
   `.github/workflows/deploy.yml`. El corpus se hornea en la imagen
   (`npm run importar` en el build, por eso reglas_damana.xlsx y los
-  formato_elicitacion*.xlsx NO van en .dockerignore). `GET /api/salud`
+  formato_elicitacion*.xlsx NO van en .dockerignore). `GET /api/health`
   (público) es el healthcheck de kamal-proxy: 503 si la base no tiene
   corpus. Primer deploy el 21 oct 2026 (secretos de Actions creados con
   `gh secret set`; registro A `damana` en Cloudflare con nube gris).
@@ -73,7 +73,7 @@ experiencia en TypeScript/Angular y backend.
   @nestjs/serve-static.
 - Autenticación: usuario único (AUTH_USUARIO + AUTH_PASSWORD) con token
   firmado (@nestjs/jwt, AUTH_JWT_SECRET, 30 días). Guard global sobre todo
-  /api salvo lo marcado con @Publico(): /api/auth/estado y /api/auth/login.
+  /api salvo lo marcado con @Publico(): /api/auth/status y /api/auth/login.
   Los estáticos del frontend NO pasan por el guard —la SPA debe cargar para
   pintar el login y Render hace el health check contra «/»—. Sin credenciales
   configuradas la auth queda desactivada (desarrollo local, con aviso al

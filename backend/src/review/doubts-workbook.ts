@@ -18,10 +18,10 @@ const HEADER_BLUE = 'FFDCE8F0';
 const FORMS_PER_ROW = 4;
 
 interface Column {
-  titulo: string;
-  ancho: number;
+  title: string;
+  width: number;
   /** Filled in by the speaker. */
-  amarilla?: boolean;
+  yellow?: boolean;
 }
 
 type Cell = string | number | null;
@@ -33,7 +33,7 @@ function addSheet(
   rows: Cell[][],
 ): ExcelJS.Worksheet {
   const sheet = workbook.addWorksheet(name);
-  sheet.columns = columns.map((c) => ({ header: c.titulo, width: c.ancho }));
+  sheet.columns = columns.map((c) => ({ header: c.title, width: c.width }));
   const heading = sheet.getRow(1);
   heading.font = { bold: true };
   heading.alignment = { vertical: 'middle', wrapText: true };
@@ -42,14 +42,14 @@ function addSheet(
     heading.getCell(i + 1).fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: c.amarilla ? YELLOW : HEADER_BLUE },
+      fgColor: { argb: c.yellow ? YELLOW : HEADER_BLUE },
     };
   });
   for (const values of rows) {
     const row = sheet.addRow(values);
     row.alignment = { vertical: 'top', wrapText: true };
     columns.forEach((c, i) => {
-      if (c.amarilla) {
+      if (c.yellow) {
         row.getCell(i + 1).fill = {
           type: 'pattern',
           pattern: 'solid',
@@ -86,11 +86,11 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
     ['Si las dos formas son correctas, o si significan cosas distintas, escríbanlo: eso también nos sirve.'],
     [],
     ['Hoja', 'Filas', 'Quién la llena', 'Qué se pregunta'],
-    [DOUBT_SHEETS.escritura, report.escritura.length, 'Cualquier hablante', 'La misma palabra aparece escrita de varias maneras. ¿Cuál es la correcta?'],
-    [DOUBT_SHEETS.sinonimos, report.sinonimos.reduce((s, g) => s + g.opciones.length, 0), 'Revisor con experiencia', 'Una palabra del español tiene varias en damana. ¿Significan lo mismo? ¿Cuándo se usa cada una?'],
-    [DOUBT_SHEETS.polisemia, report.polisemia.reduce((s, g) => s + g.sentidos.length, 0), 'Revisor con experiencia', 'Una palabra damana tiene varios significados anotados. ¿Están todos bien? Incluye las que solo cambian por la tilde.'],
-    [DOUBT_SHEETS.dudosas, report.dudosas.length, 'Revisor con experiencia', 'Entradas que no quedaron claras: iguales al español, con varias formas en una casilla o con notas confusas.'],
-    [DOUBT_SHEETS.terminaciones, report.terminaciones.reduce((s, t) => s + t.ejemplos.length, 0), 'Revisor con experiencia', 'Terminaciones que se repiten en muchas palabras (-mba, -win, -ga…). ¿Qué le agregan a la palabra?'],
+    [DOUBT_SHEETS.escritura, report.spelling.length, 'Cualquier hablante', 'La misma palabra aparece escrita de varias maneras. ¿Cuál es la correcta?'],
+    [DOUBT_SHEETS.sinonimos, report.synonyms.reduce((s, g) => s + g.options.length, 0), 'Revisor con experiencia', 'Una palabra del español tiene varias en damana. ¿Significan lo mismo? ¿Cuándo se usa cada una?'],
+    [DOUBT_SHEETS.polisemia, report.polysemy.reduce((s, g) => s + g.senses.length, 0), 'Revisor con experiencia', 'Una palabra damana tiene varios significados anotados. ¿Están todos bien? Incluye las que solo cambian por la tilde.'],
+    [DOUBT_SHEETS.dudosas, report.doubtful.length, 'Revisor con experiencia', 'Entradas que no quedaron claras: iguales al español, con varias formas en una casilla o con notas confusas.'],
+    [DOUBT_SHEETS.terminaciones, report.endings.reduce((s, t) => s + t.examples.length, 0), 'Revisor con experiencia', 'Terminaciones que se repiten en muchas palabras (-mba, -win, -ga…). ¿Qué le agregan a la palabra?'],
   ].forEach((line) => instructions.addRow(line));
   instructions.getRow(1).font = { bold: true, size: 13 };
   instructions.getRow(8).font = { bold: true };
@@ -102,39 +102,39 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
   // 1. Spelling
   const formColumns: Column[] = [];
   for (let i = 0; i < FORMS_PER_ROW; i++) {
-    formColumns.push({ titulo: i === 0 ? 'forma más usada' : `otra forma ${i}`, ancho: 20 });
-    formColumns.push({ titulo: 'veces', ancho: 7 });
+    formColumns.push({ title: i === 0 ? 'forma más usada' : `otra forma ${i}`, width: 20 });
+    formColumns.push({ title: 'veces', width: 7 });
   }
   addSheet(
     workbook,
     DOUBT_SHEETS.escritura,
     [
-      { titulo: 'n.º', ancho: 6 },
-      { titulo: 'qué cambia', ancho: 18 },
+      { title: 'n.º', width: 6 },
+      { title: 'qué cambia', width: 18 },
       ...formColumns,
-      { titulo: 'significado que tenemos', ancho: 28 },
-      { titulo: 'ejemplo en damana', ancho: 44 },
-      { titulo: 'ejemplo en español', ancho: 44 },
-      { titulo: '¿Cuál es la forma correcta? (escríbala)', ancho: 26, amarilla: true },
-      { titulo: '¿Son palabras distintas? (sí / no)', ancho: 16, amarilla: true },
-      { titulo: 'comentario', ancho: 34, amarilla: true },
+      { title: 'significado que tenemos', width: 28 },
+      { title: 'ejemplo en damana', width: 44 },
+      { title: 'ejemplo en español', width: 44 },
+      { title: '¿Cuál es la forma correcta? (escríbala)', width: 26, yellow: true },
+      { title: '¿Son palabras distintas? (sí / no)', width: 16, yellow: true },
+      { title: 'comentario', width: 34, yellow: true },
     ],
-    report.escritura.map((group, i) => {
+    report.spelling.map((group, i) => {
       const cells: Cell[] = [];
       for (let f = 0; f < FORMS_PER_ROW; f++) {
-        const form = group.formas[f];
-        cells.push(form ? form.forma : '', form ? form.frecuencia : '');
+        const form = group.forms[f];
+        cells.push(form ? form.form : '', form ? form.frequency : '');
       }
-      const meanings = [...new Set(group.formas.flatMap((f) => f.significados))];
-      const example = group.formas.find((f) => f.ejemplo)?.ejemplo;
-      const leftover = group.formas.slice(FORMS_PER_ROW).map((f) => f.forma);
+      const meanings = [...new Set(group.forms.flatMap((f) => f.meanings))];
+      const example = group.forms.find((f) => f.example)?.example;
+      const leftover = group.forms.slice(FORMS_PER_ROW).map((f) => f.form);
       return [
         i + 1,
-        group.tipo,
+        group.type,
         ...cells,
         meanings.join(' / '),
         example?.damana ?? '',
-        example?.espanol ?? '',
+        example?.spanish ?? '',
         '',
         '',
         leftover.length ? `También aparece: ${leftover.join(', ')}` : '',
@@ -147,25 +147,25 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
     workbook,
     DOUBT_SHEETS.sinonimos,
     [
-      { titulo: 'grupo', ancho: 7 },
-      { titulo: 'español', ancho: 24 },
-      { titulo: 'damana', ancho: 26 },
-      { titulo: 'veces en el corpus', ancho: 10 },
-      { titulo: 'categoría', ancho: 22 },
-      { titulo: 'de dónde viene', ancho: 20 },
-      { titulo: 'nota que traía', ancho: 34 },
-      { titulo: '¿Está bien? (sí / no)', ancho: 12, amarilla: true },
-      { titulo: '¿Significa lo mismo que las otras del grupo? ¿Cuándo se usa esta?', ancho: 46, amarilla: true },
+      { title: 'grupo', width: 7 },
+      { title: 'español', width: 24 },
+      { title: 'damana', width: 26 },
+      { title: 'veces en el corpus', width: 10 },
+      { title: 'categoría', width: 22 },
+      { title: 'de dónde viene', width: 20 },
+      { title: 'nota que traía', width: 34 },
+      { title: '¿Está bien? (sí / no)', width: 12, yellow: true },
+      { title: '¿Significa lo mismo que las otras del grupo? ¿Cuándo se usa esta?', width: 46, yellow: true },
     ],
-    report.sinonimos.flatMap((group, i) =>
-      group.opciones.map((o): Cell[] => [
+    report.synonyms.flatMap((group, i) =>
+      group.options.map((o): Cell[] => [
         i + 1,
-        group.espanol,
+        group.spanish,
         o.damana,
-        o.frecuencia ?? '',
-        o.categoria ?? '',
-        o.fuente ?? '',
-        o.notas ?? '',
+        o.frequency ?? '',
+        o.category ?? '',
+        o.source ?? '',
+        o.notes ?? '',
         '',
         '',
       ]),
@@ -177,21 +177,21 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
     workbook,
     DOUBT_SHEETS.polisemia,
     [
-      { titulo: 'grupo', ancho: 7 },
-      { titulo: 'damana (como está escrita)', ancho: 26 },
-      { titulo: 'español', ancho: 32 },
-      { titulo: 'de dónde viene', ancho: 20 },
-      { titulo: 'ojo', ancho: 22 },
-      { titulo: '¿Está bien? (sí / no)', ancho: 12, amarilla: true },
-      { titulo: 'Explicación. Si solo cambia la tilde: ¿qué indica la tilde?', ancho: 50, amarilla: true },
+      { title: 'grupo', width: 7 },
+      { title: 'damana (como está escrita)', width: 26 },
+      { title: 'español', width: 32 },
+      { title: 'de dónde viene', width: 20 },
+      { title: 'ojo', width: 22 },
+      { title: '¿Está bien? (sí / no)', width: 12, yellow: true },
+      { title: 'Explicación. Si solo cambia la tilde: ¿qué indica la tilde?', width: 50, yellow: true },
     ],
-    report.polisemia.flatMap((group, i) =>
-      group.sentidos.map((s): Cell[] => [
+    report.polysemy.flatMap((group, i) =>
+      group.senses.map((s): Cell[] => [
         i + 1,
         s.damana,
-        s.espanol,
-        s.fuente ?? '',
-        group.soloTilde ? 'solo cambia la tilde' : '',
+        s.spanish,
+        s.source ?? '',
+        group.accentOnly ? 'solo cambia la tilde' : '',
         '',
         '',
       ]),
@@ -203,20 +203,20 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
     workbook,
     DOUBT_SHEETS.dudosas,
     [
-      { titulo: 'español', ancho: 24 },
-      { titulo: 'damana', ancho: 26 },
-      { titulo: 'nota que traía', ancho: 44 },
-      { titulo: 'de dónde viene', ancho: 18 },
-      { titulo: 'qué hay que aclarar', ancho: 50 },
-      { titulo: 'Forma correcta en damana', ancho: 26, amarilla: true },
-      { titulo: 'Explicación', ancho: 44, amarilla: true },
+      { title: 'español', width: 24 },
+      { title: 'damana', width: 26 },
+      { title: 'nota que traía', width: 44 },
+      { title: 'de dónde viene', width: 18 },
+      { title: 'qué hay que aclarar', width: 50 },
+      { title: 'Forma correcta en damana', width: 26, yellow: true },
+      { title: 'Explicación', width: 44, yellow: true },
     ],
-    report.dudosas.map((d): Cell[] => [
-      d.entrada.espanol,
-      d.entrada.damana,
-      d.entrada.notas ?? '',
-      d.entrada.fuente ?? '',
-      [...d.motivos.map((m) => REASON_TEXT[m]), d.pista].filter(Boolean).join(' '),
+    report.doubtful.map((d): Cell[] => [
+      d.entry.spanish,
+      d.entry.damana,
+      d.entry.notes ?? '',
+      d.entry.source ?? '',
+      [...d.reasons.map((m) => REASON_TEXT[m]), d.hint].filter(Boolean).join(' '),
       '',
       '',
     ]),
@@ -227,26 +227,26 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
     workbook,
     DOUBT_SHEETS.terminaciones,
     [
-      { titulo: 'terminación', ancho: 13 },
-      { titulo: 'en cuántas palabras aparece', ancho: 11 },
-      { titulo: 'lo que ya sabemos', ancho: 30 },
-      { titulo: 'palabra base', ancho: 18 },
-      { titulo: 'significado', ancho: 22 },
-      { titulo: 'palabra con la terminación', ancho: 22 },
-      { titulo: 'oración en damana', ancho: 46 },
-      { titulo: 'oración en español', ancho: 46 },
-      { titulo: '¿Qué le agrega la terminación a la palabra?', ancho: 44, amarilla: true },
+      { title: 'terminación', width: 13 },
+      { title: 'en cuántas palabras aparece', width: 11 },
+      { title: 'lo que ya sabemos', width: 30 },
+      { title: 'palabra base', width: 18 },
+      { title: 'significado', width: 22 },
+      { title: 'palabra con la terminación', width: 22 },
+      { title: 'oración en damana', width: 46 },
+      { title: 'oración en español', width: 46 },
+      { title: '¿Qué le agrega la terminación a la palabra?', width: 44, yellow: true },
     ],
-    report.terminaciones.flatMap((t) =>
-      t.ejemplos.map((e): Cell[] => [
-        `-${t.terminacion}`,
-        t.raices,
-        t.yaSabemos,
-        e.raiz,
-        e.significado,
-        e.forma,
-        e.ejemplo?.damana ?? '',
-        e.ejemplo?.espanol ?? '',
+    report.endings.flatMap((t) =>
+      t.examples.map((e): Cell[] => [
+        `-${t.ending}`,
+        t.roots,
+        t.alreadyKnown,
+        e.root,
+        e.meaning,
+        e.form,
+        e.example?.damana ?? '',
+        e.example?.spanish ?? '',
         '',
       ]),
     ),

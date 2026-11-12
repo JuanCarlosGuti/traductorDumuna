@@ -3,7 +3,7 @@ import { tokenizeDamana } from './tokenizer';
 describe('tokenizeDamana', () => {
   it('splits on spaces and normalizes each token', () => {
     const tokens = tokenizeDamana('Jehová Kunkujshina naingontka');
-    expect(tokens.map((t) => t.normalizada)).toEqual([
+    expect(tokens.map((t) => t.normalized)).toEqual([
       'jehova',
       'kunkujshina',
       'naingontka',
@@ -22,7 +22,7 @@ describe('tokenizeDamana', () => {
 
   it('numbers are left out', () => {
     const tokens = tokenizeDamana('Génesis 1 y 2');
-    expect(tokens.map((t) => t.normalizada)).toEqual(['genesis', 'y']);
+    expect(tokens.map((t) => t.normalized)).toEqual(['genesis', 'y']);
   });
 
   it('keeps internal apostrophes and trims edge ones', () => {
@@ -32,17 +32,17 @@ describe('tokenizeDamana', () => {
 
   it('keeps ʉ in tokens (case with ʉ)', () => {
     const tokens = tokenizeDamana('nʉnka kʉnʉnka');
-    expect(tokens.map((t) => t.normalizada)).toEqual(['nʉnka', 'kʉnʉnka']);
+    expect(tokens.map((t) => t.normalized)).toEqual(['nʉnka', 'kʉnʉnka']);
   });
 
   it('keeps ñ in tokens (case with ñ)', () => {
     const tokens = tokenizeDamana('Ñingui kʉñingui');
-    expect(tokens.map((t) => t.normalizada)).toEqual(['ñingui', 'kʉñingui']);
+    expect(tokens.map((t) => t.normalized)).toEqual(['ñingui', 'kʉñingui']);
   });
 
   it('assigns consecutive positions even with line breaks and commas', () => {
     const tokens = tokenizeDamana('naka kʉñingui gontka,\nñingui tua ukurra');
-    expect(tokens.map((t) => t.posicion)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(tokens.map((t) => t.position)).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
   it('returns empty for text without letters', () => {

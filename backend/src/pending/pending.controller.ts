@@ -6,8 +6,8 @@ import { PendingService } from './pending.service';
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-@ApiTags('pendientes')
-@Controller('pendientes')
+@ApiTags('pending')
+@Controller('pending')
 export class PendingController {
   constructor(private readonly pendingItems: PendingService) {}
 
@@ -22,7 +22,7 @@ export class PendingController {
     return this.pendingItems.listAll();
   }
 
-  @Post('exportar')
+  @Post('export')
   @ApiOperation({
     summary: 'Exportar lote para las hablantes nativas',
     description:
@@ -33,9 +33,9 @@ export class PendingController {
     const batch = await this.pendingItems.exportBatch();
     res.set({
       'Content-Type': XLSX_TYPE,
-      'Content-Disposition': `attachment; filename="${batch.nombreArchivo}"`,
-      'X-Filas-Exportadas': String(batch.filas),
+      'Content-Disposition': `attachment; filename="${batch.fileName}"`,
+      'X-Filas-Exportadas': String(batch.rows),
     });
-    return new StreamableFile(batch.contenido);
+    return new StreamableFile(batch.content);
   }
 }

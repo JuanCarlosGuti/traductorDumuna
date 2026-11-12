@@ -17,7 +17,7 @@ import { SrsService } from './srs.service';
 export class SrsController {
   constructor(private readonly srs: SrsService) {}
 
-  @Get('siguiente')
+  @Get('next')
   @ApiOperation({
     summary: 'Próxima tarjeta de repaso',
     description:
@@ -28,7 +28,7 @@ export class SrsController {
     return this.srs.nextCard();
   }
 
-  @Post('respuesta')
+  @Post('answer')
   @ApiOperation({
     summary: 'Registrar la respuesta de una tarjeta',
     description:
@@ -37,6 +37,6 @@ export class SrsController {
   @ApiOkResponse({ type: UpdatedProgressDto })
   @ApiNotFoundResponse({ description: 'La palabra no está en el mazo' })
   answer(@Body() dto: SrsAnswerDto): UpdatedProgressDto {
-    return this.srs.answer(dto.palabra, dto.calificacion);
+    return this.srs.answer(dto.word, dto.grade);
   }
 }

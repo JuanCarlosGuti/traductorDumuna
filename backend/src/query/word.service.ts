@@ -26,7 +26,7 @@ export class WordService {
     const word = normalize(token.trim());
     const frequencyBySource = this.repo.frequencyBySource(word);
     const totalFrequency = frequencyBySource.reduce(
-      (sum, f) => sum + f.frecuencia,
+      (sum, f) => sum + f.frequency,
       0,
     );
     if (totalFrequency === 0) {
@@ -37,18 +37,18 @@ export class WordService {
 
     const concordances = this.searchService.search({
       q: word,
-      idioma: Language.damana,
-      limite: MAX_CONCORDANCES,
-    }).resultados;
+      language: Language.damana,
+      limit: MAX_CONCORDANCES,
+    }).results;
 
     return {
-      palabra: word,
-      entradasVocabulario: this.vocabularyEntries(word),
-      formasVerbales: this.verbForms(word),
-      frecuenciaTotal: totalFrequency,
-      frecuenciaPorFuente: frequencyBySource,
-      concordancias: concordances,
-      traduccionesCandidatas: this.candidateTranslations(word),
+      word: word,
+      vocabularyEntries: this.vocabularyEntries(word),
+      verbForms: this.verbForms(word),
+      totalFrequency: totalFrequency,
+      frequencyBySource: frequencyBySource,
+      concordances: concordances,
+      candidateTranslations: this.candidateTranslations(word),
     };
   }
 
@@ -58,10 +58,10 @@ export class WordService {
       .listVocabulary()
       .filter((e) => normalize(e.damana) === normalizedWord)
       .map((e) => ({
-        espanol: e.espanol,
-        categoria: e.categoria,
-        notas: e.notas,
-        fuente: e.fuente,
+        spanish: e.spanish,
+        category: e.category,
+        notes: e.notes,
+        source: e.source,
       }));
   }
 
@@ -70,7 +70,7 @@ export class WordService {
   private verbForms(normalizedWord: string): VerbFormDto[] {
     return this.repo
       .conjugationsWithWord(normalizedWord)
-      .map((c) => ({ damana: c.damana, espanol: c.espanol, lema: c.lema }));
+      .map((c) => ({ damana: c.damana, spanish: c.spanish, lemma: c.lemma }));
   }
 
   /**
@@ -85,16 +85,16 @@ export class WordService {
     for (const origin of this.repo.originsOf(normalizedWord)) {
       const spanish = this.repo.spanishTextOf(origin.fuente, origin.id);
       for (const token of tokenizeDamana(spanish)) {
-        if (token.normalizada.length < 2) continue;
-        if (isSpanishStopword(token.normalizada)) continue;
-        tally.set(token.normalizada, (tally.get(token.normalizada) ?? 0) + 1);
+        if (token.normalized.length < 2) continue;
+        if (isSpanishStopword(token.normalized)) continue;
+        tally.set(token.normalized, (tally.get(token.normalized) ?? 0) + 1);
       }
     }
     return [...tally.entries()]
-      .map(([word, coocurrencias]) => ({ palabra: word, coocurrencias }))
+      .map(([word, coocurrencias]) => ({ word: word, cooccurrences: coocurrencias }))
       .sort(
         (a, b) =>
-          b.coocurrencias - a.coocurrencias || a.palabra.localeCompare(b.palabra),
+          b.cooccurrences - a.cooccurrences || a.word.localeCompare(b.word),
       )
       .slice(0, MAX_CANDIDATES);
   }

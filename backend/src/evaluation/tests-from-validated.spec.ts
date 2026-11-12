@@ -10,12 +10,12 @@ import { exportValidatedToTests, testsFromValidated } from './tests-from-validat
 
 const validatedPair = (id: number, spanish: string, damana: string): ValidatedPair => ({
   id,
-  creadoEn: '2026-10-21T00:00:00.000Z',
-  espanol: spanish,
+  createdAt: '2026-10-21T00:00:00.000Z',
+  spanish: spanish,
   damana,
-  direccion: TranslationDirection.espanol_a_damana,
-  origen: 'confirmada',
-  traduccionModelo: null,
+  direction: TranslationDirection.espanol_a_damana,
+  origin: 'confirmada',
+  modelTranslation: null,
 });
 
 describe('testsFromValidated', () => {
@@ -23,12 +23,12 @@ describe('testsFromValidated', () => {
     expect(
       testsFromValidated([
         validatedPair(1, ' mi mamá cocina ', 'Ranzhe abu dugwa '),
-        { ...validatedPair(2, 'otra vez', 'ñingui'), direccion: TranslationDirection.damana_a_espanol },
+        { ...validatedPair(2, 'otra vez', 'ñingui'), direction: TranslationDirection.damana_a_espanol },
         validatedPair(3, 'vacía', '   '),
       ]),
     ).toEqual([
-      { espanol: 'mi mamá cocina', damanaEsperado: 'Ranzhe abu dugwa', ambito: 'validadas' },
-      { espanol: 'otra vez', damanaEsperado: 'ñingui', ambito: 'validadas' },
+      { spanish: 'mi mamá cocina', expectedDamana: 'Ranzhe abu dugwa', scope: 'validadas' },
+      { spanish: 'otra vez', expectedDamana: 'ñingui', scope: 'validadas' },
     ]);
   });
 });
@@ -37,11 +37,11 @@ describe('exportValidatedToTests', () => {
   let db: Database.Database;
   let dir: string;
   const newItem = (spanish: string, damana: string): NewValidated => ({
-    espanol: spanish,
+    spanish: spanish,
     damana,
-    direccion: TranslationDirection.espanol_a_damana,
-    origen: 'corregida',
-    traduccionModelo: 'lo que dijo el modelo',
+    direction: TranslationDirection.espanol_a_damana,
+    origin: 'corregida',
+    modelTranslation: 'lo que dijo el modelo',
   });
 
   beforeEach(() => {
@@ -61,11 +61,11 @@ describe('exportValidatedToTests', () => {
     repo.save(newItem('otra vez', 'ñingui'));
     repo.save(newItem('otra vez', 'ñingui')); // the same pair validated twice
 
-    expect(exportValidatedToTests(db, dir)).toEqual({ validadas: 3, agregadas: 2, total: 2 });
-    expect(exportValidatedToTests(db, dir)).toEqual({ validadas: 3, agregadas: 0, total: 2 });
+    expect(exportValidatedToTests(db, dir)).toEqual({ validated: 3, added: 2, total: 2 });
+    expect(exportValidatedToTests(db, dir)).toEqual({ validated: 3, added: 0, total: 2 });
     expect(readTests(dir)).toEqual([
-      { espanol: 'no tengo agua', damanaEsperado: 'Nʉjkʉnanun nʉnka', ambito: 'validadas' },
-      { espanol: 'otra vez', damanaEsperado: 'ñingui', ambito: 'validadas' },
+      { spanish: 'no tengo agua', expectedDamana: 'Nʉjkʉnanun nʉnka', scope: 'validadas' },
+      { spanish: 'otra vez', expectedDamana: 'ñingui', scope: 'validadas' },
     ]);
   });
 
@@ -79,10 +79,10 @@ describe('exportValidatedToTests', () => {
     repo.save(newItem('Agua', 'nʉnka')); // same pair as the existing test (capital aside)
     repo.save(newItem('año nuevo', 'kʉgui ñi'));
 
-    expect(exportValidatedToTests(db, dir)).toEqual({ validadas: 2, agregadas: 1, total: 2 });
+    expect(exportValidatedToTests(db, dir)).toEqual({ validated: 2, added: 1, total: 2 });
     expect(readTests(dir)).toEqual([
-      { espanol: 'agua', damanaEsperado: 'nʉnka', ambito: 'casa' },
-      { espanol: 'año nuevo', damanaEsperado: 'kʉgui ñi', ambito: 'validadas' },
+      { spanish: 'agua', expectedDamana: 'nʉnka', scope: 'casa' },
+      { spanish: 'año nuevo', expectedDamana: 'kʉgui ñi', scope: 'validadas' },
     ]);
   });
 });

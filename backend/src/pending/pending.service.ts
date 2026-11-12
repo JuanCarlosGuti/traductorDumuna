@@ -20,9 +20,9 @@ export const ELICITATION_COLUMNS = [
 ] as const;
 
 export interface ExportedBatch {
-  nombreArchivo: string;
-  contenido: Buffer;
-  filas: number;
+  fileName: string;
+  content: Buffer;
+  rows: number;
 }
 
 /** Shortens at a word boundary and marks the cut with «…». */
@@ -35,17 +35,17 @@ export function shorten(text: string, maximum = MAX_EXAMPLE_CHARS): string {
 
 /** A pending item as a row of the elicitation format (the native speaker fills in the blanks). */
 export function elicitationRow(p: PendingItem): Record<(typeof ELICITATION_COLUMNS)[number], string> {
-  const isSpanish = p.idioma === 'espanol';
-  const context = shorten(p.contexto ?? '');
+  const isSpanish = p.language === 'espanol';
+  const context = shorten(p.context ?? '');
   const notes =
-    p.origen === 'traductor'
-      ? `pedida ${p.vecesPedida} ${p.vecesPedida === 1 ? 'vez' : 'veces'} en el traductor`
+    p.origin === 'traductor'
+      ? `pedida ${p.timesRequested} ${p.timesRequested === 1 ? 'vez' : 'veces'} en el traductor`
       : 'quedó sin llenar en un lote anterior';
   return {
     id: `pend_${p.id}`,
     ambito: 'otro',
-    palabra_es: isSpanish ? p.palabra : '',
-    palabra_dm: isSpanish ? '' : p.palabra,
+    palabra_es: isSpanish ? p.word : '',
+    palabra_dm: isSpanish ? '' : p.word,
     ejemplo_es: isSpanish ? context : '',
     ejemplo_dm: isSpanish ? '' : context,
     variante: '',
@@ -103,7 +103,7 @@ export class PendingService {
     for (const p of pendingItems) {
       const row = sheet.addRow(elicitationRow(p));
       row.alignment = { vertical: 'top', wrapText: true };
-      const toFill = p.idioma === 'espanol' ? ['palabra_dm', 'ejemplo_dm'] : ['palabra_es', 'ejemplo_es'];
+      const toFill = p.language === 'espanol' ? ['palabra_dm', 'ejemplo_dm'] : ['palabra_es', 'ejemplo_es'];
       for (const key of toFill) {
         row.getCell(key).fill = {
           type: 'pattern',
@@ -116,9 +116,9 @@ export class PendingService {
     const content = Buffer.from(await workbook.xlsx.writeBuffer());
     this.repo.markExported(pendingItems.map((p) => p.id), today.toISOString());
     return {
-      nombreArchivo: `formato_elicitacion_pendientes_${date}.xlsx`,
-      contenido: content,
-      filas: pendingItems.length,
+      fileName: `formato_elicitacion_pendientes_${date}.xlsx`,
+      content: content,
+      rows: pendingItems.length,
     };
   }
 }

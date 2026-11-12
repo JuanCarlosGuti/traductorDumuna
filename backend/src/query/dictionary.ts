@@ -24,12 +24,12 @@ export type MatchKind =
 
 export interface FoundSense {
   /** Word of the input sentence that triggered the lookup. */
-  palabra: string;
-  espanol: string;
+  word: string;
+  spanish: string;
   damana: string;
-  categoria: string | null;
-  notas: string | null;
-  coincidencia: MatchKind;
+  category: string | null;
+  notes: string | null;
+  match: MatchKind;
 }
 
 /** Global cap on senses that travel in the prompt. */
@@ -68,18 +68,18 @@ export const SYNONYMS_ES: Record<string, string[]> = {
 };
 
 interface Entry {
-  espanol: string;
+  spanish: string;
   damana: string;
-  categoria: string | null;
-  notas: string | null;
+  category: string | null;
+  notes: string | null;
 }
 
 interface Phrase {
   /** Verbatim text of the alternative, to show what was recognized. */
-  texto: string;
+  text: string;
   /** Normalized content tokens (without Spanish stopwords). */
   tokens: string[];
-  entrada: Entry;
+  entry: Entry;
 }
 
 type Emitter = (word: string, entries: Entry[], match: MatchKind) => void;
@@ -130,38 +130,38 @@ export class DictionaryIndex {
   constructor(entries: VocabularyDto[]) {
     for (const dto of entries) {
       const entry: Entry = {
-        espanol: dto.espanol,
+        spanish: dto.spanish,
         damana: dto.damana,
-        categoria: dto.categoria ?? null,
-        notas: dto.notas ?? null,
+        category: dto.category ?? null,
+        notes: dto.notes ?? null,
       };
-      for (const alternative of spanishAlternatives(dto.espanol)) {
+      for (const alternative of spanishAlternatives(dto.spanish)) {
         const tokens = tokenizeDamana(alternative);
-        add(this.alternativeEs, tokens.map((t) => t.normalizada).join(' '), entry);
+        add(this.alternativeEs, tokens.map((t) => t.normalized).join(' '), entry);
         if (tokens.length === 1) {
           add(this.exactEs, tokens[0].original.toLowerCase().normalize('NFC'), entry);
-          add(this.normalizedEs, tokens[0].normalizada, entry);
+          add(this.normalizedEs, tokens[0].normalized, entry);
         } else if (tokens.length > 1) {
           // Negations are kept as content: «No quiero» must only
           // come in when the sentence carries the «no». If they were removed as
           // stopwords, the negative form would also show up for «quiero» and the
           // model would receive a negated verb for an affirmative sentence.
           const content = tokens
-            .map((t) => t.normalizada)
+            .map((t) => t.normalized)
             .filter((t) => !isSpanishStopword(t) || isSpanishNegation(t));
           if (content.length > 0) {
-            this.phrasesEs.push({ texto: alternative, tokens: content, entrada: entry });
+            this.phrasesEs.push({ text: alternative, tokens: content, entry: entry });
           }
         }
       }
       const tokensDm = tokenizeDamana(dto.damana);
       if (tokensDm.length === 1) {
-        add(this.normalizedDm, tokensDm[0].normalizada, entry);
+        add(this.normalizedDm, tokensDm[0].normalized, entry);
       } else if (tokensDm.length > 1) {
         this.phrasesDm.push({
-          texto: dto.damana,
-          tokens: tokensDm.map((t) => t.normalizada),
-          entrada: entry,
+          text: dto.damana,
+          tokens: tokensDm.map((t) => t.normalized),
+          entry: entry,
         });
       }
     }
@@ -178,31 +178,31 @@ export class DictionaryIndex {
    */
   search(text: string, language: Language): FoundSense[] {
     const tokens = tokenizeDamana(text);
-    const present = new Set(tokens.map((t) => t.normalizada));
+    const present = new Set(tokens.map((t) => t.normalized));
     const result: FoundSense[] = [];
     const seen = new Set<string>();
 
     const emit: Emitter = (word, entries, match) => {
       for (const e of entries) {
-        const key = `${normalize(e.espanol)}|${normalize(e.damana)}`;
+        const key = `${normalize(e.spanish)}|${normalize(e.damana)}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        result.push({ palabra: word, coincidencia: match, ...e });
+        result.push({ word: word, match: match, ...e });
       }
     };
 
     for (const token of tokens) {
       if (language === Language.espanol) {
-        this.searchSpanishWord(token.original, token.normalizada, emit);
+        this.searchSpanishWord(token.original, token.normalized, emit);
       } else {
-        this.searchDamanaWord(token.original, token.normalizada, emit);
+        this.searchDamanaWord(token.original, token.normalized, emit);
       }
     }
 
     const phrases = language === Language.espanol ? this.phrasesEs : this.phrasesDm;
     for (const phrase of phrases) {
       if (phrase.tokens.every((t) => present.has(t))) {
-        emit(phrase.texto, [phrase.entrada], 'frase');
+        emit(phrase.text, [phrase.entry], 'frase');
       }
     }
 
@@ -219,7 +219,7 @@ export class DictionaryIndex {
     const synonyms = SYNONYMS_ES[normalized];
     if (synonyms) {
       const entries = synonyms.flatMap(
-        (s) => this.alternativeEs.get(tokenizeDamana(s).map((t) => t.normalizada).join(' ')) ?? [],
+        (s) => this.alternativeEs.get(tokenizeDamana(s).map((t) => t.normalized).join(' ')) ?? [],
       );
       if (entries.length > 0) return emit(original, entries, 'sinonimo');
     }

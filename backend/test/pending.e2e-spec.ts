@@ -12,7 +12,7 @@ describe('Pending items (e2e)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [DatabaseModule.forRoot({ rutaDb: ':memory:' }), PendingModule],
+      imports: [DatabaseModule.forRoot({ dbPath: ':memory:' }), PendingModule],
     }).compile();
     app = moduleRef.createNestApplication();
     configureApp(app);
@@ -21,8 +21,8 @@ describe('Pending items (e2e)', () => {
 
   afterAll(async () => app.close());
 
-  it('GET /api/pendientes starts empty', async () => {
-    const res = await request(app.getHttpServer()).get('/api/pendientes').expect(200);
+  it('GET /api/pending starts empty', async () => {
+    const res = await request(app.getHttpServer()).get('/api/pending').expect(200);
     expect(res.body).toEqual([]);
   });
 
@@ -32,16 +32,16 @@ describe('Pending items (e2e)', () => {
     repo.recordRequested('vecina', 'espanol', null);
     repo.recordRequested('ñame', 'espanol', 'quiero ñame');
 
-    const res = await request(app.getHttpServer()).get('/api/pendientes').expect(200);
-    expect(res.body.map((p: any) => [p.palabra, p.vecesPedida, p.estado])).toEqual([
+    const res = await request(app.getHttpServer()).get('/api/pending').expect(200);
+    expect(res.body.map((p: any) => [p.word, p.timesRequested, p.status])).toEqual([
       ['vecina', 2, 'pendiente'],
       ['ñame', 1, 'pendiente'],
     ]);
   });
 
-  it('POST /api/pendientes/exportar downloads the elicitation-format Excel and marks them exported', async () => {
+  it('POST /api/pending/export downloads the elicitation-format Excel and marks them exported', async () => {
     const res = await request(app.getHttpServer())
-      .post('/api/pendientes/exportar')
+      .post('/api/pending/export')
       .buffer(true)
       .parse((response, callback) => {
         const chunks: Buffer[] = [];
@@ -60,7 +60,7 @@ describe('Pending items (e2e)', () => {
     expect(sheet.getRow(2).getCell(3).value).toBe('vecina');
     expect(sheet.getRow(3).getCell(3).value).toBe('ñame');
 
-    const after = await request(app.getHttpServer()).get('/api/pendientes').expect(200);
-    expect(after.body.every((p: any) => p.estado === 'exportada')).toBe(true);
+    const after = await request(app.getHttpServer()).get('/api/pending').expect(200);
+    expect(after.body.every((p: any) => p.status === 'exportada')).toBe(true);
   });
 });

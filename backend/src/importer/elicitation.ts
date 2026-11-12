@@ -4,52 +4,52 @@ import { normalizeWrittenDamana } from '../common/text/spelling';
 /** Row of the elicitation format («elicitacion» sheet), already cleaned. */
 export interface ElicitationRow {
   id: string;
-  ambito: string;
-  palabraEs: string;
-  palabraDm: string;
-  ejemploEs: string;
-  ejemploDm: string;
-  variante: string;
-  notas: string;
+  scope: string;
+  wordEs: string;
+  wordDm: string;
+  exampleEs: string;
+  exampleDm: string;
+  variant: string;
+  notes: string;
   /** File it came from (for traceability). */
-  archivo: string;
+  file: string;
 }
 
 export interface ElicitedVocabulary {
-  espanol: string;
+  spanish: string;
   damana: string;
-  categoria: string;
-  notas: string;
-  fuente: string;
+  category: string;
+  notes: string;
+  source: string;
 }
 
 export interface ElicitedSentence {
-  idExterno: string;
+  externalId: string;
   damana: string;
-  espanol: string;
-  fuente: string;
+  spanish: string;
+  source: string;
 }
 
 export interface TranslationTest {
-  espanol: string;
-  damanaEsperado: string;
-  ambito: string;
+  spanish: string;
+  expectedDamana: string;
+  scope: string;
 }
 
 export interface ElicitationPendingItem {
-  palabra: string;
-  contexto: string;
+  word: string;
+  context: string;
 }
 
 export interface ElicitationPlan {
-  vocabulario: ElicitedVocabulary[];
-  oraciones: ElicitedSentence[];
-  pruebas: TranslationTest[];
-  pendientes: ElicitationPendingItem[];
+  vocabulary: ElicitedVocabulary[];
+  sentences: ElicitedSentence[];
+  tests: TranslationTest[];
+  pending: ElicitationPendingItem[];
   /** Words that arrived complete: they close their pending item if there was one. */
-  resueltas: string[];
+  resolved: string[];
   /** ids repeated across files: the last occurrence was kept. */
-  idsRepetidos: number;
+  repeatedIds: number;
 }
 
 export const ELICITATION_SOURCE = 'elicitacion';
@@ -87,14 +87,14 @@ export function parseRow(
   if (!id && !wordEs) return null;
   return {
     id,
-    ambito: (raw['ambito'] ?? '').trim().toLowerCase() || 'otro',
-    palabraEs: wordEs,
-    palabraDm: normalizeWrittenDamana((raw['palabra_dm'] ?? '').trim()),
-    ejemploEs: (raw['ejemplo_es'] ?? '').trim(),
-    ejemploDm: normalizeWrittenDamana((raw['ejemplo_dm'] ?? '').trim()),
-    variante: (raw['variante'] ?? '').trim().toLowerCase(),
-    notas: (raw['notas'] ?? '').trim(),
-    archivo: file,
+    scope: (raw['ambito'] ?? '').trim().toLowerCase() || 'otro',
+    wordEs: wordEs,
+    wordDm: normalizeWrittenDamana((raw['palabra_dm'] ?? '').trim()),
+    exampleEs: (raw['ejemplo_es'] ?? '').trim(),
+    exampleDm: normalizeWrittenDamana((raw['ejemplo_dm'] ?? '').trim()),
+    variant: (raw['variante'] ?? '').trim().toLowerCase(),
+    notes: (raw['notas'] ?? '').trim(),
+    file: file,
   };
 }
 
@@ -110,7 +110,7 @@ export function mergeById(rows: ElicitationRow[]): {
   const byId = new Map<string, ElicitationRow>();
   let repeated = 0;
   for (const row of rows) {
-    const key = row.id || `sin-id:${normalize(row.palabraEs)}`;
+    const key = row.id || `sin-id:${normalize(row.wordEs)}`;
     if (byId.has(key)) repeated++;
     byId.set(key, row);
   }
@@ -126,50 +126,50 @@ export function mergeById(rows: ElicitationRow[]): {
 export function planElicitation(rawRows: ElicitationRow[]): ElicitationPlan {
   const { filas: rows, repetidos: repeated } = mergeById(rawRows);
   const plan: ElicitationPlan = {
-    vocabulario: [],
-    oraciones: [],
-    pruebas: [],
-    pendientes: [],
-    resueltas: [],
-    idsRepetidos: repeated,
+    vocabulary: [],
+    sentences: [],
+    tests: [],
+    pending: [],
+    resolved: [],
+    repeatedIds: repeated,
   };
 
   for (const row of rows) {
-    const notes = [row.variante ? `variante: ${row.variante}` : '', row.notas]
+    const notes = [row.variant ? `variante: ${row.variant}` : '', row.notes]
       .filter(Boolean)
       .join(' · ');
-    const complete = row.palabraDm.length > 0 && row.ejemploDm.length > 0;
+    const complete = row.wordDm.length > 0 && row.exampleDm.length > 0;
 
-    if (row.palabraEs && row.palabraDm) {
-      plan.vocabulario.push({
-        espanol: row.palabraEs,
-        damana: row.palabraDm,
-        categoria: row.ambito,
-        notas: notes,
-        fuente: ELICITATION_SOURCE,
+    if (row.wordEs && row.wordDm) {
+      plan.vocabulary.push({
+        spanish: row.wordEs,
+        damana: row.wordDm,
+        category: row.scope,
+        notes: notes,
+        source: ELICITATION_SOURCE,
       });
     }
 
-    if (row.ejemploEs && row.ejemploDm) {
+    if (row.exampleEs && row.exampleDm) {
       if (isTestRow(row.id)) {
-        plan.pruebas.push({
-          espanol: row.ejemploEs,
-          damanaEsperado: row.ejemploDm,
-          ambito: row.ambito,
+        plan.tests.push({
+          spanish: row.exampleEs,
+          expectedDamana: row.exampleDm,
+          scope: row.scope,
         });
       } else {
-        plan.oraciones.push({
-          idExterno: `elic_${row.id || normalize(row.palabraEs)}`,
-          damana: row.ejemploDm,
-          espanol: row.ejemploEs,
-          fuente: ELICITATION_SOURCE,
+        plan.sentences.push({
+          externalId: `elic_${row.id || normalize(row.wordEs)}`,
+          damana: row.exampleDm,
+          spanish: row.exampleEs,
+          source: ELICITATION_SOURCE,
         });
       }
     }
 
-    if (row.palabraEs) {
-      if (complete) plan.resueltas.push(row.palabraEs);
-      else plan.pendientes.push({ palabra: row.palabraEs, contexto: row.ejemploEs });
+    if (row.wordEs) {
+      if (complete) plan.resolved.push(row.wordEs);
+      else plan.pending.push({ word: row.wordEs, context: row.exampleEs });
     }
   }
   return plan;

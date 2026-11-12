@@ -42,11 +42,11 @@ Status legend: 🔲 not started · 🔧 in progress · ✅ done
 | # | Item | Est. | Status |
 | --- | --- | --- | --- |
 | 5.1 | Grow the sample corpus into a self-contained demo data set (enough entries to exercise lessons and flashcards without the private corpus) | 3 h | 🔲 |
-| 5.2 | Finish the English migration: comments, test titles and backend/frontend class, function and file names are done; remaining are API routes, JSON field names and DTO/interface properties (backend and frontend together) | 3 h | 🔲 |
+| 5.2 | English migration of the codebase: comments, tests, class/function/file names, API routes and JSON field names. Database columns, CSV/Excel headers and stored values intentionally stay in Spanish (they are language data shared with the speakers) | — | ✅ |
 | 5.3 | CI on GitHub Actions for PRs (lint, unit, e2e) separate from the deploy workflow | 2 h | 🔲 |
 | 5.4 | Persistent storage for runtime data (SRS progress, validated translations) instead of baking SQLite into the image | 2 h | 🔲 |
 
-**Total planned: ≈ 70 h.**
+**Total planned: ≈ 67 h.**
 
 ## Done recently
 

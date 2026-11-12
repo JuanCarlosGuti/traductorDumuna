@@ -32,8 +32,8 @@ describe('AuthService', () => {
   it('stores token and user on login', async () => {
     const signingIn = service.signIn('juan', 'ñandú-ʉnkua');
     const httpRequest = http.expectOne('/api/auth/login');
-    expect(httpRequest.request.body).toEqual({ usuario: 'juan', password: 'ñandú-ʉnkua' });
-    httpRequest.flush({ token: 'abc.def.ghi', usuario: 'juan', duracionDias: 30 });
+    expect(httpRequest.request.body).toEqual({ user: 'juan', password: 'ñandú-ʉnkua' });
+    httpRequest.flush({ token: 'abc.def.ghi', user: 'juan', durationDays: 30 });
     await signingIn;
 
     expect(service.authenticated()).toBe(true);
@@ -54,8 +54,8 @@ describe('AuthService', () => {
     const signingIn = service.signIn('juan', 'x');
     http.expectOne('/api/auth/login').flush({
       token: 't',
-      usuario: 'juan',
-      duracionDias: 30,
+      user: 'juan',
+      durationDays: 30,
     });
     await signingIn;
 
@@ -66,7 +66,7 @@ describe('AuthService', () => {
 
   it('asks the server whether it requires a session, and remembers it', async () => {
     const first = service.requiresSession();
-    http.expectOne('/api/auth/estado').flush({ activa: true });
+    http.expectOne('/api/auth/status').flush({ active: true });
     expect(await first).toBe(true);
 
     // The second one does not ask again: http.verify() would fail if it did.
@@ -75,7 +75,7 @@ describe('AuthService', () => {
 
   it('if it cannot ask, it assumes a session is needed', async () => {
     const queryText = service.requiresSession();
-    http.expectOne('/api/auth/estado').error(new ProgressEvent('error'));
+    http.expectOne('/api/auth/status').error(new ProgressEvent('error'));
     expect(await queryText).toBe(true);
   });
 });

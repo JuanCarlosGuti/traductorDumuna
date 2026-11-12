@@ -40,23 +40,23 @@ describe('authInterceptor', () => {
     const signingIn = auth.signIn('juan', 'x');
     control.expectOne('/api/auth/login').flush({
       token: 'token-valido',
-      usuario: 'juan',
-      duracionDias: 30,
+      user: 'juan',
+      durationDays: 30,
     });
     await signingIn;
   };
 
   it('without a session it adds no header', () => {
-    void firstValueFrom(http.get('/api/vocabulario'));
-    const httpRequest = control.expectOne('/api/vocabulario');
+    void firstValueFrom(http.get('/api/vocabulary'));
+    const httpRequest = control.expectOne('/api/vocabulary');
     expect(httpRequest.request.headers.has('Authorization')).toBe(false);
     httpRequest.flush([]);
   });
 
   it('with a session it adds Authorization: Bearer', async () => {
     await withSession();
-    void firstValueFrom(http.get('/api/vocabulario'));
-    const httpRequest = control.expectOne('/api/vocabulario');
+    void firstValueFrom(http.get('/api/vocabulary'));
+    const httpRequest = control.expectOne('/api/vocabulary');
     expect(httpRequest.request.headers.get('Authorization')).toBe('Bearer token-valido');
     httpRequest.flush([]);
   });
@@ -71,9 +71,9 @@ describe('authInterceptor', () => {
 
   it('a 401 logs out and leads to login', async () => {
     await withSession();
-    const call = firstValueFrom(http.get('/api/vocabulario')).catch(() => null);
+    const call = firstValueFrom(http.get('/api/vocabulary')).catch(() => null);
     control
-      .expectOne('/api/vocabulario')
+      .expectOne('/api/vocabulary')
       .flush({}, { status: 401, statusText: 'Unauthorized' });
     await call;
 
@@ -93,9 +93,9 @@ describe('authInterceptor', () => {
 
   it('other errors do not log out', async () => {
     await withSession();
-    const call = firstValueFrom(http.get('/api/vocabulario')).catch(() => null);
+    const call = firstValueFrom(http.get('/api/vocabulary')).catch(() => null);
     control
-      .expectOne('/api/vocabulario')
+      .expectOne('/api/vocabulary')
       .flush({}, { status: 500, statusText: 'Server Error' });
     await call;
 

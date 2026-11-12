@@ -9,36 +9,36 @@ import { PendingView } from './pending';
 const PENDING_ITEMS: PendingItem[] = [
   {
     id: 1,
-    palabra: 'vecina',
-    idioma: 'espanol',
-    contexto: 'mi vecina cocina',
-    vecesPedida: 3,
-    estado: 'pendiente',
-    origen: 'traductor',
-    creadoEn: '2026-10-01T00:00:00.000Z',
-    actualizadoEn: '2026-10-02T00:00:00.000Z',
+    word: 'vecina',
+    language: 'espanol',
+    context: 'mi vecina cocina',
+    timesRequested: 3,
+    status: 'pendiente',
+    origin: 'traductor',
+    createdAt: '2026-10-01T00:00:00.000Z',
+    updatedAt: '2026-10-02T00:00:00.000Z',
   },
   {
     id: 2,
-    palabra: 'kʉzhigui',
-    idioma: 'damana',
-    contexto: 'kʉzhigui gontka',
-    vecesPedida: 1,
-    estado: 'pendiente',
-    origen: 'traductor',
-    creadoEn: '2026-10-01T00:00:00.000Z',
-    actualizadoEn: '2026-10-01T00:00:00.000Z',
+    word: 'kʉzhigui',
+    language: 'damana',
+    context: 'kʉzhigui gontka',
+    timesRequested: 1,
+    status: 'pendiente',
+    origin: 'traductor',
+    createdAt: '2026-10-01T00:00:00.000Z',
+    updatedAt: '2026-10-01T00:00:00.000Z',
   },
   {
     id: 3,
-    palabra: 'ñame',
-    idioma: 'espanol',
-    contexto: null,
-    vecesPedida: 1,
-    estado: 'resuelta',
-    origen: 'elicitacion',
-    creadoEn: '2026-09-01T00:00:00.000Z',
-    actualizadoEn: '2026-09-02T00:00:00.000Z',
+    word: 'ñame',
+    language: 'espanol',
+    context: null,
+    timesRequested: 1,
+    status: 'resuelta',
+    origin: 'elicitacion',
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-02T00:00:00.000Z',
   },
 ];
 
@@ -58,7 +58,7 @@ describe('Pendientes', () => {
   const start = async (list: PendingItem[] = PENDING_ITEMS) => {
     fixture = await mount(PendingView);
     http = TestBed.inject(HttpTestingController);
-    http.expectOne('/api/pendientes').flush(list);
+    http.expectOne('/api/pending').flush(list);
     await settle(fixture);
   };
 
@@ -101,7 +101,7 @@ describe('Pendientes', () => {
       queryAll(fixture, 'button').find((b) => /Exportar/.test(b.textContent ?? ''))!.click();
       await settle(fixture);
 
-      const httpRequest = http.expectOne('/api/pendientes/exportar');
+      const httpRequest = http.expectOne('/api/pending/export');
       expect(httpRequest.request.method).toBe('POST');
       expect(httpRequest.request.responseType).toBe('blob');
       httpRequest.flush(new Blob(['xlsx']), {
@@ -109,7 +109,7 @@ describe('Pendientes', () => {
       });
       await settle(fixture);
 
-      http.expectOne('/api/pendientes').flush(PENDING_ITEMS.map((p) => ({ ...p, estado: p.estado === 'pendiente' ? 'exportada' : p.estado })));
+      http.expectOne('/api/pending').flush(PENDING_ITEMS.map((p) => ({ ...p, status: p.status === 'pendiente' ? 'exportada' : p.status })));
       await settle(fixture);
 
       expect(create).toHaveBeenCalledTimes(1);
@@ -126,7 +126,7 @@ describe('Pendientes', () => {
   it('a loading error is shown', async () => {
     fixture = await mount(PendingView);
     http = TestBed.inject(HttpTestingController);
-    http.expectOne('/api/pendientes').flush({ message: 'base de datos bloqueada' }, { status: 500, statusText: 'Error' });
+    http.expectOne('/api/pending').flush({ message: 'base de datos bloqueada' }, { status: 500, statusText: 'Error' });
     await settle(fixture);
     expect(text(fixture)).toContain('base de datos bloqueada');
   });

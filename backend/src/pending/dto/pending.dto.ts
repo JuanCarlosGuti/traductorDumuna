@@ -5,26 +5,26 @@ export class PendingItemDto {
   id!: number;
 
   @ApiProperty({ example: 'vecina' })
-  palabra!: string;
+  word!: string;
 
   @ApiProperty({ enum: ['espanol', 'damana'], description: 'Idioma de la palabra que falta' })
-  idioma!: 'espanol' | 'damana';
+  language!: 'espanol' | 'damana';
 
   @ApiProperty({ nullable: true, description: 'Frase original del usuario donde apareció' })
-  contexto!: string | null;
+  context!: string | null;
 
   @ApiProperty({ description: 'Veces que el traductor la devolvió sin equivalente' })
-  vecesPedida!: number;
+  timesRequested!: number;
 
   @ApiProperty({ enum: ['pendiente', 'exportada', 'resuelta'] })
-  estado!: 'pendiente' | 'exportada' | 'resuelta';
+  status!: 'pendiente' | 'exportada' | 'resuelta';
 
   @ApiProperty({ enum: ['traductor', 'elicitacion'] })
-  origen!: 'traductor' | 'elicitacion';
+  origin!: 'traductor' | 'elicitacion';
 
   @ApiProperty()
-  creadoEn!: string;
+  createdAt!: string;
 
   @ApiProperty()
-  actualizadoEn!: string;
+  updatedAt!: string;
 }

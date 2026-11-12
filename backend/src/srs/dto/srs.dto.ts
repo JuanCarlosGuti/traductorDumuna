@@ -6,51 +6,51 @@ export class SrsAnswerDto {
   @ApiProperty({ description: 'La palabra de la tarjeta respondida', example: 'nʉnka' })
   @IsString()
   @IsNotEmpty()
-  palabra!: string;
+  word!: string;
 
   @ApiProperty({ enum: Grade })
   @IsEnum(Grade)
-  calificacion!: Grade;
+  grade!: Grade;
 }
 
 export class SrsCardDto {
   @ApiProperty({ description: 'Palabra o expresión damana (anverso)' })
-  palabra!: string;
+  word!: string;
 
   @ApiProperty({ enum: ['vocabulario', 'frecuencia'], description: 'De dónde sale la tarjeta' })
-  tipo!: 'vocabulario' | 'frecuencia';
+  type!: 'vocabulario' | 'frecuencia';
 
   @ApiProperty({
     description:
       'Reverso: la traducción del vocabulario, o las traducciones candidatas para palabras frecuentes',
   })
-  traduccion!: string;
+  translation!: string;
 
   @ApiProperty()
-  repeticiones!: number;
+  repetitions!: number;
 }
 
 export class SrsStatusDto {
   @ApiProperty({ type: SrsCardDto, nullable: true, description: 'null si no queda nada por repasar' })
-  tarjeta!: SrsCardDto | null;
+  card!: SrsCardDto | null;
 
   @ApiProperty({ description: 'Tarjetas ya vistas cuya revisión venció' })
-  pendientes!: number;
+  pendingCards!: number;
 
   @ApiProperty({ description: 'Tarjetas nunca vistas' })
-  nuevas!: number;
+  newCards!: number;
 }
 
 export class UpdatedProgressDto {
   @ApiProperty()
-  palabra!: string;
+  word!: string;
 
   @ApiProperty()
-  repeticiones!: number;
+  repetitions!: number;
 
   @ApiProperty()
-  intervaloDias!: number;
+  intervalDays!: number;
 
   @ApiProperty({ description: 'ISO 8601' })
-  proximaRevision!: string;
+  nextReview!: string;
 }

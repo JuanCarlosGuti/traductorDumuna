@@ -20,12 +20,12 @@ export class SearchQueryDto {
   @ApiPropertyOptional({ enum: Language, default: Language.damana, description: 'Idioma en el que se busca' })
   @IsOptional()
   @IsEnum(Language)
-  idioma: Language = Language.damana;
+  language: Language = Language.damana;
 
   @ApiPropertyOptional({ enum: CorpusSource, description: 'Restringir a una fuente del corpus' })
   @IsOptional()
   @IsEnum(CorpusSource)
-  fuente?: CorpusSource;
+  source?: CorpusSource;
 
   @ApiPropertyOptional({ default: 100, minimum: 1, maximum: 1000, description: 'Máximo de concordancias devueltas' })
   @IsOptional()
@@ -33,7 +33,7 @@ export class SearchQueryDto {
   @IsInt()
   @Min(1)
   @Max(1000)
-  limite = 100;
+  limit = 100;
 }
 
 export class FrequenciesQueryDto {
@@ -43,80 +43,80 @@ export class FrequenciesQueryDto {
   @IsInt()
   @Min(1)
   @Max(10000)
-  limite = 500;
+  limit = 500;
 }
 
 export class ConcordanceDto {
   @ApiProperty({ enum: CorpusSource })
-  fuente!: CorpusSource;
+  source!: CorpusSource;
 
   @ApiProperty({ description: 'rowid de la fila en su tabla de origen' })
   id!: number;
 
   @ApiProperty({ example: 'capítulo 3', description: 'Referencia legible: capítulo N / frase N (fuente) / vocabulario N' })
-  referencia!: string;
+  reference!: string;
 
   @ApiProperty({ description: 'Contexto ±120 caracteres cortado en límite de palabra; la palabra encontrada va envuelta en <mark> y el resto escapado como HTML' })
-  fragmento!: string;
+  fragment!: string;
 
   @ApiProperty({ description: 'Texto completo paralelo en el otro idioma' })
-  textoParalelo!: string;
+  parallelText!: string;
 
   @ApiProperty({
     nullable: true,
     description: 'Solo en modo similitud: puntaje coseno TF-IDF (las oraciones estado=revisar pesan la mitad)',
   })
-  puntaje!: number | null;
+  score!: number | null;
 }
 
 export class SearchResponseDto {
   @ApiProperty()
-  consulta!: string;
+  query!: string;
 
   @ApiProperty({ enum: Language })
-  idioma!: Language;
+  language!: Language;
 
   @ApiProperty({
     enum: ['concordancia', 'similitud'],
     description: 'concordancia = consulta de una palabra (ocurrencias exactas); similitud = varias palabras (TF-IDF sobre oraciones, frases y conjugaciones)',
   })
-  modo!: 'concordancia' | 'similitud';
+  mode!: 'concordancia' | 'similitud';
 
   @ApiProperty({ description: 'Total de ocurrencias encontradas (puede superar a las devueltas si excede el límite)' })
   total!: number;
 
   @ApiProperty({ type: [ConcordanceDto] })
-  resultados!: ConcordanceDto[];
+  results!: ConcordanceDto[];
 }
 
 export class SourceFrequencyDto {
   @ApiProperty({ enum: CorpusSource })
-  fuente!: CorpusSource;
+  source!: CorpusSource;
 
   @ApiProperty()
-  frecuencia!: number;
+  frequency!: number;
 }
 
 export class CandidateTranslationDto {
   @ApiProperty({ description: 'Palabra española normalizada que co-ocurre en los textos paralelos' })
-  palabra!: string;
+  word!: string;
 
   @ApiProperty({ description: 'En cuántos textos paralelos co-ocurre (conteo de ocurrencias)' })
-  coocurrencias!: number;
+  cooccurrences!: number;
 }
 
 export class WordCardVocabularyEntryDto {
   @ApiProperty({ description: 'Traducción directa registrada en el vocabulario' })
-  espanol!: string;
+  spanish!: string;
 
   @ApiProperty({ nullable: true })
-  categoria!: string | null;
+  category!: string | null;
 
   @ApiProperty({ nullable: true })
-  notas!: string | null;
+  notes!: string | null;
 
   @ApiProperty({ nullable: true })
-  fuente!: string | null;
+  source!: string | null;
 }
 
 export class VerbFormDto {
@@ -124,59 +124,59 @@ export class VerbFormDto {
   damana!: string;
 
   @ApiProperty({ example: 'yo tuve', description: 'Glosa de la forma conjugada' })
-  espanol!: string;
+  spanish!: string;
 
   @ApiProperty({ example: 'tener' })
-  lema!: string;
+  lemma!: string;
 }
 
 export class WordCardDto {
   @ApiProperty({ description: 'La palabra en forma normalizada' })
-  palabra!: string;
+  word!: string;
 
   @ApiProperty({
     type: [WordCardVocabularyEntryDto],
     description: 'Traducciones directas: entradas de vocabulario cuyo damana coincide con la palabra',
   })
-  entradasVocabulario!: WordCardVocabularyEntryDto[];
+  vocabularyEntries!: WordCardVocabularyEntryDto[];
 
   @ApiProperty({
     type: [VerbFormDto],
     description: 'Si la palabra es una forma conjugada, su glosa y lema',
   })
-  formasVerbales!: VerbFormDto[];
+  verbForms!: VerbFormDto[];
 
   @ApiProperty()
-  frecuenciaTotal!: number;
+  totalFrequency!: number;
 
   @ApiProperty({ type: [SourceFrequencyDto] })
-  frecuenciaPorFuente!: SourceFrequencyDto[];
+  frequencyBySource!: SourceFrequencyDto[];
 
   @ApiProperty({ type: [ConcordanceDto], description: 'Primeras 10 concordancias' })
-  concordancias!: ConcordanceDto[];
+  concordances!: ConcordanceDto[];
 
   @ApiProperty({ type: [CandidateTranslationDto], description: '10 palabras españolas que más co-ocurren en los textos paralelos (traducciones candidatas estadísticas, sin stopwords)' })
-  traduccionesCandidatas!: CandidateTranslationDto[];
+  candidateTranslations!: CandidateTranslationDto[];
 }
 
 export class FrequencyDto {
   @ApiProperty()
-  palabra!: string;
+  word!: string;
 
   @ApiProperty()
-  frecuencia!: number;
+  frequency!: number;
 
   @ApiProperty({
     nullable: true,
     description: 'Traducción directa del vocabulario (o glosa de conjugación) cuando el damana coincide con la palabra',
   })
-  traduccion!: string | null;
+  translation!: string | null;
 
   @ApiProperty({
     nullable: true,
     description: 'Categoría de la entrada de vocabulario cuyo damana coincide con la palabra, si existe',
   })
-  categoria!: string | null;
+  category!: string | null;
 }
 
 export class VocabularyDto {
@@ -184,19 +184,19 @@ export class VocabularyDto {
   id!: number;
 
   @ApiProperty()
-  espanol!: string;
+  spanish!: string;
 
   @ApiProperty()
   damana!: string;
 
   @ApiProperty({ nullable: true, example: 'Verbos' })
-  categoria!: string | null;
+  category!: string | null;
 
   @ApiProperty({ nullable: true })
-  notas!: string | null;
+  notes!: string | null;
 
   @ApiProperty({ nullable: true })
-  fuente!: string | null;
+  source!: string | null;
 }
 
 export class PhraseDto {
@@ -204,27 +204,27 @@ export class PhraseDto {
   id!: number;
 
   @ApiProperty({ nullable: true })
-  fuente!: string | null;
+  source!: string | null;
 
   @ApiProperty()
   damana!: string;
 
   @ApiProperty({ nullable: true })
-  espanol!: string | null;
+  spanish!: string | null;
 
   @ApiProperty({ nullable: true })
-  notas!: string | null;
+  notes!: string | null;
 
   @ApiProperty({ enum: ['biblico', 'cotidiano', 'gramatica'], description: 'Registro de lengua del par' })
-  dominio!: 'biblico' | 'cotidiano' | 'gramatica';
+  domain!: 'biblico' | 'cotidiano' | 'gramatica';
 }
 
 export class LemmaDto {
   @ApiProperty({ example: 'tener' })
-  lema!: string;
+  lemma!: string;
 
   @ApiProperty({ description: 'Número de formas conjugadas' })
-  formas!: number;
+  forms!: number;
 }
 
 export class ConjugationDto {
@@ -235,24 +235,24 @@ export class ConjugationDto {
   damana!: string;
 
   @ApiProperty({ example: 'yo tuve', description: 'Glosa en español' })
-  espanol!: string;
+  spanish!: string;
 
   @ApiProperty({ example: 'tener' })
-  lema!: string;
+  lemma!: string;
 
   @ApiProperty({ nullable: true })
-  fuente!: string | null;
+  source!: string | null;
 
   @ApiProperty({ nullable: true })
-  notas!: string | null;
+  notes!: string | null;
 }
 
 export class ConjugationTableDto {
   @ApiProperty()
-  lema!: string;
+  lemma!: string;
 
   @ApiProperty({ type: [ConjugationDto] })
-  conjugaciones!: ConjugationDto[];
+  conjugations!: ConjugationDto[];
 }
 
 export class ProperNameDto {
@@ -263,14 +263,14 @@ export class ProperNameDto {
   damana!: string;
 
   @ApiProperty({ example: 'Jehová' })
-  espanol!: string;
+  spanish!: string;
 
   @ApiProperty()
-  seEscribeIgual!: boolean;
+  sameSpelling!: boolean;
 
   @ApiProperty({ type: [String], description: 'Otras grafías vistas en las fuentes' })
-  otrasGrafias!: string[];
+  otherSpellings!: string[];
 
   @ApiProperty({ nullable: true })
-  notas!: string | null;
+  notes!: string | null;
 }

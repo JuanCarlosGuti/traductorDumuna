@@ -4,42 +4,42 @@ import { TranslationTest } from '../importer/elicitation';
 import { chrF } from './chrf';
 
 export interface ResponseToEvaluate {
-  traduccion: string;
-  palabrasSinEquivalente: string[];
-  confianza: number;
+  translation: string;
+  wordsWithoutEquivalent: string[];
+  confidence: number;
 }
 
 export interface EvaluatedTest {
-  espanol: string;
-  esperado: string;
-  obtenido: string;
-  ambito: string;
-  exacta: boolean;
+  spanish: string;
+  expected: string;
+  obtained: string;
+  scope: string;
+  exact: boolean;
   chrf: number;
-  sinEquivalente: string[];
+  withoutEquivalent: string[];
   /** Words without an equivalent / words of the input sentence. */
-  proporcionSinEquivalente: number;
-  confianza: number;
+  withoutEquivalentRatio: number;
+  confidence: number;
   error: string | null;
 }
 
 export interface ScopeSummary {
-  ambito: string;
-  pruebas: number;
-  exactas: number;
-  porcentajeExactas: number;
-  chrfMedio: number;
-  porcentajeSinEquivalente: number;
-  errores: number;
+  scope: string;
+  tests: number;
+  exactCount: number;
+  exactPercent: number;
+  meanChrf: number;
+  withoutEquivalentPercent: number;
+  errors: number;
 }
 
 export interface Report {
-  fecha: string;
-  proveedor: string | null;
-  modelo: string | null;
+  date: string;
+  provider: string | null;
+  model: string | null;
   total: ScopeSummary;
-  porAmbito: ScopeSummary[];
-  pruebas: EvaluatedTest[];
+  byScope: ScopeSummary[];
+  tests: EvaluatedTest[];
 }
 
 /**
@@ -59,17 +59,17 @@ export function isExactMatch(obtained: string, expected: string): boolean {
 }
 
 export function evaluateTest(testCase: TranslationTest, response: ResponseToEvaluate): EvaluatedTest {
-  const inputWords = tokenizeDamana(testCase.espanol).length || 1;
+  const inputWords = tokenizeDamana(testCase.spanish).length || 1;
   return {
-    espanol: testCase.espanol,
-    esperado: testCase.damanaEsperado,
-    obtenido: response.traduccion,
-    ambito: testCase.ambito,
-    exacta: isExactMatch(response.traduccion, testCase.damanaEsperado),
-    chrf: chrF(response.traduccion, testCase.damanaEsperado),
-    sinEquivalente: response.palabrasSinEquivalente,
-    proporcionSinEquivalente: Math.min(1, response.palabrasSinEquivalente.length / inputWords),
-    confianza: response.confianza,
+    spanish: testCase.spanish,
+    expected: testCase.expectedDamana,
+    obtained: response.translation,
+    scope: testCase.scope,
+    exact: isExactMatch(response.translation, testCase.expectedDamana),
+    chrf: chrF(response.translation, testCase.expectedDamana),
+    withoutEquivalent: response.wordsWithoutEquivalent,
+    withoutEquivalentRatio: Math.min(1, response.wordsWithoutEquivalent.length / inputWords),
+    confidence: response.confidence,
     error: null,
   };
 }
@@ -77,15 +77,15 @@ export function evaluateTest(testCase: TranslationTest, response: ResponseToEval
 /** A test that could not be translated counts as failed, it is not skipped. */
 export function failedTest(testCase: TranslationTest, error: string): EvaluatedTest {
   return {
-    espanol: testCase.espanol,
-    esperado: testCase.damanaEsperado,
-    obtenido: '',
-    ambito: testCase.ambito,
-    exacta: false,
+    spanish: testCase.spanish,
+    expected: testCase.expectedDamana,
+    obtained: '',
+    scope: testCase.scope,
+    exact: false,
     chrf: 0,
-    sinEquivalente: [],
-    proporcionSinEquivalente: 1,
-    confianza: 0,
+    withoutEquivalent: [],
+    withoutEquivalentRatio: 1,
+    confidence: 0,
     error,
   };
 }
@@ -94,52 +94,52 @@ const mean = (values: number[]): number =>
   values.length ? values.reduce((s, v) => s + v, 0) / values.length : 0;
 
 export function summarize(testCases: EvaluatedTest[], scope: string): ScopeSummary {
-  const exactOnes = testCases.filter((p) => p.exacta).length;
+  const exactOnes = testCases.filter((p) => p.exact).length;
   return {
-    ambito: scope,
-    pruebas: testCases.length,
-    exactas: exactOnes,
-    porcentajeExactas: testCases.length ? (100 * exactOnes) / testCases.length : 0,
-    chrfMedio: mean(testCases.map((p) => p.chrf)),
-    porcentajeSinEquivalente: 100 * mean(testCases.map((p) => p.proporcionSinEquivalente)),
-    errores: testCases.filter((p) => p.error !== null).length,
+    scope: scope,
+    tests: testCases.length,
+    exactCount: exactOnes,
+    exactPercent: testCases.length ? (100 * exactOnes) / testCases.length : 0,
+    meanChrf: mean(testCases.map((p) => p.chrf)),
+    withoutEquivalentPercent: 100 * mean(testCases.map((p) => p.withoutEquivalentRatio)),
+    errors: testCases.filter((p) => p.error !== null).length,
   };
 }
 
 export function buildReport(
   testCases: EvaluatedTest[],
-  meta: { fecha: Date; proveedor: string | null; modelo: string | null },
+  meta: { date: Date; provider: string | null; model: string | null },
 ): Report {
-  const scopes = [...new Set(testCases.map((p) => p.ambito))].sort((a, b) => a.localeCompare(b, 'es'));
+  const scopes = [...new Set(testCases.map((p) => p.scope))].sort((a, b) => a.localeCompare(b, 'es'));
   return {
-    fecha: meta.fecha.toISOString(),
-    proveedor: meta.proveedor,
-    modelo: meta.modelo,
+    date: meta.date.toISOString(),
+    provider: meta.provider,
+    model: meta.model,
     total: summarize(testCases, 'TOTAL'),
-    porAmbito: scopes.map((a) => summarize(testCases.filter((p) => p.ambito === a), a)),
-    pruebas: testCases,
+    byScope: scopes.map((a) => summarize(testCases.filter((p) => p.scope === a), a)),
+    tests: testCases,
   };
 }
 
 const pct = (v: number): string => `${v.toFixed(1)} %`;
 
 export function renderMarkdown(report: Report): string {
-  const rows = [...report.porAmbito, report.total]
+  const rows = [...report.byScope, report.total]
     .map(
       (r) =>
-        `| ${r.ambito} | ${r.pruebas} | ${r.exactas} (${pct(r.porcentajeExactas)}) | ${r.chrfMedio.toFixed(3)} | ${pct(r.porcentajeSinEquivalente)} | ${r.errores} |`,
+        `| ${r.scope} | ${r.tests} | ${r.exactCount} (${pct(r.exactPercent)}) | ${r.meanChrf.toFixed(3)} | ${pct(r.withoutEquivalentPercent)} | ${r.errors} |`,
     )
     .join('\n');
-  const detail = report.pruebas
+  const detail = report.tests
     .map((p) => {
-      const status = p.error ? `ERROR: ${p.error}` : p.exacta ? 'exacta' : `chrF ${p.chrf.toFixed(3)}`;
-      const missing = p.sinEquivalente.length ? ` · sin equivalente: ${p.sinEquivalente.join(', ')}` : '';
-      return `- **${p.espanol}** (${p.ambito})\n  - esperado: ${p.esperado}\n  - obtenido: ${p.obtenido || '—'}\n  - ${status}${missing}`;
+      const status = p.error ? `ERROR: ${p.error}` : p.exact ? 'exacta' : `chrF ${p.chrf.toFixed(3)}`;
+      const missing = p.withoutEquivalent.length ? ` · sin equivalente: ${p.withoutEquivalent.join(', ')}` : '';
+      return `- **${p.spanish}** (${p.scope})\n  - esperado: ${p.expected}\n  - obtenido: ${p.obtained || '—'}\n  - ${status}${missing}`;
     })
     .join('\n');
   return (
-    `# Evaluación del traductor — ${report.fecha.slice(0, 16).replace('T', ' ')}\n\n` +
-    `Motor: ${report.proveedor ?? '—'} · modelo: ${report.modelo ?? '—'} · pruebas: ${report.total.pruebas}\n\n` +
+    `# Evaluación del traductor — ${report.date.slice(0, 16).replace('T', ' ')}\n\n` +
+    `Motor: ${report.provider ?? '—'} · modelo: ${report.model ?? '—'} · pruebas: ${report.total.tests}\n\n` +
     '| ámbito | pruebas | exactas | chrF medio | sin equivalente | errores |\n' +
     '|---|---:|---:|---:|---:|---:|\n' +
     `${rows}\n\n## Detalle\n\n${detail}\n`

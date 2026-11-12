@@ -8,14 +8,14 @@
   <p class="suave">Cargando…</p>
 } @else {
   <div class="lemas">
-    @for (l of lemmas(); track l.lema) {
+    @for (l of lemmas(); track l.lemma) {
       <button
         type="button"
         class="boton-suave"
-        [class.activo]="table()?.lema === l.lema"
-        (click)="choose(l.lema)"
+        [class.activo]="table()?.lemma === l.lemma"
+        (click)="choose(l.lemma)"
       >
-        {{ l.lema }} <span class="suave">· {{ l.formas }}</span>
+        {{ l.lemma }} <span class="suave">· {{ l.forms }}</span>
       </button>
     } @empty {
       <p class="suave">No hay conjugaciones. ¿Se ejecutó el importador?</p>
@@ -30,7 +30,7 @@
     <p class="suave">Cargando conjugación…</p>
   } @else if (table(); as t) {
     <section class="panel">
-      <h2>{{ t.lema }} <span class="suave chiquito">({{ t.conjugaciones.length }} formas)</span></h2>
+      <h2>{{ t.lemma }} <span class="suave chiquito">({{ t.conjugations.length }} formas)</span></h2>
       <table class="tabla">
         <thead>
           <tr>
@@ -40,11 +40,11 @@
           </tr>
         </thead>
         <tbody>
-          @for (c of t.conjugaciones; track c.id) {
+          @for (c of t.conjugations; track c.id) {
             <tr>
               <td lang="mbp" class="forma">{{ c.damana }}</td>
-              <td>{{ c.espanol }}</td>
-              <td class="suave chiquito">{{ c.notas ?? '' }}</td>
+              <td>{{ c.spanish }}</td>
+              <td class="suave chiquito">{{ c.notes ?? '' }}</td>
             </tr>
           }
         </tbody>

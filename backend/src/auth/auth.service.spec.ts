@@ -5,11 +5,11 @@ import { AuthService, BLOCK_MS, MAX_ATTEMPTS } from './auth.service';
 const PASSWORD_VALUE = 'ñandú-ʉnkua-2026';
 
 const config: ConfigAuth = {
-  activa: true,
-  usuario: 'juan',
+  active: true,
+  user: 'juan',
   password: PASSWORD_VALUE,
-  secreto: 'secreto-de-prueba-suficientemente-largo',
-  duracionDias: 30,
+  secret: 'secreto-de-prueba-suficientemente-largo',
+  durationDays: 30,
 };
 
 describe('AuthService', () => {
@@ -19,8 +19,8 @@ describe('AuthService', () => {
     service = new AuthService(
       config,
       new JwtService({
-        secret: config.secreto,
-        signOptions: { expiresIn: `${config.duracionDias}d` },
+        secret: config.secret,
+        signOptions: { expiresIn: `${config.durationDays}d` },
       }),
     );
   });
@@ -62,7 +62,7 @@ describe('AuthService', () => {
   it('an expired token is not valid', () => {
     const ephemeral = new AuthService(
       config,
-      new JwtService({ secret: config.secreto, signOptions: { expiresIn: '-1s' } }),
+      new JwtService({ secret: config.secret, signOptions: { expiresIn: '-1s' } }),
     );
     expect(service.userFromToken(ephemeral.issueToken('juan'))).toBeNull();
   });

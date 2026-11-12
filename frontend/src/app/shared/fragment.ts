@@ -1,7 +1,7 @@
 export interface FragmentSegment {
-  texto: string;
-  esPalabra: boolean;
-  resaltado: boolean;
+  text: string;
+  isWord: boolean;
+  highlighted: boolean;
 }
 
 const RE_PALABRA = /[\p{L}ʉ']+/gu;
@@ -34,13 +34,13 @@ export function segmentFragment(fragmentHtml: string): FragmentSegment[] {
     for (const m of text.matchAll(RE_PALABRA)) {
       const startIndex = m.index ?? 0;
       if (startIndex > last) {
-        segments.push({ texto: text.slice(last, startIndex), esPalabra: false, resaltado: highlighted });
+        segments.push({ text: text.slice(last, startIndex), isWord: false, highlighted: highlighted });
       }
-      segments.push({ texto: m[0], esPalabra: true, resaltado: highlighted });
+      segments.push({ text: m[0], isWord: true, highlighted: highlighted });
       last = startIndex + m[0].length;
     }
     if (last < text.length) {
-      segments.push({ texto: text.slice(last), esPalabra: false, resaltado: highlighted });
+      segments.push({ text: text.slice(last), isWord: false, highlighted: highlighted });
     }
   }
   return segments;

@@ -38,7 +38,7 @@ describe('sessionStarted', () => {
 
   it('without a session and with auth active it sends to /entrar', async () => {
     const result = run();
-    http.expectOne('/api/auth/estado').flush({ activa: true });
+    http.expectOne('/api/auth/status').flush({ active: true });
 
     const target = await result;
     expect(target).toBeInstanceOf(UrlTree);
@@ -47,20 +47,20 @@ describe('sessionStarted', () => {
 
   it('without a session but with the API open (local) it lets through', async () => {
     const result = run();
-    http.expectOne('/api/auth/estado').flush({ activa: false });
+    http.expectOne('/api/auth/status').flush({ active: false });
     expect(await result).toBe(true);
   });
 
   it('if the state cannot be queried, it plays safe and asks for login', async () => {
     const result = run();
-    http.expectOne('/api/auth/estado').error(new ProgressEvent('error'));
+    http.expectOne('/api/auth/status').error(new ProgressEvent('error'));
     expect(await result).toBeInstanceOf(UrlTree);
   });
 
   it('the state is queried only once even when navigating several times', async () => {
     TestBed.inject(AuthService);
     const first = run();
-    http.expectOne('/api/auth/estado').flush({ activa: false });
+    http.expectOne('/api/auth/status').flush({ active: false });
     expect(await first).toBe(true);
 
     expect(await run()).toBe(true); // no second call

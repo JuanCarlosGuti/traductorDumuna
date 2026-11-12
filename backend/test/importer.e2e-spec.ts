@@ -43,7 +43,7 @@ describe('Importer (e2e, full Nest module with in-memory SQLite)', () => {
     );
 
     const moduleRef = await Test.createTestingModule({
-      imports: [DatabaseModule.forRoot({ rutaDb: ':memory:' }), ImporterModule],
+      imports: [DatabaseModule.forRoot({ dbPath: ':memory:' }), ImporterModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -57,19 +57,19 @@ describe('Importer (e2e, full Nest module with in-memory SQLite)', () => {
 
   it('imports and reports consistent statistics for the 4 sources (no rules or elicitation)', async () => {
     const stats = await service.importAll(dirTmp);
-    expect(stats.oraciones).toBe(2);
-    expect(stats.frases).toBe(1);
-    expect(stats.vocabulario).toBe(1);
-    expect(stats.conjugaciones).toBe(1);
-    expect(stats.reglas).toBe(0);
-    expect(stats.elicitacion.archivos).toBe(0);
+    expect(stats.sentences).toBe(2);
+    expect(stats.phrases).toBe(1);
+    expect(stats.vocabulary).toBe(1);
+    expect(stats.conjugations).toBe(1);
+    expect(stats.rules).toBe(0);
+    expect(stats.elicitation.files).toBe(0);
     expect(stats.totalTokens).toBeGreaterThan(8);
-    expect(stats.topPalabras.length).toBeGreaterThan(0);
+    expect(stats.topWords.length).toBeGreaterThan(0);
   });
 
   it('tokens keep ʉ and ñ (never degraded to u/n)', async () => {
     const stats = await service.importAll(dirTmp);
-    const words = stats.topPalabras.map((p) => p.palabra);
+    const words = stats.topWords.map((p) => p.palabra);
     expect(words).toContain('nʉnka');
     expect(words).toContain('ñingui');
     expect(words).not.toContain('nunka');

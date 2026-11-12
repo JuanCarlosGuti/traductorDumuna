@@ -51,16 +51,16 @@ export function readEffort(value = process.env.ANTHROPIC_ESFUERZO): AnthropicEff
 }
 
 export interface TranslatorConfig {
-  proveedor: TranslatorProvider | null;
-  modelo: string;
+  provider: TranslatorProvider | null;
+  model: string;
   /** 'compatible' provider only: base of the OpenAI-style API (without /chat/completions). */
   baseUrl?: string;
   /** 'compatible' provider only: Bearer key; optional (Ollama does not need it). */
   apiKey?: string;
   /** 'compatible' provider only: sampling temperature (TRADUCTOR_TEMPERATURA; 0.2 if missing). */
-  temperatura?: number;
+  temperature?: number;
   /** 'anthropic' provider only: output_config.effort (ANTHROPIC_ESFUERZO); if missing, the API's. */
-  esfuerzo?: AnthropicEffort;
+  effort?: AnthropicEffort;
 }
 
 /**
@@ -78,22 +78,22 @@ export const translatorConfigProvider: Provider = {
     if (process.env.ANTHROPIC_API_KEY) {
       const effort = readEffort();
       return {
-        proveedor: 'anthropic',
-        modelo: process.env.ANTHROPIC_MODELO?.trim() || CLAUDE_MODEL,
-        ...(effort ? { esfuerzo: effort } : {}),
+        provider: 'anthropic',
+        model: process.env.ANTHROPIC_MODELO?.trim() || CLAUDE_MODEL,
+        ...(effort ? { effort: effort } : {}),
       };
     }
     const baseUrl = process.env.TRADUCTOR_BASE_URL;
     const model = process.env.TRADUCTOR_MODELO;
     if (baseUrl && model) {
       return {
-        proveedor: 'compatible',
-        modelo: model,
+        provider: 'compatible',
+        model: model,
         baseUrl,
         apiKey: process.env.TRADUCTOR_API_KEY,
-        temperatura: readTemperature(),
+        temperature: readTemperature(),
       };
     }
-    return { proveedor: null, modelo: '' };
+    return { provider: null, model: '' };
   },
 };

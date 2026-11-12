@@ -14,7 +14,7 @@ import { PUBLIC_KEY } from './public.decorator';
 export interface RequestWithSession {
   headers: Record<string, string | string[] | undefined>;
   ip?: string;
-  usuario?: string;
+  user?: string;
 }
 
 /**
@@ -34,7 +34,7 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
-    if (!this.config.activa) return true;
+    if (!this.config.active) return true;
 
     const isPublic = this.reflector.getAllAndOverride<boolean>(PUBLIC_KEY, [
       context.getHandler(),
@@ -54,7 +54,7 @@ export class AuthGuard implements CanActivate {
     if (!user) {
       throw new UnauthorizedException('Sesión inválida o caducada');
     }
-    request.usuario = user;
+    request.user = user;
     return true;
   }
 }

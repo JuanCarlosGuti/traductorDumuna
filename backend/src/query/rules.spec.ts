@@ -9,17 +9,17 @@ import {
 const rule = (
   id: number,
   form: string,
-  trigger: GrammarRule['disparador'],
+  trigger: GrammarRule['trigger'],
 ): GrammarRule => ({
   id,
-  tipo: 'sufijo',
-  forma: form,
-  significado: null,
-  ejemploBase: null,
-  ejemploRegla: null,
-  traduccionEjemplo: null,
-  notas: null,
-  disparador: trigger,
+  type: 'sufijo',
+  form: form,
+  meaning: null,
+  baseExample: null,
+  ruleExample: null,
+  exampleTranslation: null,
+  notes: null,
+  trigger: trigger,
 });
 
 describe('inferTrigger (based on «tipo de regla» and «qué hace»)', () => {
@@ -88,25 +88,25 @@ describe('selectRules', () => {
 
   it('in Spanish it selects by triggers and always adds the general ones', () => {
     const r = selectRules('mi mamá cocina', Language.espanol, rules);
-    expect(r.disparadores).toEqual(['posesivo']);
-    expect(r.reglas.map((x) => x.id)).toEqual([2, 4]);
+    expect(r.triggers).toEqual(['posesivo']);
+    expect(r.rules.map((x) => x.id)).toEqual([2, 4]);
   });
 
   it('in Damana it is triggered by suffix: terruandzina → plural (-ndzina)', () => {
     const r = selectRules('terruandzina dzinaia', Language.damana, rules);
-    expect(r.reglas.map((x) => x.id)).toEqual([1, 4]);
-    expect(r.disparadores).toEqual(['plural']);
+    expect(r.rules.map((x) => x.id)).toEqual([1, 4]);
+    expect(r.triggers).toEqual(['plural']);
   });
 
   it('in Damana the suffix requires something before it and respects ʉ ≠ u', () => {
     const withU = [rule(5, '-ʉnka', 'futuro')];
-    expect(selectRules('awʉnka', Language.damana, withU).reglas).toHaveLength(1);
-    expect(selectRules('awunka', Language.damana, withU).reglas).toHaveLength(0);
-    expect(selectRules('ʉnka', Language.damana, withU).reglas).toHaveLength(0);
+    expect(selectRules('awʉnka', Language.damana, withU).rules).toHaveLength(1);
+    expect(selectRules('awunka', Language.damana, withU).rules).toHaveLength(0);
+    expect(selectRules('ʉnka', Language.damana, withU).rules).toHaveLength(0);
   });
 
   it('with no features only the general ones remain', () => {
     const r = selectRules('el agua es una', Language.espanol, rules);
-    expect(r.reglas.map((x) => x.id)).toEqual([4]);
+    expect(r.rules.map((x) => x.id)).toEqual([4]);
   });
 });

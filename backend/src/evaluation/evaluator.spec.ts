@@ -19,46 +19,46 @@ describe('exact match', () => {
 });
 
 describe('evaluateTest and summary', () => {
-  const testCase = { espanol: 'mi mamá cocina', damanaEsperado: 'ranzhe abu dugwa', ambito: 'familia' };
+  const testCase = { spanish: 'mi mamá cocina', expectedDamana: 'ranzhe abu dugwa', scope: 'familia' };
 
   it('computes exact, chrF and the proportion of words without an equivalent', () => {
-    const exact = evaluateTest(testCase, { traduccion: 'Ranzhe abu dugwa.', palabrasSinEquivalente: [], confianza: 0.9 });
-    expect(exact.exacta).toBe(true);
+    const exact = evaluateTest(testCase, { translation: 'Ranzhe abu dugwa.', wordsWithoutEquivalent: [], confidence: 0.9 });
+    expect(exact.exact).toBe(true);
     expect(exact.chrf).toBeGreaterThan(0.99);
-    expect(exact.proporcionSinEquivalente).toBe(0);
+    expect(exact.withoutEquivalentRatio).toBe(0);
 
-    const partial = evaluateTest(testCase, { traduccion: 'ranzhe [mamá] dugwa', palabrasSinEquivalente: ['mamá'], confianza: 0.4 });
-    expect(partial.exacta).toBe(false);
+    const partial = evaluateTest(testCase, { translation: 'ranzhe [mamá] dugwa', wordsWithoutEquivalent: ['mamá'], confidence: 0.4 });
+    expect(partial.exact).toBe(false);
     expect(partial.chrf).toBeGreaterThan(0.3);
     expect(partial.chrf).toBeLessThan(1);
-    expect(partial.proporcionSinEquivalente).toBeCloseTo(1 / 3, 10);
+    expect(partial.withoutEquivalentRatio).toBeCloseTo(1 / 3, 10);
   });
 
   it('a failed test counts as 0 and is not skipped', () => {
     const failed = failedTest(testCase, 'timeout');
-    expect(failed).toMatchObject({ exacta: false, chrf: 0, proporcionSinEquivalente: 1, error: 'timeout' });
+    expect(failed).toMatchObject({ exact: false, chrf: 0, withoutEquivalentRatio: 1, error: 'timeout' });
   });
 
   it('summarizes by scope and in total', () => {
     const testCases = [
-      evaluateTest(testCase, { traduccion: 'ranzhe abu dugwa', palabrasSinEquivalente: [], confianza: 1 }),
-      evaluateTest({ ...testCase, ambito: 'comida', espanol: 'como yuca', damanaEsperado: 'irrugwa zhant' }, { traduccion: '[yuca] zhant', palabrasSinEquivalente: ['yuca'], confianza: 0.2 }),
-      failedTest({ ...testCase, ambito: 'comida' }, 'error'),
+      evaluateTest(testCase, { translation: 'ranzhe abu dugwa', wordsWithoutEquivalent: [], confidence: 1 }),
+      evaluateTest({ ...testCase, scope: 'comida', spanish: 'como yuca', expectedDamana: 'irrugwa zhant' }, { translation: '[yuca] zhant', wordsWithoutEquivalent: ['yuca'], confidence: 0.2 }),
+      failedTest({ ...testCase, scope: 'comida' }, 'error'),
     ];
-    const report = buildReport(testCases, { fecha: new Date('2026-10-03T14:30:00.000Z'), proveedor: 'compatible', modelo: 'openai/gpt-oss-120b' });
-    expect(report.total).toMatchObject({ ambito: 'TOTAL', pruebas: 3, exactas: 1, errores: 1 });
-    expect(report.total.porcentajeExactas).toBeCloseTo(33.33, 1);
-    expect(report.porAmbito.map((r) => r.ambito)).toEqual(['comida', 'familia']);
-    const family = report.porAmbito.find((r) => r.ambito === 'familia')!;
-    expect(family).toMatchObject({ pruebas: 1, exactas: 1, porcentajeExactas: 100, porcentajeSinEquivalente: 0 });
-    const comida = summarize(testCases.filter((p) => p.ambito === 'comida'), 'comida');
-    expect(comida.porcentajeSinEquivalente).toBeCloseTo(75, 5); // (0.5 + 1) / 2
+    const report = buildReport(testCases, { date: new Date('2026-10-03T14:30:00.000Z'), provider: 'compatible', model: 'openai/gpt-oss-120b' });
+    expect(report.total).toMatchObject({ scope: 'TOTAL', tests: 3, exactCount: 1, errors: 1 });
+    expect(report.total.exactPercent).toBeCloseTo(33.33, 1);
+    expect(report.byScope.map((r) => r.scope)).toEqual(['comida', 'familia']);
+    const family = report.byScope.find((r) => r.scope === 'familia')!;
+    expect(family).toMatchObject({ tests: 1, exactCount: 1, exactPercent: 100, withoutEquivalentPercent: 0 });
+    const comida = summarize(testCases.filter((p) => p.scope === 'comida'), 'comida');
+    expect(comida.withoutEquivalentPercent).toBeCloseTo(75, 5); // (0.5 + 1) / 2
   });
 
   it('renders the report in Markdown with the per-scope table and the detail', () => {
     const report = buildReport(
-      [evaluateTest(testCase, { traduccion: 'ranzhe abu dugwa', palabrasSinEquivalente: [], confianza: 1 })],
-      { fecha: new Date('2026-10-03T14:30:00.000Z'), proveedor: 'compatible', modelo: 'm' },
+      [evaluateTest(testCase, { translation: 'ranzhe abu dugwa', wordsWithoutEquivalent: [], confidence: 1 })],
+      { date: new Date('2026-10-03T14:30:00.000Z'), provider: 'compatible', model: 'm' },
     );
     const md = renderMarkdown(report);
     expect(md).toContain('| ámbito | pruebas | exactas | chrF medio | sin equivalente | errores |');

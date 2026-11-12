@@ -7,7 +7,7 @@
   para preguntárselo a las hablantes.
 </p>
 
-@if (status()?.disponible === false) {
+@if (status()?.available === false) {
   <div class="panel aviso">
     <h2>Falta configurar un motor de traducción</h2>
     <p>Hay dos opciones; en ambos casos se definen variables de entorno y se reinicia el backend:</p>
@@ -26,8 +26,8 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
 } @else {
   @if (status(); as e) {
     <p class="suave chiquito motor">
-      Motor: <strong>{{ e.modelo }}</strong>
-      ({{ e.proveedor === 'anthropic' ? 'Claude · API de Anthropic' : 'proveedor compatible OpenAI' }})
+      Motor: <strong>{{ e.model }}</strong>
+      ({{ e.provider === 'anthropic' ? 'Claude · API de Anthropic' : 'proveedor compatible OpenAI' }})
     </p>
   }
 
@@ -64,12 +64,12 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
   }
 
   @if (result(); as r) {
-    @if (r.apoyo.nivel === 'revisar') {
+    @if (r.support.level === 'revisar') {
       <p class="panel aviso-apoyo">
         ⚠ <strong>Poco apoyo del corpus.</strong>
-        @if (r.apoyo.motivos.includes('sin_ejemplos')) {
+        @if (r.support.reasons.includes('sin_ejemplos')) {
           No se encontró ningún ejemplo parecido.
-        } @else if (r.apoyo.motivos.includes('apoyo_solo_de_diccionario')) {
+        } @else if (r.support.reasons.includes('apoyo_solo_de_diccionario')) {
           Solo hay formas conjugadas parecidas, ningún uso real en contexto.
         } @else {
           Los ejemplos encontrados se parecen poco al texto.
@@ -85,46 +85,46 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
       </header>
       <p class="traduccion" [attr.lang]="targetIsDamana() ? 'mbp' : null">
         @for (s of segments(); track $index) {
-          @if (s.sinEquivalente) {
-            <mark class="sin-equivalente" title="Sin equivalente en el corpus: anotada en Pendientes">{{ s.texto }}</mark>
+          @if (s.withoutEquivalent) {
+            <mark class="sin-equivalente" title="Sin equivalente en el corpus: anotada en Pendientes">{{ s.text }}</mark>
           } @else {
-            <span>{{ s.texto }}</span>
+            <span>{{ s.text }}</span>
           }
         }
       </p>
 
-      @if (r.glosa.length > 0) {
+      @if (r.gloss.length > 0) {
         <ul class="glosa" aria-label="Glosa palabra por palabra">
-          @for (par of r.glosa; track $index) {
+          @for (par of r.gloss; track $index) {
             <li class="par">
-              <span class="origen" [attr.lang]="targetIsDamana() ? null : 'mbp'">{{ par.origen }}</span>
+              <span class="origen" [attr.lang]="targetIsDamana() ? null : 'mbp'">{{ par.origin }}</span>
               <span class="flecha">→</span>
-              <span class="destino" [attr.lang]="targetIsDamana() ? 'mbp' : null">{{ par.destino || '—' }}</span>
+              <span class="destino" [attr.lang]="targetIsDamana() ? 'mbp' : null">{{ par.target || '—' }}</span>
             </li>
           }
         </ul>
       }
 
-      @if (r.palabrasSinEquivalente.length > 0) {
+      @if (r.wordsWithoutEquivalent.length > 0) {
         <p class="chiquito sin-equivalente-lista">
           ⚠ Sin equivalente en el corpus:
-          @for (p of r.palabrasSinEquivalente; track p) {
+          @for (p of r.wordsWithoutEquivalent; track p) {
             <mark class="sin-equivalente">{{ p }}</mark>
           }
           — quedaron en <a routerLink="/pendientes">Pendientes</a> para las hablantes.
         </p>
       }
 
-      @if (r.reglasAplicadas.length > 0) {
+      @if (r.appliedRules.length > 0) {
         <p class="chiquito">
           Reglas aplicadas:
-          @for (regla of r.reglasAplicadas; track regla) {
+          @for (regla of r.appliedRules; track regla) {
             <span class="chip">{{ regla }}</span>
           }
         </p>
       }
-      @if (r.explicacionBreve) {
-        <p class="explicacion suave">{{ r.explicacionBreve }}</p>
+      @if (r.briefExplanation) {
+        <p class="explicacion suave">{{ r.briefExplanation }}</p>
       }
 
       <div class="validacion">
@@ -171,19 +171,19 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
     </section>
 
     <details class="apoyo">
-      <summary>Diccionario y reglas usadas ({{ r.diccionario.length }} acepciones · {{ r.reglas.length }} reglas)</summary>
-      @if (r.diccionario.length > 0) {
+      <summary>Diccionario y reglas usadas ({{ r.dictionary.length }} acepciones · {{ r.rules.length }} reglas)</summary>
+      @if (r.dictionary.length > 0) {
         <table class="tabla diccionario">
           <thead>
             <tr><th>palabra</th><th>damana</th><th>español</th><th>coincidencia</th></tr>
           </thead>
           <tbody>
-            @for (a of r.diccionario; track $index) {
+            @for (a of r.dictionary; track $index) {
               <tr>
-                <td>{{ a.palabra }}</td>
+                <td>{{ a.word }}</td>
                 <td lang="mbp">{{ a.damana }}</td>
-                <td>{{ a.espanol }}</td>
-                <td class="suave chiquito" [class.posible]="a.coincidencia === 'posible'">{{ a.coincidencia }}</td>
+                <td>{{ a.spanish }}</td>
+                <td class="suave chiquito" [class.posible]="a.match === 'posible'">{{ a.match }}</td>
               </tr>
             }
           </tbody>
@@ -191,41 +191,41 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
       } @else {
         <p class="suave">Ninguna palabra de la frase está en el diccionario.</p>
       }
-      @if (r.nombresPropios.length > 0) {
+      @if (r.properNames.length > 0) {
         <p class="chiquito">
           Nombres propios:
-          @for (n of r.nombresPropios; track n.damana) {
-            <span class="chip">{{ n.enTexto }} → {{ n.damana }}</span>
+          @for (n of r.properNames; track n.damana) {
+            <span class="chip">{{ n.inText }} → {{ n.damana }}</span>
           }
         </p>
       }
-      @if (r.reglas.length > 0) {
+      @if (r.rules.length > 0) {
         <ul class="reglas">
-          @for (regla of r.reglas; track regla.forma) {
+          @for (regla of r.rules; track regla.form) {
             <li>
-              <strong lang="mbp">{{ regla.forma }}</strong>
-              — {{ regla.significado }}
-              @if (regla.ejemplo) { <span class="suave">· {{ regla.ejemplo }}</span> }
-              @if (regla.disparador) { <span class="chip">{{ regla.disparador }}</span> }
+              <strong lang="mbp">{{ regla.form }}</strong>
+              — {{ regla.meaning }}
+              @if (regla.example) { <span class="suave">· {{ regla.example }}</span> }
+              @if (regla.trigger) { <span class="chip">{{ regla.trigger }}</span> }
             </li>
           }
         </ul>
       }
-      @if (r.disparadores.length > 0) {
-        <p class="suave chiquito">Rasgos detectados: {{ r.disparadores.join(', ') }}</p>
+      @if (r.triggers.length > 0) {
+        <p class="suave chiquito">Rasgos detectados: {{ r.triggers.join(', ') }}</p>
       }
     </details>
 
-    @for (grupo of examplesByDomain(); track grupo.dominio) {
-      <details class="ejemplos" [open]="grupo.dominio === 'cotidiano'">
-        <summary>{{ grupo.titulo }} ({{ grupo.ejemplos.length }})</summary>
-        @for (e of grupo.ejemplos; track $index) {
+    @for (grupo of examplesByDomain(); track grupo.domain) {
+      <details class="ejemplos" [open]="grupo.domain === 'cotidiano'">
+        <summary>{{ grupo.title }} ({{ grupo.examples.length }})</summary>
+        @for (e of grupo.examples; track $index) {
           <article class="panel ejemplo">
             <header class="suave chiquito">
-              {{ e.referencia }} · similitud {{ e.puntaje.toFixed(2) }}
+              {{ e.reference }} · similitud {{ e.score.toFixed(2) }}
             </header>
             <p lang="mbp">{{ e.damana }}</p>
-            <p class="suave">{{ e.espanol }}</p>
+            <p class="suave">{{ e.spanish }}</p>
           </article>
         }
       </details>

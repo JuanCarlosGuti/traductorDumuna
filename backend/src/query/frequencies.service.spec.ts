@@ -39,7 +39,7 @@ describe('FrequenciesService', () => {
   afterEach(() => db.close());
 
   it('excludes probable proper names (initial capital only)', () => {
-    const words = service.listAll(500).map((f) => f.palabra);
+    const words = service.listAll(500).map((f) => f.word);
     expect(words).not.toContain('jehova');
     expect(words).not.toContain('ñandu'); // capital Ñ counts too
     expect(words).toContain('nʉnka');
@@ -49,26 +49,26 @@ describe('FrequenciesService', () => {
   it('sorts by descending frequency', () => {
     const rows = service.listAll(500);
     expect(rows[0]).toEqual({
-      palabra: 'nʉnka',
-      frecuencia: 2,
-      traduccion: null,
-      categoria: null,
+      word: 'nʉnka',
+      frequency: 2,
+      translation: null,
+      category: null,
     });
     expect(rows[1]).toEqual({
-      palabra: 'shkua',
-      frecuencia: 2,
-      traduccion: null,
-      categoria: null,
+      word: 'shkua',
+      frequency: 2,
+      translation: null,
+      category: null,
     });
   });
 
   it('brings translation and category from the vocabulary when the Damana matches (case with ʉ)', () => {
-    const row = service.listAll(500).find((f) => f.palabra === 'kʉnʉnka');
+    const row = service.listAll(500).find((f) => f.word === 'kʉnʉnka');
     expect(row).toEqual({
-      palabra: 'kʉnʉnka',
-      frecuencia: 1,
-      traduccion: 'tiene',
-      categoria: 'Verbos',
+      word: 'kʉnʉnka',
+      frequency: 1,
+      translation: 'tiene',
+      category: 'Verbos',
     });
   });
 
@@ -81,8 +81,8 @@ describe('FrequenciesService', () => {
       `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
        VALUES ('ñingunka', 'ñingunka', 'conjugaciones', 1, 0)`,
     ).run();
-    const row = service.listAll(500).find((f) => f.palabra === 'ñingunka');
-    expect(row).toMatchObject({ traduccion: 'él volvió', categoria: null });
+    const row = service.listAll(500).find((f) => f.word === 'ñingunka');
+    expect(row).toMatchObject({ translation: 'él volvió', category: null });
   });
 
   it('respects the limit', () => {

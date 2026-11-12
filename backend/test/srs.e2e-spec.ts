@@ -44,7 +44,7 @@ describe('SRS (e2e, corpus v3)', () => {
 
     const moduleRef = await Test.createTestingModule({
       imports: [
-        DatabaseModule.forRoot({ rutaDb: ':memory:' }),
+        DatabaseModule.forRoot({ dbPath: ':memory:' }),
         ImporterModule,
         QueryModule,
         SrsModule,
@@ -61,37 +61,37 @@ describe('SRS (e2e, corpus v3)', () => {
     fs.rmSync(dirTmp, { recursive: true, force: true });
   });
 
-  it('GET /api/srs/siguiente serves the vocabulary first (with ʉ)', async () => {
-    const res = await request(app.getHttpServer()).get('/api/srs/siguiente').expect(200);
-    expect(res.body.tarjeta).toMatchObject({
-      palabra: 'nʉnka',
-      tipo: 'vocabulario',
-      traduccion: 'agua',
+  it('GET /api/srs/next serves the vocabulary first (with ʉ)', async () => {
+    const res = await request(app.getHttpServer()).get('/api/srs/next').expect(200);
+    expect(res.body.card).toMatchObject({
+      word: 'nʉnka',
+      type: 'vocabulario',
+      translation: 'agua',
     });
-    expect(res.body.nuevas).toBeGreaterThan(0);
+    expect(res.body.newCards).toBeGreaterThan(0);
   });
 
-  it('POST /api/srs/respuesta updates the progress and advances the deck', async () => {
+  it('POST /api/srs/answer updates the progress and advances the deck', async () => {
     const r1 = await request(app.getHttpServer())
-      .post('/api/srs/respuesta')
-      .send({ palabra: 'nʉnka', calificacion: 'bien' })
+      .post('/api/srs/answer')
+      .send({ word: 'nʉnka', grade: 'bien' })
       .expect(201);
-    expect(r1.body).toMatchObject({ palabra: 'nʉnka', repeticiones: 1, intervaloDias: 1 });
+    expect(r1.body).toMatchObject({ word: 'nʉnka', repetitions: 1, intervalDays: 1 });
 
-    const res = await request(app.getHttpServer()).get('/api/srs/siguiente').expect(200);
-    expect(res.body.tarjeta.palabra).not.toBe('nʉnka'); // scheduled for tomorrow
-    expect(res.body.tarjeta.tipo).toBe('frecuencia');
-    expect(res.body.tarjeta.traduccion).toContain('candidatas');
+    const res = await request(app.getHttpServer()).get('/api/srs/next').expect(200);
+    expect(res.body.card.word).not.toBe('nʉnka'); // scheduled for tomorrow
+    expect(res.body.card.type).toBe('frecuencia');
+    expect(res.body.card.translation).toContain('candidatas');
   });
 
   it('validates the grade and the word', async () => {
     await request(app.getHttpServer())
-      .post('/api/srs/respuesta')
-      .send({ palabra: 'nʉnka', calificacion: 'regular' })
+      .post('/api/srs/answer')
+      .send({ word: 'nʉnka', grade: 'regular' })
       .expect(400);
     await request(app.getHttpServer())
-      .post('/api/srs/respuesta')
-      .send({ palabra: 'inexistente', calificacion: 'bien' })
+      .post('/api/srs/answer')
+      .send({ word: 'inexistente', grade: 'bien' })
       .expect(404);
   });
 });

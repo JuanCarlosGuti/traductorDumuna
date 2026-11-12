@@ -44,13 +44,13 @@
     </thead>
     <tbody>
       @for (p of visible(); track p.id) {
-        <tr [class.resuelta]="p.estado === 'resuelta'">
-          <td [attr.lang]="p.idioma === 'damana' ? 'mbp' : null"><strong>{{ p.palabra }}</strong></td>
-          <td class="suave">{{ p.idioma === 'damana' ? 'damana' : 'español' }}</td>
-          <td>{{ p.vecesPedida }}</td>
-          <td class="suave chiquito">{{ p.contexto ?? '' }}</td>
-          <td><span class="estado" [class]="'estado ' + p.estado">{{ p.estado }}</span></td>
-          <td class="suave chiquito">{{ p.origen }}</td>
+        <tr [class.resuelta]="p.status === 'resuelta'">
+          <td [attr.lang]="p.language === 'damana' ? 'mbp' : null"><strong>{{ p.word }}</strong></td>
+          <td class="suave">{{ p.language === 'damana' ? 'damana' : 'español' }}</td>
+          <td>{{ p.timesRequested }}</td>
+          <td class="suave chiquito">{{ p.context ?? '' }}</td>
+          <td><span class="estado" [class]="'estado ' + p.status">{{ p.status }}</span></td>
+          <td class="suave chiquito">{{ p.origin }}</td>
         </tr>
       } @empty {
         <tr><td colspan="6" class="suave">No hay pendientes: todo lo que se ha pedido está en el corpus.</td></tr>

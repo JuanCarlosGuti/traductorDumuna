@@ -10,15 +10,15 @@ import { segmentFragment } from './fragment';
   selector: 'app-clickable-fragment',
   template: `
     @for (s of segments(); track $index) {
-      @if (s.esPalabra && clickable()) {
+      @if (s.isWord && clickable()) {
         <button
           type="button"
           class="palabra"
-          [class.resaltada]="s.resaltado"
-          (click)="word.emit(s.texto)"
-        >{{ s.texto }}</button>
+          [class.resaltada]="s.highlighted"
+          (click)="word.emit(s.text)"
+        >{{ s.text }}</button>
       } @else {
-        <span [class.resaltada]="s.resaltado">{{ s.texto }}</span>
+        <span [class.resaltada]="s.highlighted">{{ s.text }}</span>
       }
     }
   `,

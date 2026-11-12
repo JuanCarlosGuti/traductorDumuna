@@ -22,21 +22,21 @@ export const REVIEW_THRESHOLD = 0.2;
 export const GOOD_THRESHOLD = 0.32;
 
 export interface SupportSignals {
-  puntajeMedio: number;
-  fuenteTop: CorpusSource | null;
-  ejemplosRecuperados: number;
+  meanScore: number;
+  topSource: CorpusSource | null;
+  retrievedExamples: number;
   /**
    * Examples that come from sentences or phrases, i.e. from the language in use.
    * `null` in translations logged before it was measured (v5): then
    * it falls back to the old top-1 heuristic.
    */
-  ejemplosEnContexto?: number | null;
+  examplesInContext?: number | null;
 }
 
 export interface Support {
-  nivel: SupportLevel;
+  level: SupportLevel;
   /** Reasons why it was flagged «revisar»; empty at the other levels. */
-  motivos: string[];
+  reasons: string[];
 }
 
 /**
@@ -45,18 +45,18 @@ export interface Support {
  * heuristic is kept so as not to reinterpret the history blindly.
  */
 function withoutContext(signals: SupportSignals): boolean {
-  return signals.ejemplosEnContexto == null
-    ? signals.fuenteTop === CorpusSource.conjugaciones
-    : signals.ejemplosEnContexto === 0 && signals.ejemplosRecuperados > 0;
+  return signals.examplesInContext == null
+    ? signals.topSource === CorpusSource.conjugaciones
+    : signals.examplesInContext === 0 && signals.retrievedExamples > 0;
 }
 
 export function evaluateSupport(signals: SupportSignals): Support {
   const reasons: string[] = [];
 
-  if (signals.ejemplosRecuperados === 0) {
+  if (signals.retrievedExamples === 0) {
     reasons.push('sin_ejemplos');
   }
-  if (signals.puntajeMedio < REVIEW_THRESHOLD) {
+  if (signals.meanScore < REVIEW_THRESHOLD) {
     reasons.push('similitud_baja');
   }
   // All the support is entries from the conjugations table: they confirm the
@@ -72,7 +72,7 @@ export function evaluateSupport(signals: SupportSignals): Support {
     reasons.push('apoyo_solo_de_diccionario');
   }
 
-  if (reasons.length > 0) return { nivel: 'revisar', motivos: reasons };
-  if (signals.puntajeMedio < GOOD_THRESHOLD) return { nivel: 'parcial', motivos: [] };
-  return { nivel: 'bueno', motivos: [] };
+  if (reasons.length > 0) return { level: 'revisar', reasons: reasons };
+  if (signals.meanScore < GOOD_THRESHOLD) return { level: 'parcial', reasons: [] };
+  return { level: 'bueno', reasons: [] };
 }

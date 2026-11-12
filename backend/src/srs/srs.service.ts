@@ -15,9 +15,9 @@ const TOP_FREQUENCIES = 300;
 const MAX_CARD_CANDIDATES = 3;
 
 interface PoolCard {
-  palabra: string;
-  tipo: 'vocabulario' | 'frecuencia';
-  traduccion?: string;
+  word: string;
+  type: 'vocabulario' | 'frecuencia';
+  translation?: string;
 }
 
 interface ProgressRow {
@@ -48,21 +48,21 @@ export class SrsService {
 
     const overdue = pool
       .filter((c) => {
-        const p = progressRows.get(c.palabra);
+        const p = progressRows.get(c.word);
         return p !== undefined && p.proxima_revision <= now.toISOString();
       })
       .sort((a, b) =>
         progressRows
-          .get(a.palabra)!
-          .proxima_revision.localeCompare(progressRows.get(b.palabra)!.proxima_revision),
+          .get(a.word)!
+          .proxima_revision.localeCompare(progressRows.get(b.word)!.proxima_revision),
       );
-    const newItems = pool.filter((c) => !progressRows.has(c.palabra));
+    const newItems = pool.filter((c) => !progressRows.has(c.word));
 
     const card = overdue[0] ?? newItems[0] ?? null;
     return {
-      tarjeta: card ? this.buildCard(card, progressRows.get(card.palabra)) : null,
-      pendientes: overdue.length,
-      nuevas: newItems.length,
+      card: card ? this.buildCard(card, progressRows.get(card.word)) : null,
+      pendingCards: overdue.length,
+      newCards: newItems.length,
     };
   }
 
@@ -71,7 +71,7 @@ export class SrsService {
     grade: Grade,
     now: Date = new Date(),
   ): UpdatedProgressDto {
-    if (!this.pool().some((c) => c.palabra === word)) {
+    if (!this.pool().some((c) => c.word === word)) {
       throw new NotFoundException(
         `La palabra "${word}" no está en el mazo de repaso`,
       );
@@ -82,15 +82,15 @@ export class SrsService {
       .get(word) as ProgressRow | undefined;
     const status: Sm2State = row
       ? {
-          repeticiones: row.repeticiones,
-          factorFacilidad: row.factor_facilidad,
-          intervaloDias: row.intervalo_dias,
+          repetitions: row.repeticiones,
+          easeFactor: row.factor_facilidad,
+          intervalDays: row.intervalo_dias,
         }
       : INITIAL_SM2_STATE;
 
     const newValue = applySm2(status, grade);
     const next = new Date(
-      now.getTime() + newValue.intervaloDias * 24 * 60 * 60 * 1000,
+      now.getTime() + newValue.intervalDays * 24 * 60 * 60 * 1000,
     ).toISOString();
 
     this.db
@@ -107,33 +107,33 @@ export class SrsService {
       )
       .run(
         word,
-        newValue.repeticiones,
-        newValue.factorFacilidad,
-        newValue.intervaloDias,
+        newValue.repetitions,
+        newValue.easeFactor,
+        newValue.intervalDays,
         next,
         now.toISOString(),
       );
 
     return {
-      palabra: word,
-      repeticiones: newValue.repeticiones,
-      intervaloDias: newValue.intervaloDias,
-      proximaRevision: next,
+      word: word,
+      repetitions: newValue.repetitions,
+      intervalDays: newValue.intervalDays,
+      nextReview: next,
     };
   }
 
   /** Deck: the whole vocabulary + the 300 most frequent words (no duplicates). */
   private pool(): PoolCard[] {
     const vocabulary: PoolCard[] = this.repo.listVocabulary().map((v) => ({
-      palabra: v.damana,
-      tipo: 'vocabulario',
-      traduccion: v.espanol,
+      word: v.damana,
+      type: 'vocabulario',
+      translation: v.spanish,
     }));
-    const inVocabulary = new Set(vocabulary.map((c) => c.palabra));
+    const inVocabulary = new Set(vocabulary.map((c) => c.word));
     const frequent: PoolCard[] = this.frequencies
       .listAll(TOP_FREQUENCIES)
-      .filter((f) => !inVocabulary.has(f.palabra))
-      .map((f) => ({ palabra: f.palabra, tipo: 'frecuencia' }));
+      .filter((f) => !inVocabulary.has(f.word))
+      .map((f) => ({ word: f.word, type: 'frecuencia' }));
     return [...vocabulary, ...frequent];
   }
 
@@ -145,24 +145,24 @@ export class SrsService {
   }
 
   private buildCard(card: PoolCard, progress?: ProgressRow): SrsCardDto {
-    let translation = card.traduccion;
+    let translation = card.translation;
     if (translation === undefined) {
       // Frequent word without a vocabulary entry: the back shows its
       // candidate translations by co-occurrence.
       const candidateWords = this.wordService
-        .wordCard(card.palabra)
-        .traduccionesCandidatas.slice(0, MAX_CARD_CANDIDATES)
-        .map((c) => c.palabra);
+        .wordCard(card.word)
+        .candidateTranslations.slice(0, MAX_CARD_CANDIDATES)
+        .map((c) => c.word);
       translation =
         candidateWords.length > 0
           ? `candidatas: ${candidateWords.join(', ')}`
           : '(sin traducciones candidatas)';
     }
     return {
-      palabra: card.palabra,
-      tipo: card.tipo,
-      traduccion: translation,
-      repeticiones: progress?.repeticiones ?? 0,
+      word: card.word,
+      type: card.type,
+      translation: translation,
+      repetitions: progress?.repeticiones ?? 0,
     };
   }
 }

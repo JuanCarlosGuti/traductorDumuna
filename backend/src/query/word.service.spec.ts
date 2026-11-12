@@ -53,54 +53,54 @@ describe('WordService', () => {
 
   it('computes total and per-source frequency (case with ʉ)', () => {
     const wordCard = service.wordCard('nʉnka');
-    expect(wordCard.palabra).toBe('nʉnka');
-    expect(wordCard.frecuenciaTotal).toBe(4);
+    expect(wordCard.word).toBe('nʉnka');
+    expect(wordCard.totalFrequency).toBe(4);
     // GROUP BY tabla_origen with alphabetical ORDER BY
-    expect(wordCard.frecuenciaPorFuente).toEqual([
-      { fuente: 'frases', frecuencia: 1 },
-      { fuente: 'oraciones', frecuencia: 2 },
-      { fuente: 'vocabulario', frecuencia: 1 },
+    expect(wordCard.frequencyBySource).toEqual([
+      { source: 'frases', frequency: 1 },
+      { source: 'oraciones', frequency: 2 },
+      { source: 'vocabulario', frequency: 1 },
     ]);
   });
 
   it('normalizes the input token (Nʉnka → nʉnka)', () => {
-    expect(service.wordCard('Nʉnka').palabra).toBe('nʉnka');
+    expect(service.wordCard('Nʉnka').word).toBe('nʉnka');
   });
 
   it('brings the direct translation from the vocabulary (case with ʉ)', () => {
     const wordCard = service.wordCard('nʉnka');
-    expect(wordCard.entradasVocabulario).toEqual([
-      { espanol: 'agua', categoria: 'Otros', notas: null, fuente: 'dic' },
+    expect(wordCard.vocabularyEntries).toEqual([
+      { spanish: 'agua', category: 'Otros', notes: null, source: 'dic' },
     ]);
-    expect(wordCard.formasVerbales).toEqual([]);
+    expect(wordCard.verbForms).toEqual([]);
   });
 
   it('recognizes conjugated verb forms with their gloss and lemma (case with ñ)', () => {
     const wordCard = service.wordCard('ñingui');
-    expect(wordCard.formasVerbales).toEqual([
-      { damana: 'ñingui', espanol: 'él volvió', lema: 'volver' },
+    expect(wordCard.verbForms).toEqual([
+      { damana: 'ñingui', spanish: 'él volvió', lemma: 'volver' },
     ]);
-    expect(wordCard.entradasVocabulario).toEqual([]);
+    expect(wordCard.vocabularyEntries).toEqual([]);
   });
 
   it('word without vocabulary or conjugation: empty lists but candidates present', () => {
     const wordCard = service.wordCard('gontka');
-    expect(wordCard.entradasVocabulario).toEqual([]);
-    expect(wordCard.formasVerbales).toEqual([]);
-    expect(wordCard.traduccionesCandidatas.length).toBeGreaterThan(0);
+    expect(wordCard.vocabularyEntries).toEqual([]);
+    expect(wordCard.verbForms).toEqual([]);
+    expect(wordCard.candidateTranslations.length).toBeGreaterThan(0);
   });
 
   it('returns concordances with <mark>', () => {
     const wordCard = service.wordCard('nʉnka');
-    expect(wordCard.concordancias.length).toBeGreaterThan(0);
-    expect(wordCard.concordancias[0].fragmento).toContain('<mark>nʉnka</mark>');
+    expect(wordCard.concordances.length).toBeGreaterThan(0);
+    expect(wordCard.concordances[0].fragment).toContain('<mark>nʉnka</mark>');
   });
 
   it('proposes candidate translations excluding stopwords', () => {
     const wordCard = service.wordCard('nʉnka');
-    const words = wordCard.traduccionesCandidatas.map((c) => c.palabra);
+    const words = wordCard.candidateTranslations.map((c) => c.word);
     // 'agua' co-occurs in sentence, phrase and vocabulary; 'el'/'de'/'del' are stopwords
-    expect(wordCard.traduccionesCandidatas[0]).toEqual({ palabra: 'agua', coocurrencias: 3 });
+    expect(wordCard.candidateTranslations[0]).toEqual({ word: 'agua', cooccurrences: 3 });
     expect(words).not.toContain('el');
     expect(words).not.toContain('de');
     expect(words).not.toContain('del');
@@ -108,8 +108,8 @@ describe('WordService', () => {
 
   it('works with ñ and uses the Spanish of the sentence (case with ñ)', () => {
     const wordCard = service.wordCard('ñingui');
-    expect(wordCard.frecuenciaTotal).toBe(2); // sentence + conjugation
-    const words = wordCard.traduccionesCandidatas.map((c) => c.palabra);
+    expect(wordCard.totalFrequency).toBe(2); // sentence + conjugation
+    const words = wordCard.candidateTranslations.map((c) => c.word);
     expect(words).toContain('agua'); // from the parallel 'Dios hizo el agua del cielo'
   });
 

@@ -5,12 +5,12 @@ export const CONFIG_AUTH = Symbol('CONFIG_AUTH');
 
 export interface ConfigAuth {
   /** false when no credentials are configured: the API is left open. */
-  activa: boolean;
-  usuario: string;
+  active: boolean;
+  user: string;
   password: string;
   /** Key used to sign session tokens. */
-  secreto: string;
-  duracionDias: number;
+  secret: string;
+  durationDays: number;
 }
 
 const DEFAULT_DAYS = 30;
@@ -51,12 +51,12 @@ export function readAuthConfig(
   }
 
   return {
-    activa: active,
-    usuario: user,
+    active: active,
+    user: user,
     password,
     // Locally it is generated on the fly: sessions do not survive a restart,
     // which does not matter for development.
-    secreto: secret || randomBytes(32).toString('hex'),
-    duracionDias: Number(env.AUTH_DIAS_SESION) || DEFAULT_DAYS,
+    secret: secret || randomBytes(32).toString('hex'),
+    durationDays: Number(env.AUTH_DIAS_SESION) || DEFAULT_DAYS,
   };
 }

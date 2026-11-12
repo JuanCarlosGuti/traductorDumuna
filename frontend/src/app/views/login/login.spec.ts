@@ -68,10 +68,10 @@ describe('Entrar', () => {
 
     const httpRequest = http.expectOne('/api/auth/login');
     expect(httpRequest.request.body).toEqual({
-      usuario: 'juan',
+      user: 'juan',
       password: 'ñandú-ʉnkua', // ʉ and ñ travel intact
     });
-    httpRequest.flush({ token: 'abc', usuario: 'juan', duracionDias: 30 });
+    httpRequest.flush({ token: 'abc', user: 'juan', durationDays: 30 });
     await settle();
 
     expect(router.navigate).toHaveBeenCalledWith(['/buscar']);
@@ -128,7 +128,7 @@ describe('Entrar', () => {
     expect(button.hasAttribute('disabled')).toBe(true);
     expect(button.textContent).toContain('Entrando');
 
-    http.expectOne('/api/auth/login').flush({ token: 't', usuario: 'juan', duracionDias: 30 });
+    http.expectOne('/api/auth/login').flush({ token: 't', user: 'juan', durationDays: 30 });
     await fixture.whenStable();
   });
 });

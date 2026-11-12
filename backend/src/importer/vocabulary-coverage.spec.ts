@@ -2,14 +2,14 @@ import { VocabularyCoverage } from './vocabulary-coverage';
 
 describe('VocabularyCoverage', () => {
   const coverage = new VocabularyCoverage([
-    { espanol: 'agua', damana: 'nʉnka' },
-    { espanol: 'Año', damana: 'Kʉgui' },
-    { espanol: 'Igual, lo mismo', damana: 'Anzhengwi' },
-    { espanol: 'Ese o esa', damana: 'Mema' },
-    { espanol: 'Territorio (tierra)', damana: 'Kangʉma' },
-    { espanol: 'Flor', damana: 'Shoma' },
-    { espanol: 'Hola', damana: 'Zungui' },
-    { espanol: 'Sal', damana: 'Nʉngu' },
+    { spanish: 'agua', damana: 'nʉnka' },
+    { spanish: 'Año', damana: 'Kʉgui' },
+    { spanish: 'Igual, lo mismo', damana: 'Anzhengwi' },
+    { spanish: 'Ese o esa', damana: 'Mema' },
+    { spanish: 'Territorio (tierra)', damana: 'Kangʉma' },
+    { spanish: 'Flor', damana: 'Shoma' },
+    { spanish: 'Hola', damana: 'Zungui' },
+    { spanish: 'Sal', damana: 'Nʉngu' },
   ]);
 
   it('covers the same word regardless of capitals and accents', () => {

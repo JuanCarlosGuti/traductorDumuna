@@ -19,18 +19,18 @@ export const VALIDATED_SCOPE = 'validadas';
 export function testsFromValidated(validatedPairs: ValidatedPair[]): TranslationTest[] {
   return validatedPairs
     .map((v) => ({
-      espanol: v.espanol.trim(),
-      damanaEsperado: v.damana.trim(),
-      ambito: VALIDATED_SCOPE,
+      spanish: v.spanish.trim(),
+      expectedDamana: v.damana.trim(),
+      scope: VALIDATED_SCOPE,
     }))
-    .filter((p) => p.espanol.length > 0 && p.damanaEsperado.length > 0);
+    .filter((p) => p.spanish.length > 0 && p.expectedDamana.length > 0);
 }
 
 export interface ExportResult {
   /** Validated pairs that were in the database. */
-  validadas: number;
+  validated: number;
   /** How many entered the CSV as new (repeated ones are not duplicated). */
-  agregadas: number;
+  added: number;
   /** Tests left in the CSV. */
   total: number;
 }
@@ -46,7 +46,7 @@ export function exportValidatedToTests(
 ): ExportResult {
   const validatedPairs = new ValidatedRepository(db).listAll();
   const result = writeTests(dataDir, testsFromValidated(validatedPairs));
-  return { validadas: validatedPairs.length, ...result };
+  return { validated: validatedPairs.length, ...result };
 }
 
 function main(): void {
@@ -63,10 +63,10 @@ function main(): void {
     runMigrations(db);
     const r = exportValidatedToTests(db, dataDir);
     console.log(
-      `${r.validadas} pares validados en la base; ${r.agregadas} nuevos añadidos a ` +
+      `${r.validated} pares validados en la base; ${r.added} nuevos añadidos a ` +
         `${path.join(dataDir, TESTS_FILE)} (${r.total} pruebas en total).`,
     );
-    if (r.validadas === 0) {
+    if (r.validated === 0) {
       console.log(
         'Todavía no hay pares validados: en la vista Traductor, «esta traducción es correcta» o «corregir».',
       );

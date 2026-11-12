@@ -2,8 +2,8 @@ import { normalize } from './normalizer';
 
 export interface TokenDamana {
   original: string;
-  normalizada: string;
-  posicion: number;
+  normalized: string;
+  position: number;
 }
 
 /**
@@ -20,7 +20,7 @@ export function tokenizeDamana(text: string): TokenDamana[] {
     .filter((t) => t.length > 0)
     .map((original, position) => ({
       original,
-      normalizada: normalize(original),
-      posicion: position,
+      normalized: normalize(original),
+      position: position,
     }));
 }

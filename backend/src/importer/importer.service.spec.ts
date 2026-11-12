@@ -141,27 +141,27 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
 
   it('imports the counts from the CSVs, the rules, the names and the elicitation', async () => {
     const stats = await service.importAll(dirTmp);
-    expect(stats.oraciones).toBe(2 + 2); // CSV + elicitation (agua, pingüino); the test does not go in
-    expect(stats.frases).toBe(2);
-    expect(stats.vocabulario).toBe(2 + 4); // CSV + agua, pingüino, casa, hola
-    expect(stats.conjugaciones).toBe(2);
-    expect(stats.reglas).toBe(2);
-    expect(stats.nombresPropios).toBe(2);
-    expect(stats.elicitacion).toEqual({
-      archivos: 1,
-      filas: 6,
-      vocabulario: 4,
-      oraciones: 2,
-      pruebas: 1,
-      pendientes: 1, // vecina (nothing filled in)
-      resueltas: 3, // agua, pingüino, casa
+    expect(stats.sentences).toBe(2 + 2); // CSV + elicitation (agua, pingüino); the test does not go in
+    expect(stats.phrases).toBe(2);
+    expect(stats.vocabulary).toBe(2 + 4); // CSV + agua, pingüino, casa, hola
+    expect(stats.conjugations).toBe(2);
+    expect(stats.rules).toBe(2);
+    expect(stats.properNames).toBe(2);
+    expect(stats.elicitation).toEqual({
+      files: 1,
+      rows: 6,
+      vocabulary: 4,
+      sentences: 2,
+      tests: 1,
+      pending: 1, // vecina (nothing filled in)
+      resolved: 3, // agua, pingüino, casa
       // hola already has palabra_dm in the batch itself and «años» is in the CSV
       // as «año»: the speakers are not asked for them.
-      cubiertasPorVocabulario: 2,
-      cerradasPorVocabulario: 0,
-      idsRepetidos: 0,
+      coveredByVocabulary: 2,
+      closedByVocabulary: 0,
+      repeatedIds: 0,
     });
-    expect(stats.pruebasEnArchivo).toBe(1);
+    expect(stats.testsInFile).toBe(1);
     expect(stats.totalTokens).toBeGreaterThan(0);
   });
 
@@ -212,7 +212,7 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
   it('reserves the test row in pruebas_traduccion.csv and leaves it out of the sentences', async () => {
     await service.importAll(dirTmp);
     expect(readTests(dirTmp)).toEqual([
-      { espanol: 'Mi casa es grande.', damanaEsperado: 'Ranzhe urraga aikuia', ambito: 'casa' },
+      { spanish: 'Mi casa es grande.', expectedDamana: 'Ranzhe urraga aikuia', scope: 'casa' },
     ]);
     expect(rows("SELECT 1 FROM oraciones WHERE damana = 'Ranzhe urraga aikuia'")).toHaveLength(0);
     // the word does go into the dictionary: the test measures composition, not lexicon
@@ -238,10 +238,10 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
     await writeBatch(dirTmp, 'formato_elicitacion_lote2.xlsx', BATCH_2);
     try {
       const stats = await service.importAll(dirTmp);
-      expect(stats.elicitacion.archivos).toBe(2);
-      expect(stats.elicitacion.idsRepetidos).toBe(1);
-      expect(stats.elicitacion.pendientes).toBe(0); // vecina has arrived; hola and años are covered
-      expect(stats.elicitacion.cubiertasPorVocabulario).toBe(2);
+      expect(stats.elicitation.files).toBe(2);
+      expect(stats.elicitation.repeatedIds).toBe(1);
+      expect(stats.elicitation.pending).toBe(0); // vecina has arrived; hola and años are covered
+      expect(stats.elicitation.coveredByVocabulary).toBe(2);
       expect(db.prepare("SELECT estado FROM pendientes WHERE palabra = 'vecina'").get()).toEqual({ estado: 'resuelta' });
       expect(rows("SELECT damana FROM vocabulario WHERE espanol = 'vecina'")).toEqual([{ damana: 'anzhirru' }]);
       expect(rows(`SELECT damana FROM oraciones WHERE id_externo = ?`, `elic_${ID_VECINA}`)).toEqual([{ damana: 'ranzhe anzhirru duzhi' }]);
@@ -255,10 +255,10 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
     try {
       writeCsvs(minimalDir);
       const stats = await service.importAll(minimalDir);
-      expect(stats.reglas).toBe(0);
-      expect(stats.nombresPropios).toBe(0);
-      expect(stats.elicitacion.archivos).toBe(0);
-      expect(stats.oraciones).toBe(2);
+      expect(stats.rules).toBe(0);
+      expect(stats.properNames).toBe(0);
+      expect(stats.elicitation.files).toBe(0);
+      expect(stats.sentences).toBe(2);
       expect(readTests(minimalDir)).toEqual([]);
     } finally {
       fs.rmSync(minimalDir, { recursive: true, force: true });
@@ -326,7 +326,7 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
 
     const stats = await service.importAll(dirTmp);
 
-    expect(stats.elicitacion.cerradasPorVocabulario).toBe(2);
+    expect(stats.elicitation.closedByVocabulary).toBe(2);
     const status = (p: string) => (db.prepare('SELECT estado FROM pendientes WHERE palabra = ?').get(p) as { estado: string }).estado;
     expect(status('aguas')).toBe('resuelta');
     expect(status('nʉnka')).toBe('resuelta');

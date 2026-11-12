@@ -27,15 +27,15 @@ export const TRIGGERS: Trigger[] = [
 
 export interface GrammarRule {
   id: number;
-  tipo: string | null;
-  forma: string;
-  significado: string | null;
-  ejemploBase: string | null;
-  ejemploRegla: string | null;
-  traduccionEjemplo: string | null;
-  notas: string | null;
+  type: string | null;
+  form: string;
+  meaning: string | null;
+  baseExample: string | null;
+  ruleExample: string | null;
+  exampleTranslation: string | null;
+  notes: string | null;
   /** null = general rule: always included. */
-  disparador: Trigger | null;
+  trigger: Trigger | null;
 }
 
 /** Cap on rules that travel in the prompt. */
@@ -109,7 +109,7 @@ const RE_FUTURE_PERIPHRASIS = /\b(voy|vas|va|vamos|van)\s+a\b/;
  */
 export function detectSpanishTriggers(text: string): Trigger[] {
   const tokens = tokenizeDamana(text);
-  const normalizedTokens = tokens.map((t) => t.normalizada);
+  const normalizedTokens = tokens.map((t) => t.normalized);
   const originals = tokens.map((t) => t.original);
   const found = new Set<Trigger>();
 
@@ -160,17 +160,17 @@ export function rulesByDamanaSuffix(
   text: string,
   rules: GrammarRule[],
 ): GrammarRule[] {
-  const tokens = tokenizeDamana(text).map((t) => t.normalizada);
+  const tokens = tokenizeDamana(text).map((t) => t.normalized);
   return rules.filter((rule) => {
-    const suffix = suffixOf(rule.forma);
+    const suffix = suffixOf(rule.form);
     if (!suffix) return false;
     return tokens.some((t) => t.length > suffix.length && t.endsWith(suffix));
   });
 }
 
 export interface RuleSelection {
-  disparadores: Trigger[];
-  reglas: GrammarRule[];
+  triggers: Trigger[];
+  rules: GrammarRule[];
 }
 
 /**
@@ -189,18 +189,18 @@ export function selectRules(
   if (language === Language.espanol) {
     triggers = detectSpanishTriggers(text);
     const activeOnes = new Set(triggers);
-    triggered = rules.filter((r) => r.disparador !== null && activeOnes.has(r.disparador));
+    triggered = rules.filter((r) => r.trigger !== null && activeOnes.has(r.trigger));
   } else {
     triggered = rulesByDamanaSuffix(text, rules);
-    triggers = TRIGGERS.filter((d) => triggered.some((r) => r.disparador === d));
+    triggers = TRIGGERS.filter((d) => triggered.some((r) => r.trigger === d));
   }
 
-  const general = rules.filter((r) => r.disparador === null);
+  const general = rules.filter((r) => r.trigger === null);
   const seen = new Set<number>();
   const selection = [...triggered, ...general].filter((r) => {
     if (seen.has(r.id)) return false;
     seen.add(r.id);
     return true;
   });
-  return { disparadores: triggers, reglas: selection.slice(0, MAX_RULES) };
+  return { triggers: triggers, rules: selection.slice(0, MAX_RULES) };
 }

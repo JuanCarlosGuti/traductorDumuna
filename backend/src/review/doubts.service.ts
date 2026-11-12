@@ -22,11 +22,11 @@ import {
 
 /** Everything worth clarifying with speakers, ready to go into Excel. */
 export interface DoubtsReport {
-  escritura: SpellingGroup[];
-  sinonimos: SynonymGroup[];
-  polisemia: PolysemyGroup[];
-  dudosas: DoubtfulEntry[];
-  terminaciones: CandidateEnding[];
+  spelling: SpellingGroup[];
+  synonyms: SynonymGroup[];
+  polysemy: PolysemyGroup[];
+  doubtful: DoubtfulEntry[];
+  endings: CandidateEnding[];
 }
 
 /** Example sentences are chosen short so they fit in a cell. */
@@ -43,30 +43,30 @@ export class DoubtsService {
 
   generate(): DoubtsReport {
     const entries: LexicalEntry[] = this.repo.listVocabulary().map((v) => ({
-      espanol: v.espanol,
+      spanish: v.spanish,
       damana: v.damana,
-      categoria: v.categoria,
-      notas: v.notas,
-      fuente: v.fuente,
+      category: v.category,
+      notes: v.notes,
+      source: v.source,
     }));
     const tokens = this.corpusTokens();
     const forms = this.seenForms(entries, tokens);
 
     const synonyms = detectSynonyms(entries);
     for (const group of synonyms) {
-      for (const option of group.opciones) {
+      for (const option of group.options) {
         const parts = tokenizeDamana(option.damana);
-        option.frecuencia =
-          parts.length === 1 ? (tokens.get(parts[0].normalizada)?.frecuencia ?? 0) : null;
+        option.frequency =
+          parts.length === 1 ? (tokens.get(parts[0].normalized)?.frequency ?? 0) : null;
       }
     }
 
     return {
-      escritura: [...detectVariants(forms), ...detectLookalikes(forms)],
-      sinonimos: synonyms,
-      polisemia: detectPolysemy(entries),
-      dudosas: detectDoubtfulEntries(entries),
-      terminaciones: detectEndings(
+      spelling: [...detectVariants(forms), ...detectLookalikes(forms)],
+      synonyms: synonyms,
+      polysemy: detectPolysemy(entries),
+      doubtful: detectDoubtfulEntries(entries),
+      endings: detectEndings(
         this.knownRoots(entries),
         tokens,
         this.knownEndings(entries),
@@ -80,19 +80,19 @@ export class DoubtsService {
     for (const source of [CorpusSource.oraciones, CorpusSource.frases]) {
       for (const row of this.repo.textsOf(source)) {
         const worksAsExample =
-          row.estado !== 'revisar' &&
-          row.textoEspanol.trim().length > 0 &&
-          row.textoDamana.length <= MAX_EXAMPLE_LENGTH;
-        for (const t of tokenizeDamana(row.textoDamana)) {
-          const info = tokens.get(t.normalizada) ?? { frecuencia: 0 };
-          info.frecuencia++;
+          row.status !== 'revisar' &&
+          row.spanishText.trim().length > 0 &&
+          row.damanaText.length <= MAX_EXAMPLE_LENGTH;
+        for (const t of tokenizeDamana(row.damanaText)) {
+          const info = tokens.get(t.normalized) ?? { frequency: 0 };
+          info.frequency++;
           if (
             worksAsExample &&
-            (!info.ejemplo || row.textoDamana.length < info.ejemplo.damana.length)
+            (!info.example || row.damanaText.length < info.example.damana.length)
           ) {
-            info.ejemplo = { damana: row.textoDamana.trim(), espanol: row.textoEspanol.trim() };
+            info.example = { damana: row.damanaText.trim(), spanish: row.spanishText.trim() };
           }
-          tokens.set(t.normalizada, info);
+          tokens.set(t.normalized, info);
         }
       }
     }
@@ -103,25 +103,25 @@ export class DoubtsService {
   private seenForms(entries: LexicalEntry[], tokens: Map<string, TokenCorpus>): SeenForm[] {
     const forms = new Map<string, SeenForm>();
     for (const [form, info] of tokens) {
-      forms.set(form, { forma: form, frecuencia: info.frecuencia, significados: [], ejemplo: info.ejemplo });
+      forms.set(form, { form: form, frequency: info.frequency, meanings: [], example: info.example });
     }
     const note = (damana: string, spanish: string) => {
       const parts = tokenizeDamana(damana);
       if (parts.length !== 1) return;
-      const key = parts[0].normalizada;
-      const form = forms.get(key) ?? { forma: key, frecuencia: 0, significados: [] };
+      const key = parts[0].normalized;
+      const form = forms.get(key) ?? { form: key, frequency: 0, meanings: [] };
       const meaning = spanish.trim();
       if (
         meaning &&
-        form.significados.length < MAX_MEANINGS &&
-        !form.significados.includes(meaning)
+        form.meanings.length < MAX_MEANINGS &&
+        !form.meanings.includes(meaning)
       ) {
-        form.significados.push(meaning);
+        form.meanings.push(meaning);
       }
       forms.set(key, form);
     };
-    for (const e of entries) note(e.damana, e.espanol);
-    for (const c of this.repo.listConjugations()) note(c.damana, c.espanol);
+    for (const e of entries) note(e.damana, e.spanish);
+    for (const c of this.repo.listConjugations()) note(c.damana, c.spanish);
     return [...forms.values()];
   }
 
@@ -130,7 +130,7 @@ export class DoubtsService {
     for (const e of entries) {
       const parts = tokenizeDamana(e.damana);
       if (parts.length === 1) {
-        roots.push({ raiz: parts[0].normalizada, significado: e.espanol.trim() });
+        roots.push({ root: parts[0].normalized, meaning: e.spanish.trim() });
       }
     }
     return roots;
@@ -142,17 +142,17 @@ export class DoubtsService {
     for (const e of entries) {
       for (const alternative of e.damana.split('/')) {
         const parts = tokenizeDamana(alternative);
-        if (parts.length === 1 && !known.has(parts[0].normalizada)) {
+        if (parts.length === 1 && !known.has(parts[0].normalized)) {
           known.set(
-            parts[0].normalizada,
-            `hay una palabra suelta igual: «${e.espanol.trim()}» (puede no tener relación)`,
+            parts[0].normalized,
+            `hay una palabra suelta igual: «${e.spanish.trim()}» (puede no tener relación)`,
           );
         }
       }
     }
     for (const rule of this.repo.listRules()) {
-      const key = normalize(rule.forma).replace(/^-+/, '').trim();
-      if (key) known.set(key, `regla anotada: ${rule.significado ?? ''}`.trim());
+      const key = normalize(rule.form).replace(/^-+/, '').trim();
+      if (key) known.set(key, `regla anotada: ${rule.meaning ?? ''}`.trim());
     }
     return known;
   }

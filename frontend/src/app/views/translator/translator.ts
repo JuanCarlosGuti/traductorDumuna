@@ -15,14 +15,14 @@ import {
 } from '../../core/models';
 
 interface TranslationSegment {
-  texto: string;
-  sinEquivalente: boolean;
+  text: string;
+  withoutEquivalent: boolean;
 }
 
 interface ExampleGroup {
-  dominio: CorpusDomain;
-  titulo: string;
-  ejemplos: ExampleFragment[];
+  domain: CorpusDomain;
+  title: string;
+  examples: ExampleFragment[];
 }
 
 const DOMAIN_TITLES: Record<CorpusDomain, string> = {
@@ -62,11 +62,11 @@ export class TranslatorView {
   protected readonly segments = computed<TranslationSegment[]>(() => {
     const r = this.result();
     if (!r) return [];
-    const withoutEquivalent = new Set(r.palabrasSinEquivalente.map((p) => normalize(p)));
-    const clean = r.traduccion.replace(/\[([^\]]+)\]/g, '$1');
+    const withoutEquivalent = new Set(r.wordsWithoutEquivalent.map((p) => normalize(p)));
+    const clean = r.translation.replace(/\[([^\]]+)\]/g, '$1');
     return segmentFragment(clean).map((s) => ({
-      texto: s.texto,
-      sinEquivalente: s.esPalabra && withoutEquivalent.has(normalize(s.texto)),
+      text: s.text,
+      withoutEquivalent: s.isWord && withoutEquivalent.has(normalize(s.text)),
     }));
   });
 
@@ -74,14 +74,14 @@ export class TranslatorView {
     const r = this.result();
     if (!r) return [];
     return DOMAIN_ORDER.map((domain) => ({
-      dominio: domain,
-      titulo: DOMAIN_TITLES[domain],
-      ejemplos: r.ejemplos.filter((e) => e.dominio === domain),
-    })).filter((g) => g.ejemplos.length > 0);
+      domain: domain,
+      title: DOMAIN_TITLES[domain],
+      examples: r.examples.filter((e) => e.domain === domain),
+    })).filter((g) => g.examples.length > 0);
   });
 
   protected readonly confidencePercent = computed(() =>
-    Math.round((this.result()?.confianza ?? 0) * 100),
+    Math.round((this.result()?.confidence ?? 0) * 100),
   );
 
   /**
@@ -90,10 +90,10 @@ export class TranslatorView {
    */
   protected readonly waitMessage = computed(() => {
     const e = this.status();
-    if (e?.proveedor === 'anthropic') {
+    if (e?.provider === 'anthropic') {
       return 'Traduciendo con Claude… suele tardar entre 5 y 15 s.';
     }
-    return `Traduciendo con ${e?.modelo ?? 'el modelo'}… suele tardar unos segundos (un modelo local puede tardar más).`;
+    return `Traduciendo con ${e?.model ?? 'el modelo'}… suele tardar unos segundos (un modelo local puede tardar más).`;
   });
 
   constructor() {
@@ -139,11 +139,11 @@ export class TranslatorView {
   protected confirm(): Promise<void> {
     const r = this.result();
     if (!r) return Promise.resolve();
-    return this.saveValidation(r.traduccion, 'confirmada');
+    return this.saveValidation(r.translation, 'confirmada');
   }
 
   protected openCorrection(): void {
-    this.correction.set(this.result()?.traduccion.replace(/\[([^\]]+)\]/g, '$1') ?? '');
+    this.correction.set(this.result()?.translation.replace(/\[([^\]]+)\]/g, '$1') ?? '');
     this.correcting.set(true);
     this.validationError.set('');
   }
@@ -166,11 +166,11 @@ export class TranslatorView {
     this.validationError.set('');
     try {
       const response = await this.api.validateTranslation({
-        texto: this.translatedText(),
-        direccion: this.direction(),
-        traduccion: translation,
-        origen: origin,
-        traduccionModelo: r.traduccion,
+        text: this.translatedText(),
+        direction: this.direction(),
+        translation: translation,
+        origin: origin,
+        modelTranslation: r.translation,
       });
       this.totalValidated.set(response.total);
       this.validation.set(origin);

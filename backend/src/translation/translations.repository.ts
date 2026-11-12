@@ -11,52 +11,52 @@ import { TranslationDirection, GlossPairDto } from './dto/translation.dto';
  * reported.
  */
 export interface ModelUsage {
-  tokensEntrada: number | null;
-  tokensSalida: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
   /** Tokens served from the prompt cache (billed at 10%). */
-  tokensCacheLeidos: number | null;
+  cacheReadTokens: number | null;
   /** Tokens written to the prompt cache (billed at 125%). */
-  tokensCacheCreados: number | null;
+  cacheCreatedTokens: number | null;
 }
 
 export interface TranslationLog {
-  texto: string;
-  traduccion: string;
-  direccion: TranslationDirection;
+  text: string;
+  translation: string;
+  direction: TranslationDirection;
   /** Similarity of the best retrieved example (0 if there was none). */
-  puntajeTop: number;
+  topScore: number;
   /** Mean of the similarities of the K examples: discriminates better than the top. */
-  puntajeMedio: number;
+  meanScore: number;
   /** Which source the best match came from; null if there were no examples. */
-  fuenteTop: CorpusSource | null;
-  ejemplosRecuperados: number;
+  topSource: CorpusSource | null;
+  retrievedExamples: number;
   /** How many examples came from sentences or phrases (the language in use). */
-  ejemplosEnContexto: number;
+  examplesInContext: number;
   /** Words without an equivalent (historical column palabras_dudosas). */
-  palabrasDudosas: string[];
-  vocabularioUsado: { espanol: string; damana: string }[];
-  modelo: string;
-  confianza?: number;
-  reglasAplicadas?: string[];
-  glosa?: GlossPairDto[];
+  doubtfulWords: string[];
+  usedVocabulary: { espanol: string; damana: string }[];
+  model: string;
+  confidence?: number;
+  appliedRules?: string[];
+  gloss?: GlossPairDto[];
   /** null if the provider did not report usage. */
-  uso?: ModelUsage | null;
+  usage?: ModelUsage | null;
   /** How long the model call took (not counting retrieval). */
-  duracionMs?: number | null;
+  durationMs?: number | null;
 }
 
 /** Row as read from the table, for later analysis. */
 export interface LoggedTranslation {
-  creadoEn: string;
-  texto: string;
-  traduccion: string;
-  direccion: TranslationDirection;
-  puntajeMedio: number;
-  fuenteTop: CorpusSource | null;
-  ejemplosRecuperados: number;
+  createdAt: string;
+  text: string;
+  translation: string;
+  direction: TranslationDirection;
+  meanScore: number;
+  topSource: CorpusSource | null;
+  retrievedExamples: number;
   /** null in rows logged before v5 (it was not measured). */
-  ejemplosEnContexto: number | null;
-  palabrasDudosas: string[];
+  examplesInContext: number | null;
+  doubtfulWords: string[];
 }
 
 @Injectable()
@@ -75,15 +75,15 @@ export class TranslationsRepository {
         )
         .all() as any[]
     ).map((f) => ({
-      creadoEn: f.creado_en,
-      texto: f.texto,
-      traduccion: f.traduccion,
-      direccion: f.direccion,
-      puntajeMedio: f.puntaje_medio,
-      fuenteTop: f.fuente_top,
-      ejemplosRecuperados: f.ejemplos_recuperados,
-      ejemplosEnContexto: f.ejemplos_en_contexto,
-      palabrasDudosas: JSON.parse(f.palabras_dudosas) as string[],
+      createdAt: f.creado_en,
+      text: f.texto,
+      translation: f.traduccion,
+      direction: f.direccion,
+      meanScore: f.puntaje_medio,
+      topSource: f.fuente_top,
+      retrievedExamples: f.ejemplos_recuperados,
+      examplesInContext: f.ejemplos_en_contexto,
+      doubtfulWords: JSON.parse(f.palabras_dudosas) as string[],
     }));
   }
 
@@ -104,25 +104,28 @@ export class TranslationsRepository {
       )
       .run(
         now.toISOString(),
-        logEntry.texto,
-        logEntry.traduccion,
-        logEntry.direccion,
-        logEntry.puntajeTop,
-        logEntry.puntajeMedio,
-        logEntry.fuenteTop,
-        logEntry.ejemplosRecuperados,
-        logEntry.ejemplosEnContexto,
-        JSON.stringify(logEntry.palabrasDudosas),
-        JSON.stringify(logEntry.vocabularioUsado),
-        logEntry.modelo,
-        logEntry.confianza ?? null,
-        logEntry.reglasAplicadas ? JSON.stringify(logEntry.reglasAplicadas) : null,
-        logEntry.glosa ? JSON.stringify(logEntry.glosa) : null,
-        logEntry.uso?.tokensEntrada ?? null,
-        logEntry.uso?.tokensSalida ?? null,
-        logEntry.uso?.tokensCacheLeidos ?? null,
-        logEntry.uso?.tokensCacheCreados ?? null,
-        logEntry.duracionMs ?? null,
+        logEntry.text,
+        logEntry.translation,
+        logEntry.direction,
+        logEntry.topScore,
+        logEntry.meanScore,
+        logEntry.topSource,
+        logEntry.retrievedExamples,
+        logEntry.examplesInContext,
+        JSON.stringify(logEntry.doubtfulWords),
+        JSON.stringify(logEntry.usedVocabulary),
+        logEntry.model,
+        logEntry.confidence ?? null,
+        logEntry.appliedRules ? JSON.stringify(logEntry.appliedRules) : null,
+        // Stored JSON keeps the Spanish keys of the existing rows (data format).
+        logEntry.gloss
+          ? JSON.stringify(logEntry.gloss.map((g) => ({ origen: g.origin, destino: g.target })))
+          : null,
+        logEntry.usage?.inputTokens ?? null,
+        logEntry.usage?.outputTokens ?? null,
+        logEntry.usage?.cacheReadTokens ?? null,
+        logEntry.usage?.cacheCreatedTokens ?? null,
+        logEntry.durationMs ?? null,
       );
   }
 }

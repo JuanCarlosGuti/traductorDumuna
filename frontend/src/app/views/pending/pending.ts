@@ -34,7 +34,7 @@ export class PendingView {
   protected readonly message = signal('');
   protected readonly error = signal('');
 
-  protected readonly openItems = computed(() => this.pendingItems().filter((p) => p.estado !== 'resuelta'));
+  protected readonly openItems = computed(() => this.pendingItems().filter((p) => p.status !== 'resuelta'));
   protected readonly visible = computed(() =>
     this.showResolved() ? this.pendingItems() : this.openItems(),
   );
@@ -63,9 +63,9 @@ export class PendingView {
     this.error.set('');
     try {
       const file = await this.api.exportPending();
-      downloadBlob(file.blob, file.nombreArchivo);
+      downloadBlob(file.blob, file.fileName);
       this.message.set(
-        `Lote generado: ${file.nombreArchivo}. Cuando vuelva lleno, guárdalo en la carpeta datos/ y ejecuta npm run importar.`,
+        `Lote generado: ${file.fileName}. Cuando vuelva lleno, guárdalo en la carpeta datos/ y ejecuta npm run importar.`,
       );
       await this.load();
     } catch (e) {

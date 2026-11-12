@@ -57,13 +57,13 @@
         </tr>
       </thead>
       <tbody>
-        @for (f of visible(); track f.palabra) {
+        @for (f of visible(); track f.word) {
           <tr>
             <td class="suave">{{ pageIndex() * perPage + $index + 1 }}</td>
-            <td><a [routerLink]="['/diccionario', f.palabra]">{{ f.palabra }}</a></td>
-            <td>{{ f.traduccion ?? '' }}</td>
-            <td>{{ f.frecuencia }}</td>
-            <td class="suave">{{ f.categoria ?? '' }}</td>
+            <td><a [routerLink]="['/diccionario', f.word]">{{ f.word }}</a></td>
+            <td>{{ f.translation ?? '' }}</td>
+            <td>{{ f.frequency }}</td>
+            <td class="suave">{{ f.category ?? '' }}</td>
           </tr>
         } @empty {
           <tr><td colspan="5">Sin resultados para «{{ filterText() }}».</td></tr>
@@ -85,12 +85,12 @@
         @for (e of visibleEntries(); track e.id) {
           <tr>
             <td class="suave">{{ pageIndex() * perPage + $index + 1 }}</td>
-            <td>{{ e.espanol }}</td>
+            <td>{{ e.spanish }}</td>
             <td lang="mbp">
               <a [routerLink]="['/diccionario', e.damana]">{{ e.damana }}</a>
             </td>
-            <td class="suave">{{ e.categoria ?? '' }}</td>
-            <td class="suave chiquito">{{ e.notas ?? '' }}</td>
+            <td class="suave">{{ e.category ?? '' }}</td>
+            <td class="suave chiquito">{{ e.notes ?? '' }}</td>
           </tr>
         } @empty {
           <tr><td colspan="5">Sin resultados para «{{ filterText() }}».</td></tr>

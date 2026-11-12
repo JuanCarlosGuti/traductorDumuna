@@ -9,7 +9,7 @@ describe('findOccurrences', () => {
     const text = 'Jehová Kunkujshina naingontka, jehovága no';
     const oc = findOccurrences(text, 'jehova');
     expect(oc).toHaveLength(1);
-    expect(oc[0]).toEqual({ inicio: 0, fin: 6, palabra: 'Jehová' });
+    expect(oc[0]).toEqual({ start: 0, end: 6, word: 'Jehová' });
   });
 
   it('keeps ʉ: nʉnka does not match nunka or vice versa', () => {
@@ -22,26 +22,26 @@ describe('findOccurrences', () => {
     const text = 'Ñingui tua ningui';
     const oc = findOccurrences(text, 'ñingui');
     expect(oc).toHaveLength(1);
-    expect(oc[0].palabra).toBe('Ñingui');
+    expect(oc[0].word).toBe('Ñingui');
   });
 
   it('matches whole words, not substrings', () => {
     const oc = findOccurrences('kʉnʉnka nʉnka', 'nʉnka');
     expect(oc).toHaveLength(1);
-    expect(oc[0].inicio).toBe(8);
+    expect(oc[0].start).toBe(8);
   });
 
   it('trims edge apostrophes but keeps internal ones', () => {
     const oc = findOccurrences("'shke'ta' awa", "shke'ta");
     expect(oc).toHaveLength(1);
-    expect(oc[0].palabra).toBe("shke'ta");
-    expect(oc[0].inicio).toBe(1);
+    expect(oc[0].word).toBe("shke'ta");
+    expect(oc[0].start).toBe(1);
   });
 
   it('indexes survive ¿? signs and numbers', () => {
     const text = '¿Masheshishka 42 nanu?';
     const oc = findOccurrences(text, 'nanu');
-    expect(text.slice(oc[0].inicio, oc[0].fin)).toBe('nanu');
+    expect(text.slice(oc[0].start, oc[0].end)).toBe('nanu');
   });
 });
 

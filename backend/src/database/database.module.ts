@@ -19,8 +19,8 @@ export class DatabaseModule implements OnApplicationShutdown {
         {
           provide: DB_CONNECTION,
           useFactory: (): Database.Database => {
-            const db = new Database(options.rutaDb);
-            if (options.rutaDb !== ':memory:') {
+            const db = new Database(options.dbPath);
+            if (options.dbPath !== ':memory:') {
               db.pragma('journal_mode = WAL');
             }
             runMigrations(db);

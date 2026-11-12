@@ -14,26 +14,26 @@ export type MissingWordReason =
   | 'en_corpus_sin_glosario';
 
 export interface MissingWordRow {
-  espanol: string;
+  spanish: string;
   /** Always empty when generated: it is the column the speaker fills in. */
   damana: string;
-  motivo: MissingWordReason;
-  prioridad: 1 | 2;
-  vecesVisto: number;
-  fecha: string;
+  reason: MissingWordReason;
+  priority: 1 | 2;
+  timesSeen: number;
+  date: string;
   /** Corpus sentence where the word appears, to give context. */
-  ejemploEspanol: string;
-  ejemploDamana: string;
+  spanishExample: string;
+  damanaExample: string;
 }
 
 /** Frequent Damana word the glossary does not translate yet. */
 export interface MissingDamanaWordRow {
   damana: string;
   /** Always empty when generated: it is the column the speaker fills in. */
-  espanol: string;
-  vecesVisto: number;
-  ejemploDamana: string;
-  ejemploEspanol: string;
+  spanish: string;
+  timesSeen: number;
+  damanaExample: string;
+  spanishExample: string;
 }
 
 /**
@@ -91,46 +91,46 @@ export class MissingWordsService {
       if (!previous) {
         const example = examples.get(key);
         candidateWords.set(key, {
-          espanol: word.toLowerCase(),
+          spanish: word.toLowerCase(),
           damana: '',
-          motivo: reason,
-          prioridad: priority,
-          vecesVisto: times,
-          fecha: date,
-          ejemploEspanol: example?.espanol ?? '',
-          ejemploDamana: example?.damana ?? '',
+          reason: reason,
+          priority: priority,
+          timesSeen: times,
+          date: date,
+          spanishExample: example?.spanish ?? '',
+          damanaExample: example?.damana ?? '',
         });
         return;
       }
       // Already there: the highest priority wins and usage accumulates.
-      previous.vecesVisto += times;
-      if (priority < previous.prioridad) {
-        previous.prioridad = priority;
-        previous.motivo = reason;
+      previous.timesSeen += times;
+      if (priority < previous.priority) {
+        previous.priority = priority;
+        previous.reason = reason;
       }
-      if (date > previous.fecha) previous.fecha = date;
+      if (date > previous.date) previous.date = date;
     };
 
     // Priority 1 — what you asked to translate and the corpus did not back up.
     for (const logEntry of this.translations.listAll()) {
       const support = evaluateSupport({
-        puntajeMedio: logEntry.puntajeMedio,
-        fuenteTop: logEntry.fuenteTop,
-        ejemplosRecuperados: logEntry.ejemplosRecuperados,
-        ejemplosEnContexto: logEntry.ejemplosEnContexto,
+        meanScore: logEntry.meanScore,
+        topSource: logEntry.topSource,
+        retrievedExamples: logEntry.retrievedExamples,
+        examplesInContext: logEntry.examplesInContext,
       });
-      if (support.nivel !== 'revisar') continue;
+      if (support.level !== 'revisar') continue;
       // The Spanish side: the input if you translated from Spanish, the output otherwise.
       const spanishSide =
-        logEntry.direccion === 'espanol_a_damana'
-          ? logEntry.texto
-          : logEntry.traduccion;
+        logEntry.direction === 'espanol_a_damana'
+          ? logEntry.text
+          : logEntry.translation;
       for (const token of tokenizeDamana(spanishSide)) {
         add(
           token.original,
           'traduccion_con_poco_apoyo',
           1,
-          logEntry.creadoEn.slice(0, 10),
+          logEntry.createdAt.slice(0, 10),
           1,
         );
       }
@@ -144,9 +144,9 @@ export class MissingWordsService {
     return [...candidateWords.values()]
       .sort(
         (a, b) =>
-          a.prioridad - b.prioridad ||
-          b.vecesVisto - a.vecesVisto ||
-          a.espanol.localeCompare(b.espanol, 'es'),
+          a.priority - b.priority ||
+          b.timesSeen - a.timesSeen ||
+          a.spanish.localeCompare(b.spanish, 'es'),
       )
       .slice(0, limit);
   }
@@ -159,13 +159,13 @@ export class MissingWordsService {
   computeDamana(limit = ROW_CAP): MissingDamanaWordRow[] {
     const inGlossary = new Set(
       this.repo.listVocabulary().flatMap((e) =>
-        tokenizeDamana(e.damana).map((t) => t.normalizada),
+        tokenizeDamana(e.damana).map((t) => t.normalized),
       ),
     );
     // Conjugated forms already have a gloss in the conjugations table.
     const inConjugations = new Set(
       this.repo.listConjugations().flatMap((c) =>
-        tokenizeDamana(c.damana).map((t) => t.normalizada),
+        tokenizeDamana(c.damana).map((t) => t.normalized),
       ),
     );
     const examples = this.examplesByDamanaWord();
@@ -174,46 +174,46 @@ export class MissingWordsService {
       .frequenciesWithOriginals()
       .filter(
         (f) =>
-          !inGlossary.has(f.palabra) &&
-          !inConjugations.has(f.palabra) &&
+          !inGlossary.has(f.word) &&
+          !inConjugations.has(f.word) &&
           // Probable proper names: they never appear in lowercase.
-          f.originales.some((o) => !startsUppercase(o)),
+          f.originals.some((o) => !startsUppercase(o)),
       )
       .slice(0, limit)
       .map((f) => {
-        const example = examples.get(f.palabra);
+        const example = examples.get(f.word);
         return {
-          damana: f.palabra,
-          espanol: '',
-          vecesVisto: f.frecuencia,
-          ejemploDamana: example?.damana ?? '',
-          ejemploEspanol: example?.espanol ?? '',
+          damana: f.word,
+          spanish: '',
+          timesSeen: f.frequency,
+          damanaExample: example?.damana ?? '',
+          spanishExample: example?.spanish ?? '',
         };
       });
   }
 
   /** First reliable sentence where each Spanish word appears. */
-  private examplesBySpanishWord(): Map<string, { espanol: string; damana: string }> {
-    return this.firstExample((row) => row.textoEspanol);
+  private examplesBySpanishWord(): Map<string, { spanish: string; damana: string }> {
+    return this.firstExample((row) => row.spanishText);
   }
 
   /** First reliable sentence where each Damana word appears. */
-  private examplesByDamanaWord(): Map<string, { espanol: string; damana: string }> {
-    return this.firstExample((row) => row.textoDamana);
+  private examplesByDamanaWord(): Map<string, { spanish: string; damana: string }> {
+    return this.firstExample((row) => row.damanaText);
   }
 
   private firstExample(
-    side: (row: { textoDamana: string; textoEspanol: string }) => string,
-  ): Map<string, { espanol: string; damana: string }> {
-    const examples = new Map<string, { espanol: string; damana: string }>();
+    side: (row: { damanaText: string; spanishText: string }) => string,
+  ): Map<string, { spanish: string; damana: string }> {
+    const examples = new Map<string, { spanish: string; damana: string }>();
     for (const source of [CorpusSource.oraciones, CorpusSource.frases]) {
       for (const row of this.repo.textsOf(source)) {
-        if (row.estado === 'revisar') continue;
+        if (row.status === 'revisar') continue;
         for (const token of tokenizeDamana(side(row))) {
-          if (examples.has(token.normalizada)) continue;
-          examples.set(token.normalizada, {
-            espanol: row.textoEspanol,
-            damana: row.textoDamana,
+          if (examples.has(token.normalized)) continue;
+          examples.set(token.normalized, {
+            spanish: row.spanishText,
+            damana: row.damanaText,
           });
         }
       }
@@ -224,8 +224,8 @@ export class MissingWordsService {
   private glossaryWords(): Set<string> {
     const covered = new Set<string>();
     for (const entry of this.repo.listVocabulary()) {
-      for (const token of tokenizeDamana(entry.espanol)) {
-        covered.add(token.normalizada);
+      for (const token of tokenizeDamana(entry.spanish)) {
+        covered.add(token.normalized);
       }
     }
     return covered;
@@ -233,7 +233,7 @@ export class MissingWordsService {
 
   /** Words that appear on the Damana side: written the same, nothing to translate. */
   private wordsInDamana(): Set<string> {
-    return new Set(this.repo.frequenciesWithOriginals().map((f) => f.palabra));
+    return new Set(this.repo.frequenciesWithOriginals().map((f) => f.word));
   }
 
   /**
@@ -248,16 +248,16 @@ export class MissingWordsService {
     const sources = [CorpusSource.oraciones, CorpusSource.frases];
     for (const source of sources) {
       for (const row of this.repo.textsOf(source)) {
-        if (row.estado === 'revisar') continue; // reliable alignments only
-        for (const token of tokenizeDamana(row.textoEspanol)) {
-          const entry = info.get(token.normalizada) ?? {
+        if (row.status === 'revisar') continue; // reliable alignments only
+        for (const token of tokenizeDamana(row.spanishText)) {
+          const entry = info.get(token.normalized) ?? {
             palabra: token.original.toLowerCase(),
             veces: 0,
             algunaEnMinuscula: false,
           };
           entry.veces++;
           if (!startsUppercase(token.original)) entry.algunaEnMinuscula = true;
-          info.set(token.normalizada, entry);
+          info.set(token.normalized, entry);
         }
       }
     }

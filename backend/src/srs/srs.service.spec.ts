@@ -50,52 +50,52 @@ describe('SrsService', () => {
 
   it('no progress: serves the vocabulary first as new cards', () => {
     const status = service.nextCard(day0);
-    expect(status.tarjeta).toMatchObject({
-      palabra: 'nʉnka',
-      tipo: 'vocabulario',
-      traduccion: 'agua',
-      repeticiones: 0,
+    expect(status.card).toMatchObject({
+      word: 'nʉnka',
+      type: 'vocabulario',
+      translation: 'agua',
+      repetitions: 0,
     });
-    expect(status.pendientes).toBe(0);
+    expect(status.pendingCards).toBe(0);
     // 2 from vocabulary + 2 frequent (gontka, nanu)
-    expect(status.nuevas).toBe(4);
+    expect(status.newCards).toBe(4);
   });
 
   it('frequent words carry candidate translations as the back', () => {
     service.answer('nʉnka', Grade.bien, day0);
     service.answer('ñingui', Grade.bien, day0);
     const status = service.nextCard(day0);
-    expect(status.tarjeta!.palabra).toBe('gontka');
-    expect(status.tarjeta!.tipo).toBe('frecuencia');
-    expect(status.tarjeta!.traduccion).toContain('hizo'); // 'esto'/'aqui' are candidates too
+    expect(status.card!.word).toBe('gontka');
+    expect(status.card!.type).toBe('frecuencia');
+    expect(status.card!.translation).toContain('hizo'); // 'esto'/'aqui' are candidates too
   });
 
   it('answering "bien" schedules the review and the card is due the next day', () => {
     const r = service.answer('nʉnka', Grade.bien, day0);
-    expect(r.intervaloDias).toBe(1);
+    expect(r.intervalDays).toBe(1);
 
     // Just answered: no longer pending today
-    expect(service.nextCard(day0).pendientes).toBe(0);
+    expect(service.nextCard(day0).pendingCards).toBe(0);
     // The next day it is due and comes back first
     const tomorrow = service.nextCard(days(1.1));
-    expect(tomorrow.pendientes).toBe(1);
-    expect(tomorrow.tarjeta!.palabra).toBe('nʉnka');
-    expect(tomorrow.tarjeta!.repeticiones).toBe(1);
+    expect(tomorrow.pendingCards).toBe(1);
+    expect(tomorrow.card!.word).toBe('nʉnka');
+    expect(tomorrow.card!.repetitions).toBe(1);
   });
 
   it('"otra vez" makes the card due immediately (case with ñ)', () => {
     service.answer('ñingui', Grade.otra_vez, day0);
     const status = service.nextCard(day0);
-    expect(status.pendientes).toBe(1);
-    expect(status.tarjeta!.palabra).toBe('ñingui');
+    expect(status.pendingCards).toBe(1);
+    expect(status.card!.word).toBe('ñingui');
   });
 
   it('prioritizes the oldest overdue card', () => {
     service.answer('nʉnka', Grade.bien, day0); // due day 1
     service.answer('ñingui', Grade.bien, days(0.5)); // due day 1.5
     const status = service.nextCard(days(2));
-    expect(status.pendientes).toBe(2);
-    expect(status.tarjeta!.palabra).toBe('nʉnka');
+    expect(status.pendingCards).toBe(2);
+    expect(status.card!.word).toBe('nʉnka');
   });
 
   it('rejects words outside the deck', () => {

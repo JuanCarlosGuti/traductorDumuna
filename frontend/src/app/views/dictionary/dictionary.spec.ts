@@ -5,16 +5,16 @@ import { VocabularyEntry, Frequency } from '../../core/models';
 import { DictionaryView } from './dictionary';
 
 const frequency = (word: string, n: number): Frequency => ({
-  palabra: word,
-  frecuencia: n,
-  traduccion: null,
-  categoria: null,
+  word: word,
+  frequency: n,
+  translation: null,
+  category: null,
 });
 
 const VOCABULARY: VocabularyEntry[] = [
-  { id: 1, espanol: 'agua', damana: 'nʉnka', categoria: 'Otros', notas: null, fuente: 'dic' },
-  { id: 2, espanol: 'año', damana: 'ñingui', categoria: 'Otros', notas: null, fuente: 'dic' },
-  { id: 3, espanol: 'ano', damana: 'gunkua', categoria: 'Otros', notas: null, fuente: 'dic' },
+  { id: 1, spanish: 'agua', damana: 'nʉnka', category: 'Otros', notes: null, source: 'dic' },
+  { id: 2, spanish: 'año', damana: 'ñingui', category: 'Otros', notes: null, source: 'dic' },
+  { id: 3, spanish: 'ano', damana: 'gunkua', category: 'Otros', notes: null, source: 'dic' },
 ];
 
 describe('Diccionario', () => {
@@ -31,8 +31,8 @@ describe('Diccionario', () => {
   const start = async (words: Frequency[]) => {
     fixture = await mount(DictionaryView);
     http = TestBed.inject(HttpTestingController);
-    http.expectOne((r) => r.url === '/api/frecuencias').flush(words);
-    http.expectOne('/api/vocabulario').flush(VOCABULARY);
+    http.expectOne((r) => r.url === '/api/frequencies').flush(words);
+    http.expectOne('/api/vocabulary').flush(VOCABULARY);
     await settle(fixture);
   };
 

@@ -21,7 +21,7 @@ import {
 // Own CLI module: it does not drag in HTTP controllers or static files.
 @Module({
   imports: [
-    DatabaseModule.forRoot({ rutaDb: defaultDbPath() }),
+    DatabaseModule.forRoot({ dbPath: defaultDbPath() }),
     QueryModule,
     TranslationModule,
   ],
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `Evaluando ${testCases.length} pruebas con ${config.proveedor} · ${config.modelo}` +
+    `Evaluando ${testCases.length} pruebas con ${config.provider} · ${config.model}` +
       (pause ? ` (pausa de ${pause} ms entre llamadas)` : '') +
       '…',
   );
@@ -87,42 +87,42 @@ async function main(): Promise<void> {
     if (i > 0 && pause > 0) await new Promise((r) => setTimeout(r, pause));
     try {
       const response = await translator.translate(
-        { texto: testCase.espanol, direccion: TranslationDirection.espanol_a_damana },
-        { registrar: false },
+        { text: testCase.spanish, direction: TranslationDirection.espanol_a_damana },
+        { record: false },
       );
       const evaluated = evaluateTest(testCase, response);
       results.push(evaluated);
       console.log(
-        `${String(i + 1).padStart(3)}. ${evaluated.exacta ? '✓' : ' '} chrF ${evaluated.chrf.toFixed(2)}  ${testCase.espanol}`,
+        `${String(i + 1).padStart(3)}. ${evaluated.exact ? '✓' : ' '} chrF ${evaluated.chrf.toFixed(2)}  ${testCase.spanish}`,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       results.push(failedTest(testCase, message));
-      console.log(`${String(i + 1).padStart(3)}. ✗ ERROR ${message}  ${testCase.espanol}`);
+      console.log(`${String(i + 1).padStart(3)}. ✗ ERROR ${message}  ${testCase.spanish}`);
     }
   }
 
   const date = new Date();
   const report = buildReport(results, {
-    fecha: date,
-    proveedor: config.proveedor,
-    modelo: config.modelo,
+    date,
+    provider: config.provider,
+    model: config.model,
   });
   const folder = evaluationsDir(dataDir);
   fs.mkdirSync(folder, { recursive: true });
-  const base = path.join(folder, reportBaseName(date, config.modelo));
+  const base = path.join(folder, reportBaseName(date, config.model));
   fs.writeFileSync(`${base}.json`, JSON.stringify(report, null, 2), 'utf8');
   fs.writeFileSync(`${base}.md`, renderMarkdown(report), 'utf8');
 
   console.log('\n=== Resultado por ámbito ===');
   console.table(
-    [...report.porAmbito, report.total].map((r) => ({
-      ambito: r.ambito,
-      pruebas: r.pruebas,
-      'exactas %': r.porcentajeExactas.toFixed(1),
-      'chrF medio': r.chrfMedio.toFixed(3),
-      'sin equiv. %': r.porcentajeSinEquivalente.toFixed(1),
-      errores: r.errores,
+    [...report.byScope, report.total].map((r) => ({
+      ambito: r.scope,
+      pruebas: r.tests,
+      'exactas %': r.exactPercent.toFixed(1),
+      'chrF medio': r.meanChrf.toFixed(3),
+      'sin equiv. %': r.withoutEquivalentPercent.toFixed(1),
+      errores: r.errors,
     })),
   );
   console.log(`\nInforme guardado en:\n  ${base}.md\n  ${base}.json`);

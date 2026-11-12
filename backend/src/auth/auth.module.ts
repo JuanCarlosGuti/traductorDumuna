@@ -18,8 +18,8 @@ export class AuthModule {
       module: AuthModule,
       imports: [
         JwtModule.register({
-          secret: config.secreto,
-          signOptions: { expiresIn: `${config.duracionDias}d` },
+          secret: config.secret,
+          signOptions: { expiresIn: `${config.durationDays}d` },
         }),
       ],
       controllers: [AuthController],

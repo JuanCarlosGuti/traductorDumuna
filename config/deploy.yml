@@ -39,7 +39,7 @@ proxy:
     # Public and lightweight (backend/src/health/health.controller.ts). It answers 503
     # if the image came out without a corpus, and then the deployment fails instead
     # of replacing the previous container.
-    path: /api/salud
+    path: /api/health
     interval: 5
     timeout: 15
 

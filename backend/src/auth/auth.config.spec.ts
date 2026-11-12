@@ -9,13 +9,13 @@ describe('readAuthConfig', () => {
 
   it('with complete credentials it is active', () => {
     const config = readAuthConfig(credentials as NodeJS.ProcessEnv);
-    expect(config.activa).toBe(true);
-    expect(config.usuario).toBe('juan');
-    expect(config.duracionDias).toBe(30);
+    expect(config.active).toBe(true);
+    expect(config.user).toBe('juan');
+    expect(config.durationDays).toBe(30);
   });
 
   it('without credentials it is disabled outside production', () => {
-    expect(readAuthConfig({} as NodeJS.ProcessEnv).activa).toBe(false);
+    expect(readAuthConfig({} as NodeJS.ProcessEnv).active).toBe(false);
   });
 
   it('in production without credentials it does NOT start: the API cannot be left open', () => {
@@ -39,14 +39,14 @@ describe('readAuthConfig', () => {
       AUTH_USUARIO: '   ',
       AUTH_PASSWORD: 'x',
     } as NodeJS.ProcessEnv);
-    expect(config.activa).toBe(false);
+    expect(config.active).toBe(false);
   });
 
   it('locally it makes up a secret so it can still sign', () => {
     const config = readAuthConfig(
       { AUTH_USUARIO: 'juan', AUTH_PASSWORD: 'x' } as NodeJS.ProcessEnv,
     );
-    expect(config.secreto.length).toBeGreaterThanOrEqual(32);
+    expect(config.secret.length).toBeGreaterThanOrEqual(32);
   });
 
   it('honours AUTH_DIAS_SESION', () => {
@@ -54,7 +54,7 @@ describe('readAuthConfig', () => {
       ...credentials,
       AUTH_DIAS_SESION: '7',
     } as NodeJS.ProcessEnv);
-    expect(config.duracionDias).toBe(7);
+    expect(config.durationDays).toBe(7);
   });
 });
 
@@ -74,6 +74,6 @@ describe('readAuthConfig on Render', () => {
       AUTH_PASSWORD: 'x',
       AUTH_JWT_SECRET: 'secreto',
     } as NodeJS.ProcessEnv);
-    expect(config.activa).toBe(true);
+    expect(config.active).toBe(true);
   });
 });

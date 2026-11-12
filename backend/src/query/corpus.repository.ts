@@ -13,19 +13,19 @@ import { Trigger, GrammarRule } from './rules';
 
 export interface TextRow {
   id: number;
-  referencia: string;
-  textoDamana: string;
-  textoEspanol: string;
+  reference: string;
+  damanaText: string;
+  spanishText: string;
   /** Sentences only: 'aprobado' | 'revisar' (alignment quality). */
-  estado?: string;
+  status?: string;
   /** Language register of the fragment (biblical, everyday, grammar). */
-  dominio: CorpusDomain;
+  domain: CorpusDomain;
 }
 
 export interface WordFrequency {
-  palabra: string;
-  frecuencia: number;
-  originales: string[];
+  word: string;
+  frequency: number;
+  originals: string[];
 }
 
 @Injectable()
@@ -35,7 +35,7 @@ export class CorpusRepository {
   listVocabulary(): VocabularyDto[] {
     return this.db
       .prepare(
-        'SELECT rowid AS id, espanol, damana, categoria, notas, fuente FROM vocabulario ORDER BY rowid',
+        'SELECT rowid AS id, espanol AS spanish, damana, categoria AS category, notas AS notes, fuente AS source FROM vocabulario ORDER BY rowid',
       )
       .all() as VocabularyDto[];
   }
@@ -43,7 +43,7 @@ export class CorpusRepository {
   listPhrases(): PhraseDto[] {
     return this.db
       .prepare(
-        'SELECT rowid AS id, fuente, damana, espanol, notas, dominio FROM frases ORDER BY rowid',
+        'SELECT rowid AS id, fuente AS source, damana, espanol AS spanish, notas AS notes, dominio AS domain FROM frases ORDER BY rowid',
       )
       .all() as PhraseDto[];
   }
@@ -60,14 +60,14 @@ export class CorpusRepository {
         .all() as any[]
     ).map((f) => ({
       id: f.id,
-      tipo: f.tipo,
-      forma: f.forma,
-      significado: f.significado,
-      ejemploBase: f.ejemplo_base,
-      ejemploRegla: f.ejemplo_regla,
-      traduccionEjemplo: f.traduccion_ejemplo,
-      notas: f.notas,
-      disparador: (f.disparador as Trigger | null) ?? null,
+      type: f.tipo,
+      form: f.forma,
+      meaning: f.significado,
+      baseExample: f.ejemplo_base,
+      ruleExample: f.ejemplo_regla,
+      exampleTranslation: f.traduccion_ejemplo,
+      notes: f.notas,
+      trigger: (f.disparador as Trigger | null) ?? null,
     }));
   }
 
@@ -82,15 +82,15 @@ export class CorpusRepository {
     ).map((f) => ({
       id: f.id,
       damana: f.damana,
-      espanol: f.espanol,
-      seEscribeIgual: f.se_escribe_igual === 1,
-      otrasGrafias: f.otras_grafias
+      spanish: f.espanol,
+      sameSpelling: f.se_escribe_igual === 1,
+      otherSpellings: f.otras_grafias
         ? String(f.otras_grafias)
             .split(/[,;]/)
             .map((g: string) => g.trim())
             .filter(Boolean)
         : [],
-      notas: f.notas,
+      notes: f.notas,
     }));
   }
 
@@ -98,7 +98,7 @@ export class CorpusRepository {
   listLemmas(): LemmaDto[] {
     return this.db
       .prepare(
-        'SELECT lema, COUNT(*) AS formas FROM conjugaciones GROUP BY lema ORDER BY lema',
+        'SELECT lema AS lemma, COUNT(*) AS forms FROM conjugaciones GROUP BY lema ORDER BY lema',
       )
       .all() as LemmaDto[];
   }
@@ -107,7 +107,7 @@ export class CorpusRepository {
   conjugationsWithWord(normalizedWord: string): ConjugationDto[] {
     return this.db
       .prepare(
-        `SELECT DISTINCT c.rowid AS id, c.damana, c.espanol, c.lema, c.fuente, c.notas
+        `SELECT DISTINCT c.rowid AS id, c.damana, c.espanol AS spanish, c.lema AS lemma, c.fuente AS source, c.notas AS notes
          FROM conjugaciones c
          JOIN tokens_damana t
            ON t.tabla_origen = 'conjugaciones' AND t.id_origen = c.rowid
@@ -130,7 +130,7 @@ export class CorpusRepository {
   listConjugations(): ConjugationDto[] {
     return this.db
       .prepare(
-        'SELECT rowid AS id, damana, espanol, lema, fuente, notas FROM conjugaciones ORDER BY rowid',
+        'SELECT rowid AS id, damana, espanol AS spanish, lema AS lemma, fuente AS source, notas AS notes FROM conjugaciones ORDER BY rowid',
       )
       .all() as ConjugationDto[];
   }
@@ -138,7 +138,7 @@ export class CorpusRepository {
   conjugationsOf(lemma: string): ConjugationDto[] {
     return this.db
       .prepare(
-        `SELECT rowid AS id, damana, espanol, lema, fuente, notas
+        `SELECT rowid AS id, damana, espanol AS spanish, lema AS lemma, fuente AS source, notas AS notes
          FROM conjugaciones WHERE lema = ? ORDER BY rowid`,
       )
       .all(lemma) as ConjugationDto[];
@@ -160,11 +160,11 @@ export class CorpusRepository {
             .all() as any[]
         ).map((f) => ({
           id: f.id,
-          referencia: f.estado === 'revisar' ? `oración ${f.id} (revisar)` : `oración ${f.id}`,
-          textoDamana: f.damana,
-          textoEspanol: f.espanol ?? '',
-          estado: f.estado,
-          dominio: f.dominio as CorpusDomain,
+          reference: f.estado === 'revisar' ? `oración ${f.id} (revisar)` : `oración ${f.id}`,
+          damanaText: f.damana,
+          spanishText: f.espanol ?? '',
+          status: f.estado,
+          domain: f.dominio as CorpusDomain,
         }));
       case CorpusSource.frases:
         return (
@@ -175,10 +175,10 @@ export class CorpusRepository {
             .all() as any[]
         ).map((f) => ({
           id: f.id,
-          referencia: f.fuente ? `frase ${f.id} (${f.fuente})` : `frase ${f.id}`,
-          textoDamana: f.damana,
-          textoEspanol: f.espanol ?? '',
-          dominio: f.dominio as CorpusDomain,
+          reference: f.fuente ? `frase ${f.id} (${f.fuente})` : `frase ${f.id}`,
+          damanaText: f.damana,
+          spanishText: f.espanol ?? '',
+          domain: f.dominio as CorpusDomain,
         }));
       case CorpusSource.vocabulario:
         return (
@@ -187,10 +187,10 @@ export class CorpusRepository {
             .all() as any[]
         ).map((f) => ({
           id: f.id,
-          referencia: `vocabulario ${f.id}`,
-          textoDamana: f.damana,
-          textoEspanol: f.espanol,
-          dominio: CorpusDomain.cotidiano,
+          reference: `vocabulario ${f.id}`,
+          damanaText: f.damana,
+          spanishText: f.espanol,
+          domain: CorpusDomain.cotidiano,
         }));
       case CorpusSource.conjugaciones:
         return (
@@ -199,24 +199,24 @@ export class CorpusRepository {
             .all() as any[]
         ).map((f) => ({
           id: f.id,
-          referencia: `conjugación ${f.id} (${f.lema})`,
-          textoDamana: f.damana,
-          textoEspanol: f.espanol,
-          dominio: CorpusDomain.gramatica,
+          reference: `conjugación ${f.id} (${f.lema})`,
+          damanaText: f.damana,
+          spanishText: f.espanol,
+          domain: CorpusDomain.gramatica,
         }));
     }
   }
 
   frequencyBySource(
     normalizedWord: string,
-  ): { fuente: CorpusSource; frecuencia: number }[] {
+  ): { source: CorpusSource; frequency: number }[] {
     return this.db
       .prepare(
-        `SELECT tabla_origen AS fuente, COUNT(*) AS frecuencia
+        `SELECT tabla_origen AS source, COUNT(*) AS frequency
          FROM tokens_damana WHERE palabra_normalizada = ?
          GROUP BY tabla_origen ORDER BY tabla_origen`,
       )
-      .all(normalizedWord) as { fuente: CorpusSource; frecuencia: number }[];
+      .all(normalizedWord) as { source: CorpusSource; frequency: number }[];
   }
 
   originsOf(
@@ -261,9 +261,9 @@ export class CorpusRepository {
         )
         .all() as any[]
     ).map((f) => ({
-      palabra: f.palabra,
-      frecuencia: f.frecuencia,
-      originales: (f.originales as string).split(','),
+      word: f.palabra,
+      frequency: f.frecuencia,
+      originals: (f.originales as string).split(','),
     }));
   }
 }

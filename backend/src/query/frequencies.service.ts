@@ -26,26 +26,26 @@ export class FrequenciesService {
     const translations = new Map<string, string>();
     for (const entry of this.repo.listVocabulary()) {
       const key = normalize(entry.damana);
-      if (entry.categoria && !categories.has(key)) {
-        categories.set(key, entry.categoria);
+      if (entry.category && !categories.has(key)) {
+        categories.set(key, entry.category);
       }
-      if (!translations.has(key)) translations.set(key, entry.espanol);
+      if (!translations.has(key)) translations.set(key, entry.spanish);
     }
     // Conjugation glosses as a fallback when there is no vocabulary entry
     for (const conjugation of this.repo.listConjugations()) {
       const key = normalize(conjugation.damana);
-      if (!translations.has(key)) translations.set(key, conjugation.espanol);
+      if (!translations.has(key)) translations.set(key, conjugation.spanish);
     }
 
     return this.repo
       .frequenciesWithOriginals()
-      .filter((f) => f.originales.some(startsLowercase))
+      .filter((f) => f.originals.some(startsLowercase))
       .slice(0, limit)
       .map((f) => ({
-        palabra: f.palabra,
-        frecuencia: f.frecuencia,
-        traduccion: translations.get(f.palabra) ?? null,
-        categoria: categories.get(f.palabra) ?? null,
+        word: f.word,
+        frequency: f.frequency,
+        translation: translations.get(f.word) ?? null,
+        category: categories.get(f.word) ?? null,
       }));
   }
 }

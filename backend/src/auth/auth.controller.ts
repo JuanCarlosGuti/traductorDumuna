@@ -26,12 +26,12 @@ export class AuthController {
   ) {}
 
   @Public()
-  @Get('estado')
+  @Get('status')
   @ApiOperation({
     summary: '¿Exige sesión este servidor? Permite a la app saltarse el login en local.',
   })
   status(): AuthStatusDto {
-    return { activa: this.config.activa };
+    return { active: this.config.active };
   }
 
   @Public()
@@ -47,7 +47,7 @@ export class AuthController {
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
-    if (!this.auth.verify(dto.usuario, dto.password)) {
+    if (!this.auth.verify(dto.user, dto.password)) {
       this.auth.recordFailure(ip);
       // Same message for user and password: telling them apart would confirm
       // to whoever is probing which of the two was right.
@@ -55,16 +55,16 @@ export class AuthController {
     }
     this.auth.forgetFailures(ip);
     return {
-      token: this.auth.issueToken(dto.usuario),
-      usuario: dto.usuario,
-      duracionDias: this.config.duracionDias,
+      token: this.auth.issueToken(dto.user),
+      user: dto.user,
+      durationDays: this.config.durationDays,
     };
   }
 
-  @Get('sesion')
+  @Get('session')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Comprueba que el token sigue siendo válido' })
   session(@Req() request: RequestWithSession): UserDto {
-    return { usuario: request.usuario ?? this.config.usuario };
+    return { user: request.user ?? this.config.user };
   }
 }

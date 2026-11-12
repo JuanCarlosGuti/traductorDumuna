@@ -12,7 +12,7 @@ const entry = (
   spanish: string,
   damana: string,
   category = 'Otros',
-): VocabularyDto => ({ id, espanol: spanish, damana, categoria: category, notas: null, fuente: 'dic' });
+): VocabularyDto => ({ id, spanish: spanish, damana, category: category, notes: null, source: 'dic' });
 
 const VOCABULARY: VocabularyDto[] = [
   entry(1, 'Madre', 'Abu', 'Personas y familia'),
@@ -60,28 +60,28 @@ describe('DictionaryIndex (Spanish → Damana)', () => {
 
   it('resolves mamá, cocina and casa for «mi mamá cocina en la casa»', () => {
     const r = search('mi mamá cocina en la casa');
-    const mama = r.filter((a) => a.palabra === 'mamá');
-    expect(mama.map((a) => a.coincidencia)).toEqual(['exacta']);
+    const mama = r.filter((a) => a.word === 'mamá');
+    expect(mama.map((a) => a.match)).toEqual(['exacta']);
     expect(mama[0].damana).toBe('Abu');
-    const cocina = r.find((a) => a.palabra === 'cocina')!;
-    expect(cocina.coincidencia).toBe('posible'); // cocin-ar / cocin-ando
+    const cocina = r.find((a) => a.word === 'cocina')!;
+    expect(cocina.match).toBe('posible'); // cocin-ar / cocin-ando
     expect(['Dugua', 'Duzhi']).toContain(cocina.damana);
-    expect(r.find((a) => a.palabra === 'casa')).toMatchObject({
+    expect(r.find((a) => a.word === 'casa')).toMatchObject({
       damana: 'Urraga',
-      coincidencia: 'exacta',
+      match: 'exacta',
     });
     // «en» is a function word but has an exact entry: it is included
-    expect(r.find((a) => a.palabra === 'en')).toMatchObject({ damana: 'Mba' });
+    expect(r.find((a) => a.word === 'en')).toMatchObject({ damana: 'Mba' });
   });
 
   it('exact before no-accents: «mama» without accent falls under sin_tildes', () => {
-    expect(search('mama')[0]).toMatchObject({ damana: 'Abu', coincidencia: 'sin_tildes' });
-    expect(search('MAMÁ')[0]).toMatchObject({ damana: 'Abu', coincidencia: 'exacta' });
+    expect(search('mama')[0]).toMatchObject({ damana: 'Abu', match: 'sin_tildes' });
+    expect(search('MAMÁ')[0]).toMatchObject({ damana: 'Abu', match: 'exacta' });
   });
 
   it('singular: «flores» finds Flor', () => {
     expect(search('flores')).toEqual([
-      expect.objectContaining({ palabra: 'flores', damana: 'Shoma', coincidencia: 'singular' }),
+      expect.objectContaining({ word: 'flores', damana: 'Shoma', match: 'singular' }),
     ]);
   });
 
@@ -89,19 +89,19 @@ describe('DictionaryIndex (Spanish → Damana)', () => {
     const r = search('cocina');
     expect(r.map((a) => a.damana)).toEqual(expect.arrayContaining(['Dugua', 'Duzhi']));
     expect(r.length).toBeLessThanOrEqual(MAX_POSSIBLE_PER_WORD);
-    expect(r.every((a) => a.coincidencia === 'posible')).toBe(true);
+    expect(r.every((a) => a.match === 'posible')).toBe(true);
   });
 
   it('dictionary phrases when all their words are in the text', () => {
     const r = search('hoy tengo frío');
     expect(r).toContainEqual(
-      expect.objectContaining({ damana: 'Se namsi', coincidencia: 'frase' }),
+      expect.objectContaining({ damana: 'Se namsi', match: 'frase' }),
     );
     expect(search('tengo hambre').some((a) => a.damana === 'Se namsi')).toBe(false);
   });
 
   it('respects ñ ≠ n: «año» finds Kʉgui (with ʉ) and «ano» does not', () => {
-    expect(search('año')[0]).toMatchObject({ damana: 'Kʉgui', coincidencia: 'exacta' });
+    expect(search('año')[0]).toMatchObject({ damana: 'Kʉgui', match: 'exacta' });
     expect(search('ano')).toEqual([]);
   });
 
@@ -111,13 +111,13 @@ describe('DictionaryIndex (Spanish → Damana)', () => {
 
   it('«Ese o esa» is split on the «o»: «Esa» finds Mema even though it is a function word', () => {
     expect(search('Esa mujer')).toContainEqual(
-      expect.objectContaining({ palabra: 'Esa', damana: 'Mema', coincidencia: 'exacta' }),
+      expect.objectContaining({ word: 'Esa', damana: 'Mema', match: 'exacta' }),
     );
   });
 
   it('negative entries («No tengo», with ʉ) only come in when the sentence carries the «no»', () => {
     expect(search('no tengo agua')).toContainEqual(
-      expect.objectContaining({ palabra: 'No tengo', damana: 'Nʉjkʉnanun', coincidencia: 'frase' }),
+      expect.objectContaining({ word: 'No tengo', damana: 'Nʉjkʉnanun', match: 'frase' }),
     );
     // Affirmative: the negated form must NOT appear (it used to show up as «frase»
     // because «no» was discarded as a stopword).
@@ -139,18 +139,18 @@ describe('DictionaryIndex (colloquial Spanish synonyms)', () => {
 
   it('mamá → Madre (Abu) marked as synonym; papi → Padre', () => {
     expect(search('mi mamá cocina')).toContainEqual(
-      expect.objectContaining({ palabra: 'mamá', damana: 'Abu', coincidencia: 'sinonimo' }),
+      expect.objectContaining({ word: 'mamá', damana: 'Abu', match: 'sinonimo' }),
     );
-    expect(search('papi')).toEqual([expect.objectContaining({ damana: 'Ade', coincidencia: 'sinonimo' })]);
+    expect(search('papi')).toEqual([expect.objectContaining({ damana: 'Ade', match: 'sinonimo' })]);
   });
 
   it('the synonym can be a multi-word entry (hermanita → hermana menor)', () => {
-    expect(search('hermanita')).toEqual([expect.objectContaining({ damana: 'Busi', coincidencia: 'sinonimo' })]);
+    expect(search('hermanita')).toEqual([expect.objectContaining({ damana: 'Busi', match: 'sinonimo' })]);
   });
 
   it('recognized phrases show the full text of the entry', () => {
-    const phrase = search('mi hermana menor llegó').find((a) => a.coincidencia === 'frase');
-    expect(phrase).toMatchObject({ palabra: 'Mi hermana menor', damana: 'Ranzhibusi' });
+    const phrase = search('mi hermana menor llegó').find((a) => a.match === 'frase');
+    expect(phrase).toMatchObject({ word: 'Mi hermana menor', damana: 'Ranzhibusi' });
   });
 });
 
@@ -159,20 +159,20 @@ describe('DictionaryIndex (Damana → Spanish)', () => {
 
   it('exact normalized match with ʉ intact; u ≠ ʉ', () => {
     const r = index.search('Kʉgui', Language.damana);
-    expect(r).toEqual([expect.objectContaining({ espanol: 'Año', coincidencia: 'exacta' })]);
+    expect(r).toEqual([expect.objectContaining({ spanish: 'Año', match: 'exacta' })]);
     expect(index.search('Kugui', Language.damana)).toEqual([]);
   });
 
   it('multi-word Damana phrase (zen zhiguana) only when all words are present', () => {
     expect(index.search('zen zhiguana nukurra', Language.damana)).toContainEqual(
-      expect.objectContaining({ espanol: 'Feliz', coincidencia: 'frase' }),
+      expect.objectContaining({ spanish: 'Feliz', match: 'frase' }),
     );
     expect(index.search('zen', Language.damana)).toEqual([]);
   });
 
   it('by prefix it marks «posible»', () => {
     expect(index.search('Urragamba', Language.damana)).toEqual([
-      expect.objectContaining({ espanol: 'Casa', coincidencia: 'posible' }),
+      expect.objectContaining({ spanish: 'Casa', match: 'posible' }),
     ]);
   });
 });

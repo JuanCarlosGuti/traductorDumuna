@@ -8,7 +8,7 @@ export class LoginDto {
   // Defensive cap: without it megabytes could be sent for the server
   // to hash on every attempt.
   @MaxLength(200)
-  usuario!: string;
+  user!: string;
 
   @ApiProperty({ description: 'Contraseña configurada en el servidor' })
   @IsString()
@@ -22,10 +22,10 @@ export class SessionDto {
   token!: string;
 
   @ApiProperty()
-  usuario!: string;
+  user!: string;
 
   @ApiProperty({ description: 'Días que dura la sesión antes de caducar' })
-  duracionDias!: number;
+  durationDays!: number;
 }
 
 export class AuthStatusDto {
@@ -33,10 +33,10 @@ export class AuthStatusDto {
     description:
       'false cuando el servidor no tiene credenciales configuradas y la API está abierta (solo desarrollo local)',
   })
-  activa!: boolean;
+  active!: boolean;
 }
 
 export class UserDto {
   @ApiProperty()
-  usuario!: string;
+  user!: string;
 }

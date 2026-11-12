@@ -7,11 +7,11 @@ import { AuthService } from './auth.service';
 import { PUBLIC_KEY } from './public.decorator';
 
 const config: ConfigAuth = {
-  activa: true,
-  usuario: 'juan',
+  active: true,
+  user: 'juan',
   password: 'clave',
-  secreto: 'secreto-de-prueba-suficientemente-largo',
-  duracionDias: 30,
+  secret: 'secreto-de-prueba-suficientemente-largo',
+  durationDays: 30,
 };
 
 /** Minimal context: only what the guard actually looks at. */
@@ -28,7 +28,7 @@ describe('AuthGuard', () => {
   let reflector: Reflector;
 
   beforeEach(() => {
-    auth = new AuthService(config, new JwtService({ secret: config.secreto }));
+    auth = new AuthService(config, new JwtService({ secret: config.secret }));
     reflector = new Reflector();
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
     guard = new AuthGuard(reflector, config, auth);
@@ -39,7 +39,7 @@ describe('AuthGuard', () => {
       headers: { authorization: `Bearer ${auth.issueToken('juan')}` },
     };
     expect(guard.canActivate(contextWith(request))).toBe(true);
-    expect(request.usuario).toBe('juan');
+    expect(request.user).toBe('juan');
   });
 
   it('rejects without a header', () => {
@@ -70,7 +70,7 @@ describe('AuthGuard', () => {
   });
 
   it('with auth disabled it requires nothing (local development)', () => {
-    const open = new AuthGuard(reflector, { ...config, activa: false }, auth);
+    const open = new AuthGuard(reflector, { ...config, active: false }, auth);
     expect(open.canActivate(contextWith({ headers: {} }))).toBe(true);
   });
 });

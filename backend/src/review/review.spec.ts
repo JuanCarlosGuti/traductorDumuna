@@ -50,25 +50,25 @@ describe('DoubtsService + doubts workbook', () => {
   it('gathers in one report the doubts about spelling, synonyms, meanings and entries', () => {
     const report = service.generate();
 
-    const nunka = report.escritura.find((g) => g.formas.some((f) => f.forma === 'nunka'))!;
-    expect(nunka.formas.map((f) => [f.forma, f.frecuencia])).toEqual([
+    const nunka = report.spelling.find((g) => g.forms.some((f) => f.form === 'nunka'))!;
+    expect(nunka.forms.map((f) => [f.form, f.frequency])).toEqual([
       ['nʉnka', 2],
       ['nunka', 1],
     ]);
     // the example comes from a short approved sentence, never from a «revisar» one
-    expect(nunka.formas[0].ejemplo).toEqual({ damana: 'nʉnka aikuia', espanol: 'es grande' });
+    expect(nunka.forms[0].example).toEqual({ damana: 'nʉnka aikuia', spanish: 'es grande' });
 
-    const day = report.escritura.find((g) => g.formas.some((f) => f.forma === 'dzwia'))!;
-    expect(day.tipo).toBe('w / u');
-    expect(day.formas[0].significados).toEqual(['Día']);
+    const day = report.spelling.find((g) => g.forms.some((f) => f.form === 'dzwia'))!;
+    expect(day.type).toBe('w / u');
+    expect(day.forms[0].meanings).toEqual(['Día']);
 
-    expect(report.sinonimos.map((g) => g.espanol)).toEqual(['Grande']);
-    expect(report.sinonimos[0].opciones.map((o) => [o.damana, o.frecuencia])).toEqual([
+    expect(report.synonyms.map((g) => g.spanish)).toEqual(['Grande']);
+    expect(report.synonyms[0].options.map((o) => [o.damana, o.frequency])).toEqual([
       ['Aikuia', 1],
       ['Alkwega', 0],
     ]);
-    expect(report.polisemia).toEqual([expect.objectContaining({ clave: 'ako', soloTilde: true })]);
-    expect(report.dudosas.map((d) => d.entrada.espanol)).toEqual(['tan']);
+    expect(report.polysemy).toEqual([expect.objectContaining({ key: 'ako', accentOnly: true })]);
+    expect(report.doubtful.map((d) => d.entry.spanish)).toEqual(['tan']);
   });
 
   it('does not modify any corpus data', () => {
@@ -106,8 +106,8 @@ describe('grammar batch (paradigms)', () => {
   it('has unique and stable ids, with variants of the elicitation format', () => {
     expect(PARADIGMS.length).toBeGreaterThanOrEqual(100);
     expect(new Set(PARADIGMS.map((p) => p.id)).size).toBe(PARADIGMS.length);
-    expect(PARADIGMS[0]).toMatchObject({ id: 'g001', ejemploEs: 'Yo como yuca.' });
-    const variants = new Set(PARADIGMS.map((p) => p.variante));
+    expect(PARADIGMS[0]).toMatchObject({ id: 'g001', exampleEs: 'Yo como yuca.' });
+    const variants = new Set(PARADIGMS.map((p) => p.variant));
     for (const v of variants) {
       expect(['', 'pasado', 'futuro', 'negativo', 'plural', 'pregunta']).toContain(v);
     }
@@ -126,9 +126,9 @@ describe('grammar batch (paradigms)', () => {
       expect(argb(sheet.getRow(2).getCell(4))).toBeUndefined(); // palabra_dm is not requested
       await workbook.xlsx.writeFile(filePath);
 
-      const parsed = (await readWorkbook(filePath)).find((h) => h.nombre === 'elicitacion')!;
-      expect(parsed.filas).toHaveLength(PARADIGMS.length);
-      expect(parsed.filas[0]).toMatchObject({ id: 'g001', ambito: 'gramatica', ejemplo_es: 'Yo como yuca.' });
+      const parsed = (await readWorkbook(filePath)).find((h) => h.name === 'elicitacion')!;
+      expect(parsed.rows).toHaveLength(PARADIGMS.length);
+      expect(parsed.rows[0]).toMatchObject({ id: 'g001', ambito: 'gramatica', ejemplo_es: 'Yo como yuca.' });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -137,24 +137,24 @@ describe('grammar batch (paradigms)', () => {
   it('a filled row produces an everyday sentence and no word or pending item (with ʉ from u+)', () => {
     const normal = PARADIGMS.find((p) => !isTestRow(p.id))!;
     const row = parseRow(
-      { id: normal.id, ambito: 'gramatica', palabra_es: '', palabra_dm: '', ejemplo_es: normal.ejemploEs, ejemplo_dm: 'ra irrugwa zhu+nka', variante: normal.variante, notas: normal.etiqueta },
+      { id: normal.id, ambito: 'gramatica', palabra_es: '', palabra_dm: '', ejemplo_es: normal.exampleEs, ejemplo_dm: 'ra irrugwa zhu+nka', variante: normal.variant, notas: normal.label },
       'formato_elicitacion_lote2_gramatica.xlsx',
     )!;
     const plan = planElicitation([row]);
-    expect(plan.oraciones).toEqual([
-      { idExterno: `elic_${normal.id}`, damana: 'ra irrugwa zhʉnka', espanol: normal.ejemploEs, fuente: 'elicitacion' },
+    expect(plan.sentences).toEqual([
+      { externalId: `elic_${normal.id}`, damana: 'ra irrugwa zhʉnka', spanish: normal.exampleEs, source: 'elicitacion' },
     ]);
-    expect(plan.vocabulario).toEqual([]);
-    expect(plan.pendientes).toEqual([]);
+    expect(plan.vocabulary).toEqual([]);
+    expect(plan.pending).toEqual([]);
   });
 
   it('unfilled it leaves nothing: neither sentences nor pending items', () => {
     const rows = PARADIGMS.map(
-      (p) => parseRow({ id: p.id, ambito: 'gramatica', palabra_es: '', ejemplo_es: p.ejemploEs }, 'x')!,
+      (p) => parseRow({ id: p.id, ambito: 'gramatica', palabra_es: '', ejemplo_es: p.exampleEs }, 'x')!,
     );
     const plan = planElicitation(rows);
-    expect(plan.oraciones).toEqual([]);
-    expect(plan.pendientes).toEqual([]);
-    expect(plan.pruebas).toEqual([]);
+    expect(plan.sentences).toEqual([]);
+    expect(plan.pending).toEqual([]);
+    expect(plan.tests).toEqual([]);
   });
 });

@@ -10,14 +10,14 @@ import {
 
 const row = (partial: Partial<ElicitationRow>): ElicitationRow => ({
   id: '1',
-  ambito: 'otro',
-  palabraEs: '',
-  palabraDm: '',
-  ejemploEs: '',
-  ejemploDm: '',
-  variante: '',
-  notas: '',
-  archivo: 'lote1.xlsx',
+  scope: 'otro',
+  wordEs: '',
+  wordDm: '',
+  exampleEs: '',
+  exampleDm: '',
+  variant: '',
+  notes: '',
+  file: 'lote1.xlsx',
   ...partial,
 });
 
@@ -56,29 +56,29 @@ describe('parseRow', () => {
       'lote1.xlsx',
     )!;
     expect(f.id).toBe('12');
-    expect(f.ambito).toBe('familia');
-    expect(f.palabraEs).toBe('pingüino');
-    expect(f.palabraDm).toBe('kʉnsi');
-    expect(f.ejemploDm).toBe('ranzhe kʉ nsi zha');
-    expect(f.variante).toBe('plural');
+    expect(f.scope).toBe('familia');
+    expect(f.wordEs).toBe('pingüino');
+    expect(f.wordDm).toBe('kʉnsi');
+    expect(f.exampleDm).toBe('ranzhe kʉ nsi zha');
+    expect(f.variant).toBe('plural');
   });
 
   it('without id or word returns null; without scope uses «otro»', () => {
     expect(parseRow({ id: '', palabra_es: '' }, 'x')).toBeNull();
-    expect(parseRow({ id: '3', palabra_es: 'ñame' }, 'x')!.ambito).toBe('otro');
+    expect(parseRow({ id: '3', palabra_es: 'ñame' }, 'x')!.scope).toBe('otro');
   });
 });
 
 describe('mergeById', () => {
   it('with the same id the last occurrence wins and the repetition is counted', () => {
     const r = mergeById([
-      row({ id: '5', palabraEs: 'vecina', archivo: 'lote1.xlsx' }),
-      row({ id: '5', palabraEs: 'vecina', palabraDm: 'anzhirru', archivo: 'lote2.xlsx' }),
-      row({ id: '6', palabraEs: 'agua' }),
+      row({ id: '5', wordEs: 'vecina', file: 'lote1.xlsx' }),
+      row({ id: '5', wordEs: 'vecina', wordDm: 'anzhirru', file: 'lote2.xlsx' }),
+      row({ id: '6', wordEs: 'agua' }),
     ]);
     expect(r.repetidos).toBe(1);
     expect(r.filas).toHaveLength(2);
-    expect(r.filas[0].palabraDm).toBe('anzhirru');
+    expect(r.filas[0].wordDm).toBe('anzhirru');
   });
 });
 
@@ -88,46 +88,46 @@ describe('planElicitation', () => {
 
   it('a complete row produces vocabulary + sentence and closes the word', () => {
     const plan = planElicitation([
-      row({ id: idNormal, ambito: 'comida', palabraEs: 'yuca', palabraDm: 'Irrugwa', ejemploEs: 'Como yuca.', ejemploDm: 'irrugwa zhant', variante: 'pasado', notas: 'ok' }),
+      row({ id: idNormal, scope: 'comida', wordEs: 'yuca', wordDm: 'Irrugwa', exampleEs: 'Como yuca.', exampleDm: 'irrugwa zhant', variant: 'pasado', notes: 'ok' }),
     ]);
-    expect(plan.vocabulario).toEqual([
-      { espanol: 'yuca', damana: 'Irrugwa', categoria: 'comida', notas: 'variante: pasado · ok', fuente: 'elicitacion' },
+    expect(plan.vocabulary).toEqual([
+      { spanish: 'yuca', damana: 'Irrugwa', category: 'comida', notes: 'variante: pasado · ok', source: 'elicitacion' },
     ]);
-    expect(plan.oraciones).toEqual([
-      { idExterno: `elic_${idNormal}`, damana: 'irrugwa zhant', espanol: 'Como yuca.', fuente: 'elicitacion' },
+    expect(plan.sentences).toEqual([
+      { externalId: `elic_${idNormal}`, damana: 'irrugwa zhant', spanish: 'Como yuca.', source: 'elicitacion' },
     ]);
-    expect(plan.pruebas).toEqual([]);
-    expect(plan.pendientes).toEqual([]);
-    expect(plan.resueltas).toEqual(['yuca']);
+    expect(plan.tests).toEqual([]);
+    expect(plan.pending).toEqual([]);
+    expect(plan.resolved).toEqual(['yuca']);
   });
 
   it('the reserved row goes to tests (not to sentences) but its word does go to the vocabulary', () => {
     const plan = planElicitation([
-      row({ id: testId, ambito: 'casa', palabraEs: 'casa', palabraDm: 'Urraga', ejemploEs: 'Mi casa.', ejemploDm: 'ranzhe urraga' }),
+      row({ id: testId, scope: 'casa', wordEs: 'casa', wordDm: 'Urraga', exampleEs: 'Mi casa.', exampleDm: 'ranzhe urraga' }),
     ]);
-    expect(plan.pruebas).toEqual([{ espanol: 'Mi casa.', damanaEsperado: 'ranzhe urraga', ambito: 'casa' }]);
-    expect(plan.oraciones).toEqual([]);
-    expect(plan.vocabulario).toHaveLength(1);
+    expect(plan.tests).toEqual([{ spanish: 'Mi casa.', expectedDamana: 'ranzhe urraga', scope: 'casa' }]);
+    expect(plan.sentences).toEqual([]);
+    expect(plan.vocabulary).toHaveLength(1);
   });
 
   it('without palabra_dm or ejemplo_dm it stays pending, with the Spanish example as context', () => {
     const plan = planElicitation([
-      row({ id: '1', palabraEs: 'vecina', ejemploEs: 'Mi vecina cocina.' }),
-      row({ id: '2', palabraEs: 'hola', palabraDm: 'Zungui', ejemploEs: 'Hola, ¿cómo estás?' }),
+      row({ id: '1', wordEs: 'vecina', exampleEs: 'Mi vecina cocina.' }),
+      row({ id: '2', wordEs: 'hola', wordDm: 'Zungui', exampleEs: 'Hola, ¿cómo estás?' }),
     ]);
-    expect(plan.pendientes).toEqual([
-      { palabra: 'vecina', contexto: 'Mi vecina cocina.' },
-      { palabra: 'hola', contexto: 'Hola, ¿cómo estás?' },
+    expect(plan.pending).toEqual([
+      { word: 'vecina', context: 'Mi vecina cocina.' },
+      { word: 'hola', context: 'Hola, ¿cómo estás?' },
     ]);
-    expect(plan.vocabulario.map((v) => v.espanol)).toEqual(['hola']);
-    expect(plan.resueltas).toEqual([]);
+    expect(plan.vocabulary.map((v) => v.spanish)).toEqual(['hola']);
+    expect(plan.resolved).toEqual([]);
   });
 
   it('keeps ʉ and ñ in what it produces', () => {
     const plan = planElicitation([
-      row({ id: idNormal, palabraEs: 'año', palabraDm: 'kʉgui', ejemploEs: 'Este año.', ejemploDm: 'ima kʉgui ñingui' }),
+      row({ id: idNormal, wordEs: 'año', wordDm: 'kʉgui', exampleEs: 'Este año.', exampleDm: 'ima kʉgui ñingui' }),
     ]);
-    expect(plan.vocabulario[0]).toMatchObject({ espanol: 'año', damana: 'kʉgui' });
-    expect(plan.oraciones[0].damana).toBe('ima kʉgui ñingui');
+    expect(plan.vocabulary[0]).toMatchObject({ spanish: 'año', damana: 'kʉgui' });
+    expect(plan.sentences[0].damana).toBe('ima kʉgui ñingui');
   });
 });

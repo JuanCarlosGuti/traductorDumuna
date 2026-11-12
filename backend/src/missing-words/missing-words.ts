@@ -14,7 +14,7 @@ export const DAMANA_FILE = 'por_traducir_damana.xlsx';
 // Own CLI module: it does not drag in HTTP controllers.
 @Module({
   imports: [
-    DatabaseModule.forRoot({ rutaDb: defaultDbPath() }),
+    DatabaseModule.forRoot({ dbPath: defaultDbPath() }),
     MissingWordsModule,
   ],
 })
@@ -74,12 +74,12 @@ async function main(): Promise<void> {
     path.join(dataDir, SPANISH_FILE),
     'espanol por traducir',
     [
-      { header: 'palabra en español', key: 'espanol', width: 22 },
+      { header: 'palabra en español', key: 'spanish', width: 22 },
       { header: 'palabra en damana', key: 'damana', width: 26 },
-      { header: 'ejemplo en español', key: 'ejemploEspanol', width: 52 },
-      { header: 'ejemplo en damana', key: 'ejemploDamana', width: 52 },
-      { header: 'veces_visto', key: 'vecesVisto', width: 12 },
-      { header: 'prioridad', key: 'prioridad', width: 10 },
+      { header: 'ejemplo en español', key: 'spanishExample', width: 52 },
+      { header: 'ejemplo en damana', key: 'damanaExample', width: 52 },
+      { header: 'veces_visto', key: 'timesSeen', width: 12 },
+      { header: 'prioridad', key: 'priority', width: 10 },
     ],
     spanish,
   );
@@ -91,15 +91,15 @@ async function main(): Promise<void> {
     'damana por traducir',
     [
       { header: 'palabra en damana', key: 'damana', width: 22 },
-      { header: 'palabra en español', key: 'espanol', width: 26 },
-      { header: 'ejemplo en damana', key: 'ejemploDamana', width: 52 },
-      { header: 'ejemplo en español', key: 'ejemploEspanol', width: 52 },
-      { header: 'veces_visto', key: 'vecesVisto', width: 12 },
+      { header: 'palabra en español', key: 'spanish', width: 26 },
+      { header: 'ejemplo en damana', key: 'damanaExample', width: 52 },
+      { header: 'ejemplo en español', key: 'spanishExample', width: 52 },
+      { header: 'veces_visto', key: 'timesSeen', width: 12 },
     ],
     damana,
   );
 
-  const priority1 = spanish.filter((f) => f.prioridad === 1).length;
+  const priority1 = spanish.filter((f) => f.priority === 1).length;
   console.log('\n=== Listas de trabajo generadas ===');
   console.log(`${SPANISH_FILE}: ${spanish.length} palabras españolas sin equivalente damana`);
   console.log(`   (${priority1} de traducciones tuyas con poco apoyo, el resto del corpus)`);

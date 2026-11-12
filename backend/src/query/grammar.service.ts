@@ -15,6 +15,6 @@ export class GrammarService {
     if (conjugations.length === 0) {
       throw new NotFoundException(`No hay conjugaciones para el lema "${lemma}"`);
     }
-    return { lema: lemma, conjugaciones: conjugations };
+    return { lemma: lemma, conjugations: conjugations };
   }
 }

@@ -64,39 +64,39 @@ const RETRIEVAL_SOURCES: CorpusSource[] = [
 ];
 
 export interface CorpusFragment {
-  fuente: CorpusSource;
-  dominio: CorpusDomain;
+  source: CorpusSource;
+  domain: CorpusDomain;
   id: number;
-  referencia: string;
+  reference: string;
   damana: string;
-  espanol: string;
+  spanish: string;
   /** 1 for reliable fragments; REVIEW_WEIGHT for 'revisar' sentences. */
-  peso: number;
+  weight: number;
 }
 
 export interface RetrievedFragment extends CorpusFragment {
-  puntaje: number;
+  score: number;
   /**
    * Present when the fragment was retrieved thanks to another form of the same
    * verb: it holds the lemma, so we can warn that the conjugation differs.
    */
-  porLema?: string;
+  byLemma?: string;
 }
 
 export interface FoundProperName {
   /** How it was written in the input sentence. */
-  enTexto: string;
-  espanol: string;
+  inText: string;
+  spanish: string;
   damana: string;
 }
 
 /** Everything the translator needs to know from the corpus about a sentence. */
 export interface RetrievedContext {
-  diccionario: FoundSense[];
-  nombresPropios: FoundProperName[];
-  disparadores: Trigger[];
-  reglas: GrammarRule[];
-  ejemplos: RetrievedFragment[];
+  dictionary: FoundSense[];
+  properNames: FoundProperName[];
+  triggers: Trigger[];
+  rules: GrammarRule[];
+  examples: RetrievedFragment[];
 }
 
 /**
@@ -159,16 +159,16 @@ class TfIdfIndex {
 }
 
 interface Indexes {
-  fragmentos: CorpusFragment[];
-  porIdioma: Record<Language, TfIdfIndex>;
+  fragments: CorpusFragment[];
+  byLanguage: Record<Language, TfIdfIndex>;
   /** Conjugated form (normalized) → lemma it belongs to. */
-  lemaDeForma: Map<string, string>;
+  lemmaOfForm: Map<string, string>;
   /** Lemma → its other forms that DO appear in the corpus. */
-  formasDelLema: Map<string, string[]>;
+  lemmaForms: Map<string, string[]>;
 }
 
 const normalizedTokenList = (text: string): string[] =>
-  tokenizeDamana(text).map((t) => t.normalizada);
+  tokenizeDamana(text).map((t) => t.normalized);
 
 function jaccard(a: string[], b: string[]): number {
   const A = new Set(a);
@@ -185,12 +185,12 @@ function jaccard(a: string[], b: string[]): number {
  * same sentence with one comma of difference). Repeating them only wastes a slot.
  */
 export function isAlmostEqual(
-  a: { damana: string; espanol: string },
-  b: { damana: string; espanol: string },
+  a: { damana: string; spanish: string },
+  b: { damana: string; spanish: string },
 ): boolean {
   if (normalize(a.damana.trim()) === normalize(b.damana.trim())) return true;
-  const spanishA = normalize(a.espanol.trim());
-  if (spanishA.length > 0 && spanishA === normalize(b.espanol.trim())) return true;
+  const spanishA = normalize(a.spanish.trim());
+  if (spanishA.length > 0 && spanishA === normalize(b.spanish.trim())) return true;
   return jaccard(normalizedTokenList(a.damana), normalizedTokenList(b.damana)) >= ALMOST_EQUAL_THRESHOLD;
 }
 
@@ -202,13 +202,13 @@ export function isAlmostEqual(
  * each group from highest to lowest similarity.
  */
 export function splitByDomain(candidates: RetrievedFragment[]): RetrievedFragment[] {
-  const sorted = [...candidates].sort((a, b) => b.puntaje - a.puntaje);
+  const sorted = [...candidates].sort((a, b) => b.score - a.score);
   const unique: RetrievedFragment[] = [];
   for (const candidate of sorted) {
     if (!unique.some((u) => isAlmostEqual(u, candidate))) unique.push(candidate);
   }
   const del = (domain: CorpusDomain, quota: number) =>
-    unique.filter((f) => f.dominio === domain).slice(0, quota);
+    unique.filter((f) => f.domain === domain).slice(0, quota);
 
   const everyday = del(CorpusDomain.cotidiano, EVERYDAY_QUOTA);
   const grammar = del(CorpusDomain.gramatica, GRAMMAR_QUOTA);
@@ -235,11 +235,11 @@ export class RetrievalService {
   retrieveContext(text: string, language: Language): RetrievedContext {
     const selection = selectRules(text, language, this.getRules());
     return {
-      diccionario: this.getDictionary().search(text, language),
-      nombresPropios: this.properNamesIn(text),
-      disparadores: selection.disparadores,
-      reglas: selection.reglas,
-      ejemplos: this.examplesByDomain(text, language),
+      dictionary: this.getDictionary().search(text, language),
+      properNames: this.properNamesIn(text),
+      triggers: selection.triggers,
+      rules: selection.rules,
+      examples: this.examplesByDomain(text, language),
     };
   }
 
@@ -259,10 +259,10 @@ export class RetrievalService {
     const seenItems = new Set<string>();
     for (const token of tokenizeDamana(text)) {
       for (const name of names) {
-        const spellings = [name.espanol, name.damana, ...name.otrasGrafias].map(normalize);
-        if (!spellings.includes(token.normalizada) || seenItems.has(name.damana)) continue;
+        const spellings = [name.spanish, name.damana, ...name.otherSpellings].map(normalize);
+        if (!spellings.includes(token.normalized) || seenItems.has(name.damana)) continue;
         seenItems.add(name.damana);
-        found.push({ enTexto: token.original, espanol: name.espanol, damana: name.damana });
+        found.push({ inText: token.original, spanish: name.spanish, damana: name.damana });
       }
     }
     return found;
@@ -287,9 +287,9 @@ export class RetrievalService {
         ? this.siblingForms(tokens, indexes)
         : new Map<string, string>();
     if (siblings.size === 0) {
-      const directOnly = indexes.fragmentos.map((fragment, i) => ({
+      const directOnly = indexes.fragments.map((fragment, i) => ({
         ...fragment,
-        puntaje: direct[i],
+        score: direct[i],
       }));
       return this.bestOnes(directOnly, k);
     }
@@ -299,9 +299,9 @@ export class RetrievalService {
   }
 
   private scoreAll(tokens: string[], language: Language, indexes: Indexes): number[] {
-    return indexes.porIdioma[language]
+    return indexes.byLanguage[language]
       .similarities(tokens)
-      .map((similarity, i) => similarity * indexes.fragmentos[i].peso);
+      .map((similarity, i) => similarity * indexes.fragments[i].weight);
   }
 
   /**
@@ -313,9 +313,9 @@ export class RetrievalService {
     const siblings = new Map<string, string>();
     const inQuery = new Set(tokens);
     for (const token of tokens) {
-      const lemma = indexes.lemaDeForma.get(token);
+      const lemma = indexes.lemmaOfForm.get(token);
       if (!lemma) continue;
-      const forms = (indexes.formasDelLema.get(lemma) ?? [])
+      const forms = (indexes.lemmaForms.get(lemma) ?? [])
         .filter((f) => !inQuery.has(f))
         .slice(0, MAX_SIBLING_FORMS);
       for (const form of forms) siblings.set(form, lemma);
@@ -340,17 +340,17 @@ export class RetrievalService {
     siblings: Map<string, string>,
     indexes: Indexes,
   ): RetrievedFragment[] {
-    return indexes.fragmentos.map((fragment, i) => {
+    return indexes.fragments.map((fragment, i) => {
       const lemmaScore =
-        fragment.fuente === CorpusSource.conjugaciones ? 0 : expanded[i] * LEMMA_WEIGHT;
+        fragment.source === CorpusSource.conjugaciones ? 0 : expanded[i] * LEMMA_WEIGHT;
       if (lemmaScore > direct[i]) {
         return {
           ...fragment,
-          puntaje: lemmaScore,
-          porLema: this.lemmaPresentIn(fragment, siblings),
+          score: lemmaScore,
+          byLemma: this.lemmaPresentIn(fragment, siblings),
         };
       }
-      return { ...fragment, puntaje: direct[i] };
+      return { ...fragment, score: direct[i] };
     });
   }
 
@@ -360,7 +360,7 @@ export class RetrievalService {
     siblings: Map<string, string>,
   ): string | undefined {
     for (const token of tokenizeDamana(fragment.damana)) {
-      const lemma = siblings.get(token.normalizada);
+      const lemma = siblings.get(token.normalized);
       if (lemma) return lemma;
     }
     return undefined;
@@ -368,8 +368,8 @@ export class RetrievalService {
 
   private bestOnes(scored: RetrievedFragment[], k: number): RetrievedFragment[] {
     return scored
-      .filter((f) => f.puntaje > 0)
-      .sort((a, b) => b.puntaje - a.puntaje)
+      .filter((f) => f.score > 0)
+      .sort((a, b) => b.score - a.score)
       .slice(0, k);
   }
 
@@ -381,7 +381,7 @@ export class RetrievalService {
    */
   private buildLemmaIndex(
     fragments: CorpusFragment[],
-  ): Pick<Indexes, 'lemaDeForma' | 'formasDelLema'> {
+  ): Pick<Indexes, 'lemmaOfForm' | 'lemmaForms'> {
     const inCorpus = new Set(fragments.flatMap((f) => normalizedTokenList(f.damana)));
     const lemmaOfForm = new Map<string, string>();
     const lemmaForms = new Map<string, string[]>();
@@ -398,7 +398,7 @@ export class RetrievalService {
         break;
       }
     }
-    return { lemaDeForma: lemmaOfForm, formasDelLema: lemmaForms };
+    return { lemmaOfForm: lemmaOfForm, lemmaForms: lemmaForms };
   }
 
   private getIndexes(): Indexes {
@@ -406,23 +406,23 @@ export class RetrievalService {
       const fragments: CorpusFragment[] = [];
       for (const source of RETRIEVAL_SOURCES) {
         for (const row of this.repo.textsOf(source)) {
-          if (isUntranslatedPair(row.textoDamana, row.textoEspanol)) continue;
+          if (isUntranslatedPair(row.damanaText, row.spanishText)) continue;
           fragments.push({
-            fuente: source,
-            dominio: row.dominio,
+            source: source,
+            domain: row.domain,
             id: row.id,
-            referencia: row.referencia,
-            damana: row.textoDamana,
-            espanol: row.textoEspanol,
-            peso: row.estado === 'revisar' ? REVIEW_WEIGHT : 1,
+            reference: row.reference,
+            damana: row.damanaText,
+            spanish: row.spanishText,
+            weight: row.status === 'revisar' ? REVIEW_WEIGHT : 1,
           });
         }
       }
       this.indexes = {
-        fragmentos: fragments,
-        porIdioma: {
+        fragments: fragments,
+        byLanguage: {
           [Language.damana]: new TfIdfIndex(fragments.map((f) => normalizedTokenList(f.damana))),
-          [Language.espanol]: new TfIdfIndex(fragments.map((f) => normalizedTokenList(f.espanol))),
+          [Language.espanol]: new TfIdfIndex(fragments.map((f) => normalizedTokenList(f.spanish))),
         },
         ...this.buildLemmaIndex(fragments),
       };

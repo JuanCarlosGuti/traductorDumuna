@@ -1,9 +1,9 @@
 import { normalize } from './normalizer';
 
 export interface Occurrence {
-  inicio: number;
-  fin: number;
-  palabra: string;
+  start: number;
+  end: number;
+  word: string;
 }
 
 const RE_WORD = /[\p{L}ʉ']+/gu;
@@ -26,7 +26,7 @@ export function findOccurrences(text: string, queryText: string): Occurrence[] {
     if (word.length === 0) continue;
     const start = (m.index ?? 0) + (rawValue.length - withoutLeft.length);
     if (normalize(word) === goal) {
-      occurrences.push({ inicio: start, fin: start + word.length, palabra: word });
+      occurrences.push({ start: start, end: start + word.length, word: word });
     }
   }
   return occurrences;
@@ -47,14 +47,14 @@ function cleanSpaces(s: string): string {
  * context. Overlapping occurrences are ignored.
  */
 export function markOccurrences(text: string, occurrences: Occurrence[]): string {
-  const sortedWords = [...occurrences].sort((a, b) => a.inicio - b.inicio);
+  const sortedWords = [...occurrences].sort((a, b) => a.start - b.start);
   let result = '';
   let position = 0;
   for (const oc of sortedWords) {
-    if (oc.inicio < position) continue;
-    result += escapeHtml(cleanSpaces(text.slice(position, oc.inicio)));
-    result += '<mark>' + escapeHtml(text.slice(oc.inicio, oc.fin)) + '</mark>';
-    position = oc.fin;
+    if (oc.start < position) continue;
+    result += escapeHtml(cleanSpaces(text.slice(position, oc.start)));
+    result += '<mark>' + escapeHtml(text.slice(oc.start, oc.end)) + '</mark>';
+    position = oc.end;
   }
   result += escapeHtml(cleanSpaces(text.slice(position)));
   return result;
@@ -72,22 +72,22 @@ export function extractFragment(
   occurrence: Occurrence,
   radio = 120,
 ): string {
-  let ini = Math.max(0, occurrence.inicio - radio);
+  let ini = Math.max(0, occurrence.start - radio);
   if (ini > 0 && !/\s/.test(text[ini - 1])) {
-    const firstSpace = text.slice(ini, occurrence.inicio).search(/\s/);
+    const firstSpace = text.slice(ini, occurrence.start).search(/\s/);
     ini = firstSpace === -1 ? ini : ini + firstSpace + 1;
   }
 
-  let end = Math.min(text.length, occurrence.fin + radio);
+  let end = Math.min(text.length, occurrence.end + radio);
   if (end < text.length && !/\s/.test(text[end])) {
-    const tail = text.slice(occurrence.fin, end);
+    const tail = text.slice(occurrence.end, end);
     const lastSpace = tail.search(/\s\S*$/);
-    end = lastSpace === -1 ? end : occurrence.fin + lastSpace;
+    end = lastSpace === -1 ? end : occurrence.end + lastSpace;
   }
 
-  const before = cleanSpaces(text.slice(ini, occurrence.inicio));
-  const word = text.slice(occurrence.inicio, occurrence.fin);
-  const after = cleanSpaces(text.slice(occurrence.fin, end));
+  const before = cleanSpaces(text.slice(ini, occurrence.start));
+  const word = text.slice(occurrence.start, occurrence.end);
+  const after = cleanSpaces(text.slice(occurrence.end, end));
 
   return (
     (ini > 0 ? '…' : '') +

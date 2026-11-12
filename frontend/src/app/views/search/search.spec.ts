@@ -7,18 +7,18 @@ import { SearchResponse } from '../../core/models';
 import { SearchView } from './search';
 
 const RESULTS: SearchResponse = {
-  consulta: 'nʉnka',
-  idioma: 'damana',
-  modo: 'concordancia',
+  query: 'nʉnka',
+  language: 'damana',
+  mode: 'concordancia',
   total: 1,
-  resultados: [
+  results: [
     {
-      fuente: 'oraciones',
+      source: 'oraciones',
       id: 1,
-      referencia: 'oración 1',
-      fragmento: 'naka <mark>nʉnka</mark> gontka',
-      textoParalelo: 'el agua es una',
-      puntaje: null,
+      reference: 'oración 1',
+      fragment: 'naka <mark>nʉnka</mark> gontka',
+      parallelText: 'el agua es una',
+      score: null,
     },
   ],
 };
@@ -50,9 +50,9 @@ describe('Buscar', () => {
 
   it('with a term in the URL it searches on entry and renders the results', async () => {
     await startWith({ q: 'nʉnka' });
-    const httpRequest = http.expectOne((r) => r.url === '/api/buscar');
+    const httpRequest = http.expectOne((r) => r.url === '/api/search');
     expect(httpRequest.request.params.get('q')).toBe('nʉnka');
-    expect(httpRequest.request.params.get('idioma')).toBe('damana');
+    expect(httpRequest.request.params.get('language')).toBe('damana');
     httpRequest.flush(RESULTS);
     await settle(fixture);
 
@@ -62,23 +62,23 @@ describe('Buscar', () => {
 
   it('respects the language and source given in the URL', async () => {
     await startWith({ q: 'agua', idioma: 'espanol', fuente: 'frases' });
-    const httpRequest = http.expectOne((r) => r.url === '/api/buscar');
-    expect(httpRequest.request.params.get('idioma')).toBe('espanol');
-    expect(httpRequest.request.params.get('fuente')).toBe('frases');
-    httpRequest.flush({ ...RESULTS, idioma: 'espanol' });
+    const httpRequest = http.expectOne((r) => r.url === '/api/search');
+    expect(httpRequest.request.params.get('language')).toBe('espanol');
+    expect(httpRequest.request.params.get('source')).toBe('frases');
+    httpRequest.flush({ ...RESULTS, language: 'espanol' });
     await settle(fixture);
   });
 
   it('navigating to another term relaunches the search: the browser «back» works', async () => {
     await startWith({ q: 'nʉnka' });
-    http.expectOne((r) => r.url === '/api/buscar').flush(RESULTS);
+    http.expectOne((r) => r.url === '/api/search').flush(RESULTS);
     await settle(fixture);
 
     queryParamMap.next(convertToParamMap({ q: 'ñingui' }));
     await settle(fixture);
-    const second = http.expectOne((r) => r.url === '/api/buscar');
+    const second = http.expectOne((r) => r.url === '/api/search');
     expect(second.request.params.get('q')).toBe('ñingui'); // ñ intact
-    second.flush({ ...RESULTS, consulta: 'ñingui', resultados: [], total: 0 });
+    second.flush({ ...RESULTS, query: 'ñingui', results: [], total: 0 });
     await settle(fixture);
   });
 
@@ -101,17 +101,17 @@ describe('Buscar', () => {
 
   it('if the backend fails it warns and leaves no stale results', async () => {
     await startWith({ q: 'nʉnka' });
-    http.expectOne((r) => r.url === '/api/buscar').error(new ProgressEvent('error'));
+    http.expectOne((r) => r.url === '/api/search').error(new ProgressEvent('error'));
     await settle(fixture);
     expect(text(fixture)).toContain('No se pudo completar la búsqueda');
   });
 
   it('zero results is not an error', async () => {
     await startWith({ q: 'zzzz' });
-    http.expectOne((r) => r.url === '/api/buscar').flush({
+    http.expectOne((r) => r.url === '/api/search').flush({
       ...RESULTS,
       total: 0,
-      resultados: [],
+      results: [],
     });
     await settle(fixture);
     expect(text(fixture)).not.toContain('No se pudo completar');

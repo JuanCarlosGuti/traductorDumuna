@@ -9,14 +9,14 @@ export type PendingOrigin = 'traductor' | 'elicitacion';
 
 export interface PendingItem {
   id: number;
-  palabra: string;
-  idioma: PendingLanguage;
-  contexto: string | null;
-  vecesPedida: number;
-  estado: PendingStatus;
-  origen: PendingOrigin;
-  creadoEn: string;
-  actualizadoEn: string;
+  word: string;
+  language: PendingLanguage;
+  context: string | null;
+  timesRequested: number;
+  status: PendingStatus;
+  origin: PendingOrigin;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** Deduplication key: lowercase and no accents, with ʉ and ñ intact. */
@@ -49,7 +49,7 @@ export class PendingRepository {
 
   /** Those that have not come back resolved yet: what is exported to the native speakers. */
   listOpen(): PendingItem[] {
-    return this.listAll().filter((p) => p.estado !== 'resuelta');
+    return this.listAll().filter((p) => p.status !== 'resuelta');
   }
 
   /**
@@ -128,13 +128,13 @@ export class PendingRepository {
 function mapRow(f: any): PendingItem {
   return {
     id: f.id,
-    palabra: f.palabra,
-    idioma: f.idioma,
-    contexto: f.contexto,
-    vecesPedida: f.veces_pedida,
-    estado: f.estado,
-    origen: f.origen,
-    creadoEn: f.creado_en,
-    actualizadoEn: f.actualizado_en,
+    word: f.palabra,
+    language: f.idioma,
+    context: f.contexto,
+    timesRequested: f.veces_pedida,
+    status: f.estado,
+    origin: f.origen,
+    createdAt: f.creado_en,
+    updatedAt: f.actualizado_en,
   };
 }

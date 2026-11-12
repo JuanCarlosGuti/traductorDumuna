@@ -6,15 +6,15 @@ export enum Grade {
 }
 
 export interface Sm2State {
-  repeticiones: number;
-  factorFacilidad: number;
-  intervaloDias: number;
+  repetitions: number;
+  easeFactor: number;
+  intervalDays: number;
 }
 
 export const INITIAL_SM2_STATE: Sm2State = {
-  repeticiones: 0,
-  factorFacilidad: 2.5,
-  intervaloDias: 0,
+  repetitions: 0,
+  easeFactor: 2.5,
+  intervalDays: 0,
 };
 
 const QUALITY: Record<Grade, number> = {
@@ -35,19 +35,19 @@ export function applySm2(status: Sm2State, grade: Grade): Sm2State {
   const q = QUALITY[grade];
   const easeFactor = Math.max(
     1.3,
-    status.factorFacilidad + 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02),
+    status.easeFactor + 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02),
   );
 
   if (q < 3) {
-    return { repeticiones: 0, factorFacilidad: easeFactor, intervaloDias: 0 };
+    return { repetitions: 0, easeFactor: easeFactor, intervalDays: 0 };
   }
 
-  const repetitions = status.repeticiones + 1;
+  const repetitions = status.repetitions + 1;
   const intervalDays =
     repetitions === 1
       ? 1
       : repetitions === 2
         ? 6
-        : Math.round(status.intervaloDias * easeFactor);
-  return { repeticiones: repetitions, factorFacilidad: easeFactor, intervaloDias: intervalDays };
+        : Math.round(status.intervalDays * easeFactor);
+  return { repetitions: repetitions, easeFactor: easeFactor, intervalDays: intervalDays };
 }

@@ -3,7 +3,7 @@ import { tokenizeDamana } from '../common/text/tokenizer';
 import { spanishAlternatives, singularCandidates } from '../query/dictionary';
 
 export interface CoverableEntry {
-  espanol: string;
+  spanish: string;
   damana: string;
 }
 
@@ -26,14 +26,14 @@ export class VocabularyCoverage {
     for (const e of entries) {
       // What goes in parentheses also counts as an alternative:
       // «Territorio (tierra)» covers «tierra».
-      const parentheses = [...e.espanol.matchAll(/\(([^)]*)\)/g)].map((m) => m[1]);
-      for (const text of [e.espanol, ...parentheses]) {
+      const parentheses = [...e.spanish.matchAll(/\(([^)]*)\)/g)].map((m) => m[1]);
+      for (const text of [e.spanish, ...parentheses]) {
         for (const alternative of spanishAlternatives(text)) {
           const key = spanishKey(alternative);
           if (key) this.spanish.add(key);
         }
       }
-      const dm = tokenizeDamana(e.damana).map((t) => t.normalizada).join(' ');
+      const dm = tokenizeDamana(e.damana).map((t) => t.normalized).join(' ');
       if (dm) this.damana.add(dm);
     }
   }
@@ -50,7 +50,7 @@ export class VocabularyCoverage {
   }
 
   coversDamana(word: string): boolean {
-    const key = tokenizeDamana(word).map((t) => t.normalizada).join(' ');
+    const key = tokenizeDamana(word).map((t) => t.normalized).join(' ');
     return key.length > 0 && this.damana.has(key);
   }
 

@@ -5,9 +5,9 @@ import { SrsStatus } from '../../core/models';
 import { Flashcards } from './flashcards';
 
 const CARD: SrsStatus = {
-  tarjeta: { palabra: 'nʉnka', tipo: 'vocabulario', traduccion: 'agua', repeticiones: 2 },
-  pendientes: 3,
-  nuevas: 1,
+  card: { word: 'nʉnka', type: 'vocabulario', translation: 'agua', repetitions: 2 },
+  pendingCards: 3,
+  newCards: 1,
 };
 
 describe('Flashcards', () => {
@@ -17,7 +17,7 @@ describe('Flashcards', () => {
   const load = async (status: SrsStatus = CARD) => {
     fixture = await mount(Flashcards);
     http = TestBed.inject(HttpTestingController);
-    http.expectOne('/api/srs/siguiente').flush(status);
+    http.expectOne('/api/srs/next').flush(status);
     await settle(fixture);
   };
 
@@ -44,12 +44,12 @@ describe('Flashcards', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: '3' })); // Good
     await settle(fixture);
 
-    const response = http.expectOne('/api/srs/respuesta');
-    expect(response.request.body).toEqual({ palabra: 'nʉnka', calificacion: 'bien' });
-    response.flush({ palabra: 'nʉnka', repeticiones: 3, intervaloDias: 6, proximaRevision: '' });
+    const response = http.expectOne('/api/srs/answer');
+    expect(response.request.body).toEqual({ word: 'nʉnka', grade: 'bien' });
+    response.flush({ word: 'nʉnka', repetitions: 3, intervalDays: 6, nextReview: '' });
     await settle(fixture);
 
-    http.expectOne('/api/srs/siguiente').flush({ ...CARD, pendientes: 2 });
+    http.expectOne('/api/srs/next').flush({ ...CARD, pendingCards: 2 });
     await settle(fixture);
   });
 
@@ -57,7 +57,7 @@ describe('Flashcards', () => {
     await load();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: '3' }));
     await settle(fixture);
-    http.expectNone('/api/srs/respuesta');
+    http.expectNone('/api/srs/answer');
   });
 
   it('keys are ignored while typing in a field', async () => {
@@ -73,14 +73,14 @@ describe('Flashcards', () => {
   });
 
   it('with an empty deck it does not crash and says so', async () => {
-    await load({ tarjeta: null, pendientes: 0, nuevas: 0 });
+    await load({ card: null, pendingCards: 0, newCards: 0 });
     expect(queryAll(fixture, 'button').length).toBeLessThan(4);
   });
 
   it('if the backend fails it warns instead of staying blank', async () => {
     fixture = await mount(Flashcards);
     http = TestBed.inject(HttpTestingController);
-    http.expectOne('/api/srs/siguiente').error(new ProgressEvent('error'));
+    http.expectOne('/api/srs/next').error(new ProgressEvent('error'));
     await settle(fixture);
     expect(text(fixture)).toContain('No se pudo cargar el mazo');
   });

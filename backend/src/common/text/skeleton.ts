@@ -4,8 +4,8 @@ const BARRED_U = String.fromCharCode(0x0289); // ʉ
 
 /** A spelling alternation seen in the Damana sources. */
 export interface SpellingRule {
-  nombre: string;
-  aplicar: (text: string) => string;
+  name: string;
+  apply: (text: string) => string;
 }
 
 /**
@@ -17,13 +17,13 @@ export interface SpellingRule {
  * Order matters: «ndz» → «ny» goes before «y» → «i».
  */
 export const SPELLING_RULES: SpellingRule[] = [
-  { nombre: 'u / ʉ', aplicar: (s) => s.split(BARRED_U).join('u') },
-  { nombre: 'ndzina / nyina', aplicar: (s) => s.replace(/ndz/g, 'ny') },
-  { nombre: 'w / u', aplicar: (s) => s.replace(/w/g, 'u') },
-  { nombre: 'y / i', aplicar: (s) => s.replace(/y/g, 'i') },
+  { name: 'u / ʉ', apply: (s) => s.split(BARRED_U).join('u') },
+  { name: 'ndzina / nyina', apply: (s) => s.replace(/ndz/g, 'ny') },
+  { name: 'w / u', apply: (s) => s.replace(/w/g, 'u') },
+  { name: 'y / i', apply: (s) => s.replace(/y/g, 'i') },
   // A lone h alternates with j (shihka / shijka); the one in sh, zh and ch does not.
-  { nombre: 'h / j', aplicar: (s) => s.replace(/(?<![szc])h/g, 'j') },
-  { nombre: 'c / k', aplicar: (s) => s.replace(/c(?!h)/g, 'k') },
+  { name: 'h / j', apply: (s) => s.replace(/(?<![szc])h/g, 'j') },
+  { name: 'c / k', apply: (s) => s.replace(/c(?!h)/g, 'k') },
 ];
 
 /**
@@ -34,7 +34,7 @@ export const SPELLING_RULES: SpellingRule[] = [
  * the list of doubts. The ñ is kept: ñingui and ningui are not merged.
  */
 export function spellingSkeleton(text: string): string {
-  return SPELLING_RULES.reduce((s, rule) => rule.aplicar(s), normalize(text));
+  return SPELLING_RULES.reduce((s, rule) => rule.apply(s), normalize(text));
 }
 
 /** Which alternations explain why these forms are written differently. */
@@ -42,8 +42,8 @@ export function distinguishingRules(forms: string[]): string[] {
   const base = forms.map((f) => normalize(f));
   const distinct = new Set(base).size;
   return SPELLING_RULES.filter(
-    (rule) => new Set(base.map((f) => rule.aplicar(f))).size < distinct,
-  ).map((rule) => rule.nombre);
+    (rule) => new Set(base.map((f) => rule.apply(f))).size < distinct,
+  ).map((rule) => rule.name);
 }
 
 /** Do they differ by a single letter (changed, extra or missing)? */

@@ -8,7 +8,7 @@ import { resolveDataDir, defaultDbPath } from './data-paths';
 // Own CLI module: the importer does not drag in HTTP controllers.
 @Module({
   imports: [
-    DatabaseModule.forRoot({ rutaDb: defaultDbPath() }),
+    DatabaseModule.forRoot({ dbPath: defaultDbPath() }),
     ImporterModule,
   ],
 })
@@ -22,29 +22,29 @@ async function main(): Promise<void> {
   const dataDir = resolveDataDir();
   console.log(`Importando corpus desde: ${dataDir}`);
   const stats = await app.get(ImporterService).importAll(dataDir);
-  const e = stats.elicitacion;
+  const e = stats.elicitation;
 
   console.log('\n=== Importación completada ===');
-  console.log(`Oraciones:        ${stats.oraciones}`);
-  console.log(`Frases:           ${stats.frases}`);
-  console.log(`Vocabulario:      ${stats.vocabulario}`);
-  console.log(`Conjugaciones:    ${stats.conjugaciones}`);
-  console.log(`Reglas:           ${stats.reglas}`);
-  console.log(`Nombres propios:  ${stats.nombresPropios}`);
+  console.log(`Oraciones:        ${stats.sentences}`);
+  console.log(`Frases:           ${stats.phrases}`);
+  console.log(`Vocabulario:      ${stats.vocabulary}`);
+  console.log(`Conjugaciones:    ${stats.conjugations}`);
+  console.log(`Reglas:           ${stats.rules}`);
+  console.log(`Nombres propios:  ${stats.properNames}`);
   console.log(
-    `Elicitación:      ${e.archivos} archivo(s), ${e.filas} filas → ` +
-      `${e.vocabulario} palabras, ${e.oraciones} oraciones, ${e.pruebas} pruebas reservadas, ` +
-      `${e.pendientes} pendientes, ${e.resueltas} resueltas` +
-      (e.cubiertasPorVocabulario ? `, ${e.cubiertasPorVocabulario} ya en el vocabulario (no se piden)` : '') +
-      (e.idsRepetidos ? `, ${e.idsRepetidos} ids repetidos (ganó el último lote)` : ''),
+    `Elicitación:      ${e.files} archivo(s), ${e.rows} filas → ` +
+      `${e.vocabulary} palabras, ${e.sentences} oraciones, ${e.tests} pruebas reservadas, ` +
+      `${e.pending} pendientes, ${e.resolved} resueltas` +
+      (e.coveredByVocabulary ? `, ${e.coveredByVocabulary} ya en el vocabulario (no se piden)` : '') +
+      (e.repeatedIds ? `, ${e.repeatedIds} ids repetidos (ganó el último lote)` : ''),
   );
-  if (e.cerradasPorVocabulario) {
-    console.log(`Pendientes cerradas porque el vocabulario ya las cubre: ${e.cerradasPorVocabulario}`);
+  if (e.closedByVocabulary) {
+    console.log(`Pendientes cerradas porque el vocabulario ya las cubre: ${e.closedByVocabulary}`);
   }
-  console.log(`Pruebas (CSV):    ${stats.pruebasEnArchivo}`);
+  console.log(`Pruebas (CSV):    ${stats.testsInFile}`);
   console.log(`Tokens:           ${stats.totalTokens}`);
   console.log('\nTop 20 palabras damana más frecuentes:');
-  console.table(stats.topPalabras);
+  console.table(stats.topWords);
 
   await app.close();
 }

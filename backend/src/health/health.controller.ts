@@ -12,7 +12,7 @@ import { DB_CONNECTION } from '../database/database.constants';
 
 export class HealthStatusDto {
   @ApiProperty({ example: 'ok' })
-  estado!: 'ok';
+  status!: 'ok';
 }
 
 /**
@@ -22,8 +22,9 @@ export class HealthStatusDto {
  * the database has no corpus: that image came out wrong and must NOT replace the
  * previous one even if the process is alive.
  */
-@ApiTags('salud')
-@Controller('salud')
+@ApiTags('health')
+// 'salud' is kept as an alias so existing external monitors keep working.
+@Controller(['health', 'salud'])
 export class HealthController {
   constructor(@Inject(DB_CONNECTION) private readonly db: Database) {}
 
@@ -44,10 +45,10 @@ export class HealthController {
     }
     if (words === 0) {
       throw new ServiceUnavailableException({
-        estado: 'sin_corpus',
+        status: 'sin_corpus',
         message: 'La base no tiene corpus: falta npm run importar.',
       });
     }
-    return { estado: 'ok' };
+    return { status: 'ok' };
   }
 }

@@ -5,15 +5,15 @@ import { Lemma, ConjugationTable } from '../../core/models';
 import { GrammarView } from './grammar';
 
 const LEMMAS: Lemma[] = [
-  { lema: 'tener', formas: 72 },
-  { lema: 'leer', formas: 6 },
+  { lemma: 'tener', forms: 72 },
+  { lemma: 'leer', forms: 6 },
 ];
 
 const READ_TABLE: ConjugationTable = {
-  lema: 'leer',
-  conjugaciones: [
-    { id: 1, damana: 'nʉjkasheshisha', espanol: 'me lee', lema: 'leer', fuente: 'doc', notas: null },
-    { id: 2, damana: 'naijkasheshisha', espanol: 'nos lee', lema: 'leer', fuente: 'doc', notas: 'plural' },
+  lemma: 'leer',
+  conjugations: [
+    { id: 1, damana: 'nʉjkasheshisha', spanish: 'me lee', lemma: 'leer', source: 'doc', notes: null },
+    { id: 2, damana: 'naijkasheshisha', spanish: 'nos lee', lemma: 'leer', source: 'doc', notes: 'plural' },
   ],
 };
 
@@ -24,7 +24,7 @@ describe('Gramatica', () => {
   const start = async (lemmas: Lemma[] = LEMMAS) => {
     fixture = await mount(GrammarView);
     http = TestBed.inject(HttpTestingController);
-    http.expectOne('/api/gramatica/lemas').flush(lemmas);
+    http.expectOne('/api/grammar/lemmas').flush(lemmas);
     await settle(fixture);
   };
 
@@ -42,7 +42,7 @@ describe('Gramatica', () => {
     read.click();
     await settle(fixture);
 
-    http.expectOne('/api/gramatica/lemas/leer').flush(READ_TABLE);
+    http.expectOne('/api/grammar/lemmas/leer').flush(READ_TABLE);
     await settle(fixture);
 
     expect(text(fixture)).toContain('nʉjkasheshisha'); // ʉ intact
@@ -54,7 +54,7 @@ describe('Gramatica', () => {
     await start();
     queryAll(fixture, '.lemas button')[1].click();
     await settle(fixture);
-    http.expectOne('/api/gramatica/lemas/leer').flush(READ_TABLE);
+    http.expectOne('/api/grammar/lemmas/leer').flush(READ_TABLE);
     await settle(fixture);
 
     const forms = queryAll(fixture, 'td[lang="mbp"]').map((e) => e.textContent?.trim());
@@ -65,7 +65,7 @@ describe('Gramatica', () => {
     await start();
     queryAll(fixture, '.lemas button')[1].click();
     await settle(fixture);
-    http.expectOne('/api/gramatica/lemas/leer').flush({}, { status: 404, statusText: 'Not Found' });
+    http.expectOne('/api/grammar/lemmas/leer').flush({}, { status: 404, statusText: 'Not Found' });
     await settle(fixture);
 
     expect(text(fixture)).toContain('No se pudo cargar la conjugación');
@@ -80,7 +80,7 @@ describe('Gramatica', () => {
   it('if the initial load fails it says so', async () => {
     fixture = await mount(GrammarView);
     http = TestBed.inject(HttpTestingController);
-    http.expectOne('/api/gramatica/lemas').error(new ProgressEvent('error'));
+    http.expectOne('/api/grammar/lemmas').error(new ProgressEvent('error'));
     await settle(fixture);
     expect(text(fixture)).toContain('No se pudieron cargar los lemas');
   });

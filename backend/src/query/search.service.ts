@@ -13,9 +13,9 @@ import { RetrievalService } from './retrieval.service';
 
 export interface SearchParams {
   q: string;
-  idioma: Language;
-  fuente?: CorpusSource;
-  limite: number;
+  language: Language;
+  source?: CorpusSource;
+  limit: number;
 }
 
 /** In similarity mode more candidates than the limit are fetched so that
@@ -37,13 +37,13 @@ export class SearchService {
   search(params: SearchParams): SearchResponseDto {
     const tokens = tokenizeDamana(params.q);
     return tokens.length >= 2
-      ? this.searchBySimilarity(params, tokens.map((t) => t.normalizada))
+      ? this.searchBySimilarity(params, tokens.map((t) => t.normalized))
       : this.searchConcordance(params);
   }
 
   private searchConcordance(params: SearchParams): SearchResponseDto {
-    const sources = params.fuente
-      ? [params.fuente]
+    const sources = params.source
+      ? [params.source]
       : [
           CorpusSource.oraciones,
           CorpusSource.frases,
@@ -57,19 +57,19 @@ export class SearchService {
     for (const source of sources) {
       for (const row of this.repo.textsOf(source)) {
         const text =
-          params.idioma === Language.damana ? row.textoDamana : row.textoEspanol;
+          params.language === Language.damana ? row.damanaText : row.spanishText;
         const parallel =
-          params.idioma === Language.damana ? row.textoEspanol : row.textoDamana;
+          params.language === Language.damana ? row.spanishText : row.damanaText;
         for (const occurrence of findOccurrences(text, params.q)) {
           total++;
-          if (results.length < params.limite) {
+          if (results.length < params.limit) {
             results.push({
-              fuente: source,
+              source: source,
               id: row.id,
-              referencia: row.referencia,
-              fragmento: extractFragment(text, occurrence),
-              textoParalelo: parallel,
-              puntaje: null,
+              reference: row.reference,
+              fragment: extractFragment(text, occurrence),
+              parallelText: parallel,
+              score: null,
             });
           }
         }
@@ -77,11 +77,11 @@ export class SearchService {
     }
 
     return {
-      consulta: params.q,
-      idioma: params.idioma,
-      modo: 'concordancia',
+      query: params.q,
+      language: params.language,
+      mode: 'concordancia',
       total,
-      resultados: results,
+      results: results,
     };
   }
 
@@ -90,28 +90,28 @@ export class SearchService {
     queryTokens: string[],
   ): SearchResponseDto {
     const results = this.retrieval
-      .similar(params.q, params.idioma, SIMILARITY_CANDIDATES)
-      .filter((f) => !params.fuente || f.fuente === params.fuente)
-      .slice(0, params.limite)
+      .similar(params.q, params.language, SIMILARITY_CANDIDATES)
+      .filter((f) => !params.source || f.source === params.source)
+      .slice(0, params.limit)
       .map((f) => {
-        const text = params.idioma === Language.damana ? f.damana : f.espanol;
-        const parallel = params.idioma === Language.damana ? f.espanol : f.damana;
+        const text = params.language === Language.damana ? f.damana : f.spanish;
+        const parallel = params.language === Language.damana ? f.spanish : f.damana;
         return {
-          fuente: f.fuente,
+          source: f.source,
           id: f.id,
-          referencia: f.referencia,
-          fragmento: markOccurrences(text, this.occurrencesOf(text, queryTokens)),
-          textoParalelo: parallel,
-          puntaje: f.puntaje,
+          reference: f.reference,
+          fragment: markOccurrences(text, this.occurrencesOf(text, queryTokens)),
+          parallelText: parallel,
+          score: f.score,
         };
       });
 
     return {
-      consulta: params.q,
-      idioma: params.idioma,
-      modo: 'similitud',
+      query: params.q,
+      language: params.language,
+      mode: 'similitud',
       total: results.length,
-      resultados: results,
+      results: results,
     };
   }
 

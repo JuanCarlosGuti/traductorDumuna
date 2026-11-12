@@ -5,211 +5,211 @@ export type CorpusSource = 'oraciones' | 'frases' | 'vocabulario' | 'conjugacion
 export type CorpusDomain = 'biblico' | 'cotidiano' | 'gramatica';
 
 export interface Concordance {
-  fuente: CorpusSource;
+  source: CorpusSource;
   id: number;
-  referencia: string;
-  fragmento: string;
-  textoParalelo: string;
-  puntaje: number | null;
+  reference: string;
+  fragment: string;
+  parallelText: string;
+  score: number | null;
 }
 
 export interface SearchResponse {
-  consulta: string;
-  idioma: Language;
-  modo: 'concordancia' | 'similitud';
+  query: string;
+  language: Language;
+  mode: 'concordancia' | 'similitud';
   total: number;
-  resultados: Concordance[];
+  results: Concordance[];
 }
 
 export interface SourceFrequency {
-  fuente: CorpusSource;
-  frecuencia: number;
+  source: CorpusSource;
+  frequency: number;
 }
 
 export interface CandidateTranslation {
-  palabra: string;
-  coocurrencias: number;
+  word: string;
+  cooccurrences: number;
 }
 
 export interface WordCardVocabularyEntry {
-  espanol: string;
-  categoria: string | null;
-  notas: string | null;
-  fuente: string | null;
+  spanish: string;
+  category: string | null;
+  notes: string | null;
+  source: string | null;
 }
 
 export interface VerbForm {
   damana: string;
-  espanol: string;
-  lema: string;
+  spanish: string;
+  lemma: string;
 }
 
 export interface WordCard {
-  palabra: string;
-  entradasVocabulario: WordCardVocabularyEntry[];
-  formasVerbales: VerbForm[];
-  frecuenciaTotal: number;
-  frecuenciaPorFuente: SourceFrequency[];
-  concordancias: Concordance[];
-  traduccionesCandidatas: CandidateTranslation[];
+  word: string;
+  vocabularyEntries: WordCardVocabularyEntry[];
+  verbForms: VerbForm[];
+  totalFrequency: number;
+  frequencyBySource: SourceFrequency[];
+  concordances: Concordance[];
+  candidateTranslations: CandidateTranslation[];
 }
 
 export interface Frequency {
-  palabra: string;
-  frecuencia: number;
-  traduccion: string | null;
-  categoria: string | null;
+  word: string;
+  frequency: number;
+  translation: string | null;
+  category: string | null;
 }
 
 export interface Lemma {
-  lema: string;
-  formas: number;
+  lemma: string;
+  forms: number;
 }
 
 export interface Conjugation {
   id: number;
   damana: string;
-  espanol: string;
-  lema: string;
-  fuente: string | null;
-  notas: string | null;
+  spanish: string;
+  lemma: string;
+  source: string | null;
+  notes: string | null;
 }
 
 export interface ConjugationTable {
-  lema: string;
-  conjugaciones: Conjugation[];
+  lemma: string;
+  conjugations: Conjugation[];
 }
 
 export type Grade = 'otra_vez' | 'dificil' | 'bien' | 'facil';
 
 export interface SrsCard {
-  palabra: string;
-  tipo: 'vocabulario' | 'frecuencia';
-  traduccion: string;
-  repeticiones: number;
+  word: string;
+  type: 'vocabulario' | 'frecuencia';
+  translation: string;
+  repetitions: number;
 }
 
 export interface SrsStatus {
-  tarjeta: SrsCard | null;
-  pendientes: number;
-  nuevas: number;
+  card: SrsCard | null;
+  pendingCards: number;
+  newCards: number;
 }
 
 export interface UpdatedProgress {
-  palabra: string;
-  repeticiones: number;
-  intervaloDias: number;
-  proximaRevision: string;
+  word: string;
+  repetitions: number;
+  intervalDays: number;
+  nextReview: string;
 }
 
 export type TranslationDirection = 'damana_a_espanol' | 'espanol_a_damana';
 
 export interface ExampleFragment {
-  fuente: CorpusSource;
-  dominio: CorpusDomain;
-  referencia: string;
+  source: CorpusSource;
+  domain: CorpusDomain;
+  reference: string;
   damana: string;
-  espanol: string;
-  puntaje: number;
+  spanish: string;
+  score: number;
 }
 
 export type SupportLevel = 'bueno' | 'parcial' | 'revisar';
 
 export interface Support {
-  nivel: SupportLevel;
-  motivos: string[];
+  level: SupportLevel;
+  reasons: string[];
 }
 
 export interface GlossPair {
-  origen: string;
-  destino: string;
+  origin: string;
+  target: string;
 }
 
 export type MatchKind = 'exacta' | 'sin_tildes' | 'sinonimo' | 'singular' | 'frase' | 'posible';
 
 export interface Sense {
-  palabra: string;
-  espanol: string;
+  word: string;
+  spanish: string;
   damana: string;
-  categoria: string | null;
-  coincidencia: MatchKind;
+  category: string | null;
+  match: MatchKind;
 }
 
 export interface UsedProperName {
-  enTexto: string;
-  espanol: string;
+  inText: string;
+  spanish: string;
   damana: string;
 }
 
 export interface UsedRule {
-  forma: string;
-  significado: string | null;
-  ejemplo: string | null;
-  disparador: string | null;
+  form: string;
+  meaning: string | null;
+  example: string | null;
+  trigger: string | null;
 }
 
 export interface TranslationResponse {
-  traduccion: string;
-  glosa: GlossPair[];
-  palabrasSinEquivalente: string[];
-  reglasAplicadas: string[];
-  confianza: number;
-  explicacionBreve: string;
-  apoyo: Support;
-  ejemplos: ExampleFragment[];
-  diccionario: Sense[];
-  nombresPropios: UsedProperName[];
-  reglas: UsedRule[];
-  disparadores: string[];
+  translation: string;
+  gloss: GlossPair[];
+  wordsWithoutEquivalent: string[];
+  appliedRules: string[];
+  confidence: number;
+  briefExplanation: string;
+  support: Support;
+  examples: ExampleFragment[];
+  dictionary: Sense[];
+  properNames: UsedProperName[];
+  rules: UsedRule[];
+  triggers: string[];
 }
 
 export interface TranslatorStatus {
-  disponible: boolean;
-  proveedor: 'anthropic' | 'compatible' | null;
-  modelo: string | null;
+  available: boolean;
+  provider: 'anthropic' | 'compatible' | null;
+  model: string | null;
 }
 
 export type ValidationOrigin = 'confirmada' | 'corregida';
 
 export interface ValidateTranslation {
-  texto: string;
-  direccion: TranslationDirection;
-  traduccion: string;
-  origen: ValidationOrigin;
-  traduccionModelo?: string;
+  text: string;
+  direction: TranslationDirection;
+  translation: string;
+  origin: ValidationOrigin;
+  modelTranslation?: string;
 }
 
 export interface SavedValidation {
-  guardada: boolean;
+  saved: boolean;
   total: number;
 }
 
 export interface PendingItem {
   id: number;
-  palabra: string;
-  idioma: Language;
-  contexto: string | null;
-  vecesPedida: number;
-  estado: 'pendiente' | 'exportada' | 'resuelta';
-  origen: 'traductor' | 'elicitacion';
-  creadoEn: string;
-  actualizadoEn: string;
+  word: string;
+  language: Language;
+  context: string | null;
+  timesRequested: number;
+  status: 'pendiente' | 'exportada' | 'resuelta';
+  origin: 'traductor' | 'elicitacion';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface VocabularyEntry {
   id: number;
-  espanol: string;
+  spanish: string;
   damana: string;
-  categoria: string | null;
-  notas: string | null;
-  fuente: string | null;
+  category: string | null;
+  notes: string | null;
+  source: string | null;
 }
 
 export interface Phrase {
   id: number;
-  fuente: string | null;
+  source: string | null;
   damana: string;
-  espanol: string | null;
-  notas: string | null;
-  dominio: CorpusDomain;
+  spanish: string | null;
+  notes: string | null;
+  domain: CorpusDomain;
 }
