@@ -8,9 +8,12 @@ service: corpus-damana
 # imagen en ghcr.io/ghcr.io/…
 image: juancarlosguti/corpus-damana
 
+# La IP no se versiona (repo público): viene de la variable SERVER_IP, que
+# en GitHub Actions es el secreto del mismo nombre. En local:
+#   SERVER_IP=<ip> kamal deploy
 servers:
   web:
-    - 159.195.235.225
+    - <%= ENV.fetch("SERVER_IP") %>
 
 # El acceso por root está deshabilitado en el servidor.
 ssh:

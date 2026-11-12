@@ -24,7 +24,10 @@ services:
     name: corpus-damana
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build && npm run importar
+    # traer-datos copia el corpus real desde el repo privado si están las dos
+    # variables CORPUS_DATOS_*; sin ellas el servicio sale con el corpus de
+    # muestra del repo (ver DATA.md).
+    buildCommand: npm ci && node scripts/traer-datos.mjs && npm run build && npm run importar
     startCommand: npm run start:prod
     healthCheckPath: /
     envVars:
@@ -36,6 +39,12 @@ services:
       # variable RENDER, que la plataforma define sola.
       # Motor principal: Claude. Tiene prioridad sobre Groq
       # (backend/src/traduccion/config-traductor.provider.ts).
+      # Repo privado con el corpus real ("dueño/repo") y un token de solo
+      # lectura sobre él. Opcionales: sin ellos se usa el corpus de muestra.
+      - key: CORPUS_DATOS_REPO
+        sync: false
+      - key: CORPUS_DATOS_TOKEN
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       # Respaldo: Groq, API compatible con OpenAI. Solo entra si falta

@@ -78,8 +78,23 @@ jobs:
           # con HostKeyMismatch aunque la huella sea correcta.
           ssh-keyscan -t ed25519 "${{ secrets.SERVER_IP }}" >> ~/.ssh/known_hosts
 
+      # El repo público solo versiona un corpus de muestra (ver DATA.md). El
+      # corpus real vive en un repo privado y se copia sobre datos/ aquí, antes
+      # de que Kamal construya la imagen (builder.context: .). OBLIGATORIO=1:
+      # si el secreto falta o el clon falla, el despliegue se corta en vez de
+      # publicar la app con el corpus de muestra.
+      - name: Traer el corpus real (repo privado de datos)
+        env:
+          CORPUS_DATOS_REPO: ${{ secrets.CORPUS_DATOS_REPO }}
+          CORPUS_DATOS_TOKEN: ${{ secrets.CORPUS_DATOS_TOKEN }}
+          CORPUS_DATOS_OBLIGATORIO: '1'
+        run: node scripts/traer-datos.mjs
+
       - name: Desplegar
         env:
+          # config/deploy.yml lee la IP del servidor de aquí (ERB): la
+          # dirección no se versiona en el repo público.
+          SERVER_IP: ${{ secrets.SERVER_IP }}
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           # Claude, motor principal. Si el secreto faltara llegaría vacío y
           # la app caería sola a Groq (TRADUCTOR_*).

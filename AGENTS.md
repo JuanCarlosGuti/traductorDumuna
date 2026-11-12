@@ -12,7 +12,7 @@ experiencia en TypeScript/Angular y backend.
   desde los CSV y Excel de `/datos` (por eso agregar corpus = editar los
   archivos de `/datos` + `npm run importar` para probar en local + push).
 - **También EN PRODUCCIÓN desde el 21 oct 2026: servidor propio con Kamal 2** →
-  `damana.crearcodecesar.com` (VPS netcup 159.195.235.225, usuario
+  `damana.crearcodecesar.com` (VPS netcup <SERVER_IP>, usuario
   `deploy`, mismo patrón que cesar-travel y board-checkup: referencias en
   `C:\dev\proyectos\cesar-travel` y `C:\dev\proyectos\infra-servidor\RUNBOOK.md`;
   la llave privada `infra-servidor\llaves\id_crearcode` NO se abre ni se
