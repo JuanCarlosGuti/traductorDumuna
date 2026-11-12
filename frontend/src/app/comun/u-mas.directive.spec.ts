@@ -16,7 +16,7 @@ describe('reemplazarUMas', () => {
   });
 
   it('solo corre el cursor por los reemplazos anteriores a él', () => {
-    // cursor al inicio, el par está después
+    // cursor at the start, the pair is after it
     expect(reemplazarUMas('abu+', 0)).toEqual({ valor: 'abʉ', caret: 0 });
   });
 
@@ -54,7 +54,7 @@ describe('UMasDirective', () => {
 
   it('convierte en medio del texto respetando el cursor', async () => {
     const campo = await crearCampo();
-    teclear(campo, 'u+ kʉnka', 2); // cursor justo tras el "+"
+    teclear(campo, 'u+ kʉnka', 2); // cursor right after the "+"
     expect(campo.value).toBe('ʉ kʉnka');
     expect(campo.selectionStart).toBe(1);
   });

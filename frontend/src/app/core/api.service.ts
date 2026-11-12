@@ -26,7 +26,7 @@ export interface ArchivoDescargado {
   nombreArchivo: string;
 }
 
-/** Nombre del adjunto de una cabecera Content-Disposition (o el de reserva). */
+/** Attachment name from a Content-Disposition header (or the fallback one). */
 export function nombreDeAdjunto(contentDisposition: string | null, reserva: string): string {
   const m = /filename="?([^";]+)"?/i.exec(contentDisposition ?? '');
   return m ? m[1] : reserva;
@@ -111,7 +111,7 @@ export class ApiService {
     return firstValueFrom(this.http.get<Pendiente[]>('/api/pendientes'));
   }
 
-  /** Genera y descarga el lote Excel para las hablantes; el servidor marca las filas como exportadas. */
+  /** Generates and downloads the Excel batch for the speakers; the server marks the rows as exported. */
   async exportarPendientes(): Promise<ArchivoDescargado> {
     const respuesta = await firstValueFrom(
       this.http.post('/api/pendientes/exportar', null, {

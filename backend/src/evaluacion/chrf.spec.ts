@@ -25,7 +25,7 @@ describe('chrF (implementación propia)', () => {
   it('ʉ ≠ u: cambiar la ʉ por u baja el puntaje', () => {
     const conU = chrF('nunka shkua gontka', 'nʉnka shkua gontka');
     expect(conU).toBeLessThan(1);
-    expect(conU).toBeGreaterThan(0.6); // pero sigue siendo parecido
+    expect(conU).toBeGreaterThan(0.6); // but it is still similar
   });
 
   it('ñ ≠ n: ñingui y ningui no son iguales', () => {
@@ -33,8 +33,8 @@ describe('chrF (implementación propia)', () => {
   });
 
   it('una traducción parcial puntúa entre medias y la cobertura pesa más (beta = 2)', () => {
-    const corta = chrF('nʉnka', 'nʉnka shkua gontka'); // precisa pero incompleta
-    const larga = chrF('nʉnka shkua gontka ñingui tua', 'nʉnka shkua gontka'); // completa con sobra
+    const corta = chrF('nʉnka', 'nʉnka shkua gontka'); // precise but incomplete
+    const larga = chrF('nʉnka shkua gontka ñingui tua', 'nʉnka shkua gontka'); // complete with extra
     expect(corta).toBeGreaterThan(0);
     expect(corta).toBeLessThan(1);
     expect(larga).toBeGreaterThan(corta);

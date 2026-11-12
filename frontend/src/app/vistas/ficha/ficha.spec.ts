@@ -46,7 +46,7 @@ describe('Ficha', () => {
 
   it('pide la palabra de la URL y pinta su ficha', async () => {
     await arrancarCon('nʉnka');
-    // encodeURIComponent: la ʉ viaja porcentificada en la ruta
+    // encodeURIComponent: the ʉ travels percent-encoded in the path
     http.expectOne('/api/palabra/n%CA%89nka').flush(FICHA);
     await asentar(fixture);
 
@@ -87,7 +87,7 @@ describe('Ficha', () => {
       entradasVocabulario: [],
     });
     await asentar(fixture);
-    expect(texto(fixture)).toContain('ñingui'); // la ñ no se degrada a n
+    expect(texto(fixture)).toContain('ñingui'); // the ñ is not degraded to n
   });
 
   it('una palabra inexistente se anuncia sin romper la vista', async () => {

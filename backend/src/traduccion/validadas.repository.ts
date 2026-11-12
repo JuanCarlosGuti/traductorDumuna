@@ -20,14 +20,14 @@ export interface NuevaValidada {
   damana: string;
   direccion: DireccionTraduccion;
   origen: OrigenValidacion;
-  /** Lo que propuso el modelo (igual al par si fue confirmada). */
+  /** What the model proposed (equal to the pair if it was confirmed). */
   traduccionModelo: string | null;
 }
 
 /**
- * Pares que el usuario dio por buenos («esta traducción es correcta») o
- * corrigió a mano. Es la futura fuente cotidiana de máxima confianza; por
- * ahora solo se acumula. Sobrevive a las reimportaciones.
+ * Pairs the user accepted as good («this translation is correct») or
+ * corrected by hand. It is the future everyday source of highest confidence; for
+ * now it only accumulates. It survives re-imports.
  */
 @Injectable()
 export class ValidadasRepository {

@@ -70,7 +70,7 @@ describe('Pendientes', () => {
     expect(filas.length).toBe(2);
     expect(filas[0].textContent).toContain('vecina');
     expect(filas[0].textContent).toContain('3');
-    expect(filas[1].querySelector('td')?.getAttribute('lang')).toBe('mbp'); // kʉzhigui es damana
+    expect(filas[1].querySelector('td')?.getAttribute('lang')).toBe('mbp'); // kʉzhigui is Damana
     expect(texto(fixture)).not.toContain('ñame');
     expect(texto(fixture)).toContain('Exportar lote (2)');
   });

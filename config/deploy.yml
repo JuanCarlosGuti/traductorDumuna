@@ -1,49 +1,49 @@
-# Kamal 2 — corpus-damana en el servidor propio (netcup), junto a las otras
-# apps y detrás del mismo kamal-proxy. Mismo patrón que cesar-travel y
-# board-checkup: la imagen se construye en GitHub Actions, se publica en GHCR
-# y Kamal entra por SSH como `deploy` a arrancarla. En el servidor no queda
-# ningún panel; solo kamal-proxy y los contenedores.
+# Kamal 2 — corpus-damana on our own server (netcup), next to the other
+# apps and behind the same kamal-proxy. Same pattern as cesar-travel and
+# board-checkup: the image is built in GitHub Actions, published to GHCR
+# and Kamal goes in over SSH as `deploy` to start it. No panel is left on
+# the server; only kamal-proxy and the containers.
 service: corpus-damana
-# SOLO owner/repo: Kamal antepone registry.server. Ponerlo completo deja la
-# imagen en ghcr.io/ghcr.io/…
+# ONLY owner/repo: Kamal prepends registry.server. Writing it in full leaves the
+# image at ghcr.io/ghcr.io/…
 image: juancarlosguti/corpus-damana
 
-# La IP no se versiona (repo público): viene de la variable SERVER_IP, que
-# en GitHub Actions es el secreto del mismo nombre. En local:
+# The IP is not versioned (public repo): it comes from the SERVER_IP variable, which
+# in GitHub Actions is the secret of the same name. Locally:
 #   SERVER_IP=<ip> kamal deploy
 servers:
   web:
     - <%= ENV.fetch("SERVER_IP") %>
 
-# El acceso por root está deshabilitado en el servidor.
+# Root access is disabled on the server.
 ssh:
   user: deploy
 
 proxy:
-  # Subdominio del dominio que ya sirve crearcodecesar.com y
-  # app.crearcodecesar.com. Es un registro A aparte y kamal-proxy enruta por
-  # nombre: no toca ni afecta a las otras páginas. DNS en Cloudflare con el
-  # proxy APAGADO (nube gris): con la nube naranja Let's Encrypt no puede
-  # completar el desafío y no hay certificado. El registro tiene que resolver
-  # a esta IP ANTES del primer deploy.
+  # Subdomain of the domain that already serves crearcodecesar.com and
+  # app.crearcodecesar.com. It is a separate A record and kamal-proxy routes by
+  # name: it neither touches nor affects the other sites. DNS on Cloudflare with the
+  # proxy OFF (grey cloud): with the orange cloud Let's Encrypt cannot
+  # complete the challenge and there is no certificate. The record must resolve
+  # to this IP BEFORE the first deploy.
   host: damana.crearcodecesar.com
-  # Certificado de Let's Encrypt que kamal-proxy pide solo; además redirige
+  # Let's Encrypt certificate that kamal-proxy requests by itself; it also redirects
   # http → https.
   ssl: true
-  # Se declara aunque sea el valor por omisión con ssl: true. La app limita
-  # los intentos de login por IP (`trust proxy` en backend/src/main.ts), así
-  # que X-Forwarded-For lo tiene que escribir kamal-proxy, no el cliente.
+  # Declared even though it is the default value with ssl: true. The app limits
+  # login attempts per IP (`trust proxy` in backend/src/main.ts), so
+  # X-Forwarded-For must be written by kamal-proxy, not by the client.
   forward_headers: false
   app_port: 3000
   healthcheck:
-    # Público y liviano (backend/src/salud/salud.controller.ts). Responde 503
-    # si la imagen salió sin corpus, y entonces el despliegue falla en vez
-    # de reemplazar al contenedor anterior.
+    # Public and lightweight (backend/src/salud/salud.controller.ts). It answers 503
+    # if the image came out without a corpus, and then the deployment fails instead
+    # of replacing the previous container.
     path: /api/salud
     interval: 5
     timeout: 15
 
-# El arranque es solo abrir la base ya horneada y levantar Nest: segundos.
+# Startup is just opening the already baked database and starting Nest: seconds.
 deploy_timeout: 120
 
 registry:
@@ -52,10 +52,10 @@ registry:
   password:
     - KAMAL_REGISTRY_PASSWORD
 
-# La imagen se construye en el runner de GitHub, NO en el servidor: el build de
-# Angular puede pedir 2-4 GB de pico y tumbaría la caja con todas las apps
-# encima. La caché de capas vive en GHCR, como en cesar-travel: `npm ci` y el
-# apt-get se reaprovechan entre despliegues que no tocan dependencias.
+# The image is built on the GitHub runner, NOT on the server: the Angular
+# build can peak at 2-4 GB and would take the box down with all the apps
+# on it. The layer cache lives in GHCR, as in cesar-travel: `npm ci` and the
+# apt-get are reused across deployments that do not touch dependencies.
 builder:
   arch: amd64
   context: .
@@ -67,29 +67,29 @@ builder:
 
 env:
   clear:
-    # El Dockerfile ya lo declara; se repite porque de él depende que la auth
-    # sea obligatoria (auth.config.ts) y conviene verlo junto a lo demás.
+    # The Dockerfile already declares it; it is repeated because auth being
+    # mandatory depends on it (auth.config.ts) and it is good to see it next to the rest.
     NODE_ENV: production
     PORT: "3000"
-    # Esfuerzo de razonamiento de Claude (decisión del dueño, 22 oct 2026):
-    # low recorta los tokens de salida y la latencia; el prompt ya trae el
-    # diccionario, las reglas y los ejemplos, así que el razonamiento largo
-    # aporta poco. Solo aplica a Claude; Groq no lo lee.
+    # Claude reasoning effort (owner's decision, 22 Oct 2026):
+    # low cuts output tokens and latency; the prompt already carries the
+    # dictionary, the rules and the examples, so long reasoning
+    # adds little. It only applies to Claude; Groq does not read it.
     ANTHROPIC_ESFUERZO: low
-    # Motor de traducción principal: Claude (ANTHROPIC_API_KEY en `secret`,
-    # tiene prioridad). Groq queda como respaldo: solo se usa si falta la
-    # clave de Anthropic.
+    # Main translation engine: Claude (ANTHROPIC_API_KEY in `secret`,
+    # takes priority). Groq stays as a fallback: it is only used if the
+    # Anthropic key is missing.
     TRADUCTOR_BASE_URL: https://api.groq.com/openai/v1
     TRADUCTOR_MODELO: openai/gpt-oss-120b
   secret:
-    # Claude (claude-opus-5-5 por defecto; créditos API del plan Max).
+    # Claude (claude-opus-5-5 by default; Max plan API credits).
     - ANTHROPIC_API_KEY
-    # Respaldo: clave de Groq.
+    # Fallback: Groq key.
     - TRADUCTOR_API_KEY
-    # Usuario único de la app. Sin estas dos el servicio NO arranca en
-    # producción, a propósito.
+    # Single app user. Without these two the service does NOT start in
+    # production, on purpose.
     - AUTH_USUARIO
     - AUTH_PASSWORD
-    # Firma de las sesiones (30 días). Cambiarlo cierra la sesión en todos
-    # los dispositivos.
+    # Session signing (30 days). Changing it logs out every
+    # device.
     - AUTH_JWT_SECRET

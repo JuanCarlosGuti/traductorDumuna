@@ -13,8 +13,8 @@ describe('normalizar', () => {
     expect(normalizar('kʉnʉnka')).not.toBe(normalizar('kununka'));
   });
 
-  // Decisión documentada: ñ es letra plena en damana (ñingui, kʉñingui)
-  // y en español (año ≠ ano); se preserva aunque NFD la descomponga.
+  // Documented decision: ñ is a full letter in Damana (ñingui, kʉñingui)
+  // and in Spanish (año ≠ ano); it is preserved even though NFD decomposes it.
   it('conserva la ñ: Ñingui → ñingui', () => {
     expect(normalizar('Ñingui')).toBe('ñingui');
   });

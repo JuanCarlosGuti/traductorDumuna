@@ -4,9 +4,9 @@ const U_MINUSCULA = String.fromCharCode(0x0289); // ʉ
 const U_MAYUSCULA = String.fromCharCode(0x0244); // Ʉ
 
 /**
- * Reemplaza cada "u+" por ʉ (y "U+" por Ʉ) ajustando la posición del
- * cursor: cada par reemplazado antes del cursor lo corre una posición
- * a la izquierda.
+ * Replaces each "u+" with ʉ (and "U+" with Ʉ) adjusting the cursor
+ * position: each pair replaced before the cursor shifts it one position
+ * to the left.
  */
 export function reemplazarUMas(
   valor: string,
@@ -30,10 +30,10 @@ export function reemplazarUMas(
 }
 
 /**
- * Directiva reutilizable para cajas de texto: al escribir, autoreemplaza
- * "u+" por ʉ ("U+" por Ʉ) conservando el cursor. Tras reemplazar
- * re-emite el evento input para que ngModel u otros listeners vean el
- * valor final (la segunda pasada no encuentra nada y corta el ciclo).
+ * Reusable directive for text boxes: while typing, it auto-replaces
+ * "u+" with ʉ ("U+" with Ʉ) keeping the cursor. After replacing it
+ * re-emits the input event so that ngModel or other listeners see the
+ * final value (the second pass finds nothing and breaks the cycle).
  */
 @Directive({ selector: 'input[appUMas], textarea[appUMas]' })
 export class UMasDirective {

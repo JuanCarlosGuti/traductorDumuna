@@ -1,11 +1,11 @@
 import * as path from 'path';
 
 /**
- * Resuelve la carpeta /datos del monorepo. Los scripts de workspace de npm
- * siempre se ejecutan con cwd en backend/, así que '../datos' es
- * determinista. CORPUS_DATOS_DIR permite sobreescribirla (tests, etc.).
- * La ruta nunca pasa por un shell, así que el espacio en el nombre del
- * proyecto no es problema.
+ * Resolves the monorepo's /datos folder. npm workspace scripts
+ * always run with cwd in backend/, so '../datos' is
+ * deterministic. CORPUS_DATOS_DIR lets it be overridden (tests, etc.).
+ * The path never goes through a shell, so the space in the project
+ * name is not a problem.
  */
 export function resolverDirDatos(): string {
   return (

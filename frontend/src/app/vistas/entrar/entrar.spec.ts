@@ -25,9 +25,9 @@ describe('Entrar', () => {
   };
 
   /**
-   * Angular zoneless: whenStable() no espera a las promesas que lanza el
-   * componente, así que hay que ceder el turno al bucle de eventos antes
-   * de mirar el DOM.
+   * Zoneless Angular: whenStable() does not wait for the promises the
+   * component fires, so we must yield to the event loop before
+   * looking at the DOM.
    */
   const asentar = async () => {
     await new Promise((listo) => setTimeout(listo));
@@ -69,7 +69,7 @@ describe('Entrar', () => {
     const peticion = http.expectOne('/api/auth/login');
     expect(peticion.request.body).toEqual({
       usuario: 'juan',
-      password: 'ñandú-ʉnkua', // la ʉ y la ñ viajan intactas
+      password: 'ñandú-ʉnkua', // ʉ and ñ travel intact
     });
     peticion.flush({ token: 'abc', usuario: 'juan', duracionDias: 30 });
     await asentar();

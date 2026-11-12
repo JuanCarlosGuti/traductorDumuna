@@ -10,41 +10,41 @@ import { Disparador, ReglaGramatical, seleccionarReglas } from './reglas';
 export const K_FRAGMENTOS = 8;
 
 /**
- * Los ejemplos que aparecen solo por parentesco verbal (otra persona del
- * mismo lema) valen menos que una coincidencia directa: son útiles, pero
- * usan una conjugación distinta a la que se preguntó.
+ * Examples that appear only through verbal kinship (another person of the
+ * same lemma) are worth less than a direct match: they are useful, but
+ * use a different conjugation from the one that was asked about.
  */
 export const PESO_LEMA = 0.6;
 
 /**
- * Tope de formas hermanas que se añaden a la consulta por cada verbo
- * detectado. «tener» tiene 72 formas: meterlas todas ahogaría una consulta
- * de tres palabras.
+ * Cap on sibling forms added to the query for each detected
+ * verb. «tener» has 72 forms: adding them all would drown a three-word
+ * query.
  */
 export const MAX_FORMAS_HERMANAS = 8;
 
 /**
- * Pares cuyo lado damana es idéntico al español: en el corpus son
- * referencias bíblicas («Génesis 1:27-31; Salmo 115:16.») y nombres propios
- * sueltos («Felipe»). No son ejemplos de lengua —no enseñan ni léxico ni
- * estructura— así que compiten por un hueco entre los K sin aportar nada.
+ * Pairs whose Damana side is identical to the Spanish one: in the corpus they are
+ * biblical references («Génesis 1:27-31; Salmo 115:16.») and loose proper
+ * names («Felipe»). They are not language examples — they teach neither lexicon nor
+ * structure — so they compete for a slot among the K without contributing anything.
  *
- * Solo se excluyen del índice de retrieval: siguen en el CSV, en la base y
- * en la búsqueda/concordancia.
+ * They are only excluded from the retrieval index: they stay in the CSV, in the database and
+ * in search/concordance.
  */
 export function esParSinTraduccion(damana: string, espanol: string): boolean {
   const ladoDamana = normalizar(damana.trim());
   return ladoDamana.length > 0 && ladoDamana === normalizar(espanol.trim());
 }
 
-/** Las oraciones con alineación dudosa (estado='revisar') participan en el
- *  retrieval pero con la mitad del puntaje de similitud. */
+/** Sentences with doubtful alignment (estado='revisar') take part in
+ *  retrieval but with half the similarity score. */
 export const PESO_REVISAR = 0.5;
 
 /**
- * Cupos de ejemplos por dominio para el prompt del traductor. Los
- * cotidianos mandan: cuando hay suficientes, los bíblicos bajan a 2 para
- * que el registro religioso no arrastre la traducción.
+ * Example quotas per domain for the translator prompt. Everyday
+ * ones take priority: when there are enough, biblical ones drop to 2 so
+ * that the religious register does not drag the translation along.
  */
 export const CUPO_COTIDIANO = 6;
 export const CUPO_GRAMATICA = 4;
@@ -52,9 +52,9 @@ export const CUPO_BIBLICO = 4;
 export const CUPO_BIBLICO_REDUCIDO = 2;
 export const COTIDIANOS_SUFICIENTES = 4;
 export const MAX_EJEMPLOS = 14;
-/** Candidatos que se piden al TF-IDF antes de repartir por dominio. */
+/** Candidates requested from TF-IDF before splitting by domain. */
 export const CANDIDATOS_CONTEXTO = 60;
-/** Jaccard de tokens damana a partir del cual dos ejemplos son «casi iguales». */
+/** Jaccard of Damana tokens above which two examples are «almost equal». */
 export const UMBRAL_CASI_IGUAL = 0.8;
 
 const FUENTES_RETRIEVAL: FuenteCorpus[] = [
@@ -70,27 +70,27 @@ export interface FragmentoCorpus {
   referencia: string;
   damana: string;
   espanol: string;
-  /** 1 para fragmentos confiables; PESO_REVISAR para oraciones 'revisar'. */
+  /** 1 for reliable fragments; PESO_REVISAR for 'revisar' sentences. */
   peso: number;
 }
 
 export interface FragmentoRecuperado extends FragmentoCorpus {
   puntaje: number;
   /**
-   * Presente cuando el fragmento se recuperó gracias a otra forma del mismo
-   * verbo: contiene el lema, para poder advertir que la conjugación difiere.
+   * Present when the fragment was retrieved thanks to another form of the same
+   * verb: it holds the lemma, so we can warn that the conjugation differs.
    */
   porLema?: string;
 }
 
 export interface NombrePropioEncontrado {
-  /** Cómo venía escrito en la frase de entrada. */
+  /** How it was written in the input sentence. */
   enTexto: string;
   espanol: string;
   damana: string;
 }
 
-/** Todo lo que el traductor necesita saber del corpus sobre una frase. */
+/** Everything the translator needs to know from the corpus about a sentence. */
 export interface ContextoRecuperado {
   diccionario: AcepcionEncontrada[];
   nombresPropios: NombrePropioEncontrado[];
@@ -100,9 +100,9 @@ export interface ContextoRecuperado {
 }
 
 /**
- * Índice TF-IDF mínimo (implementación propia, sin dependencias):
- * tf = conteo del término en el documento, idf = ln(1 + N/(1+df)),
- * similitud = coseno entre vectores tf·idf.
+ * Minimal TF-IDF index (own implementation, no dependencies):
+ * tf = count of the term in the document, idf = ln(1 + N/(1+df)),
+ * similarity = cosine between tf·idf vectors.
  */
 class IndiceTfIdf {
   private readonly idf = new Map<string, number>();
@@ -138,7 +138,7 @@ class IndiceTfIdf {
     return pesos;
   }
 
-  /** Similitud coseno de la consulta con cada documento (0 si no comparten términos). */
+  /** Cosine similarity of the query with each document (0 if they share no terms). */
   similitudes(tokensConsulta: string[]): number[] {
     const consulta = this.vectorizar(tokensConsulta);
     let normaConsulta = 0;
@@ -161,9 +161,9 @@ class IndiceTfIdf {
 interface Indices {
   fragmentos: FragmentoCorpus[];
   porIdioma: Record<Idioma, IndiceTfIdf>;
-  /** Forma conjugada (normalizada) → lema al que pertenece. */
+  /** Conjugated form (normalized) → lemma it belongs to. */
   lemaDeForma: Map<string, string>;
-  /** Lema → otras formas suyas que SÍ aparecen en el corpus. */
+  /** Lemma → its other forms that DO appear in the corpus. */
   formasDelLema: Map<string, string[]>;
 }
 
@@ -180,9 +180,9 @@ function jaccard(a: string[], b: string[]): number {
 }
 
 /**
- * Dos ejemplos son «casi iguales» cuando uno de los lados coincide tras
- * normalizar o cuando el damana comparte casi todas las palabras (una
- * misma oración con una coma de diferencia). Repetirlos solo gasta hueco.
+ * Two examples are «almost equal» when one of the sides matches after
+ * normalizing or when the Damana shares almost all the words (the
+ * same sentence with one comma of difference). Repeating them only wastes a slot.
  */
 export function esCasiIgual(
   a: { damana: string; espanol: string },
@@ -195,11 +195,11 @@ export function esCasiIgual(
 }
 
 /**
- * Reparte los candidatos (ya puntuados) por dominio con los cupos del
- * prompt: hasta 6 cotidianos, 4 de gramática y 4 bíblicos —2 si ya hay
- * cotidianos suficientes—, sin repetir casi iguales y nunca más de 14.
- * Devuelve primero los cotidianos, luego gramática y por último bíblicos,
- * cada grupo de mayor a menor similitud.
+ * Splits the (already scored) candidates by domain with the prompt's
+ * quotas: up to 6 everyday, 4 grammar and 4 biblical — 2 if there are already
+ * enough everyday ones — without repeating near-duplicates and never more than 14.
+ * Returns everyday ones first, then grammar and finally biblical,
+ * each group from highest to lowest similarity.
  */
 export function repartirPorDominio(candidatos: FragmentoRecuperado[]): FragmentoRecuperado[] {
   const ordenados = [...candidatos].sort((a, b) => b.puntaje - a.puntaje);
@@ -228,9 +228,9 @@ export class RetrievalService {
   constructor(private readonly repo: CorpusRepository) {}
 
   /**
-   * Contexto completo para traducir una frase, en este orden: diccionario
-   * palabra por palabra, nombres propios con su grafía, reglas aplicables
-   * y ejemplos por similitud repartidos por dominio.
+   * Full context for translating a sentence, in this order: word-by-word
+   * dictionary, proper names with their spelling, applicable rules
+   * and similarity examples split by domain.
    */
   recuperarContexto(texto: string, idioma: Idioma): ContextoRecuperado {
     const seleccion = seleccionarReglas(texto, idioma, this.obtenerReglas());
@@ -243,15 +243,15 @@ export class RetrievalService {
     };
   }
 
-  /** Ejemplos por similitud con cupos por dominio y sin casi-duplicados. */
+  /** Similarity examples with per-domain quotas and no near-duplicates. */
   ejemplosPorDominio(texto: string, idioma: Idioma): FragmentoRecuperado[] {
     return repartirPorDominio(this.similares(texto, idioma, CANDIDATOS_CONTEXTO));
   }
 
   /**
-   * Nombres propios de la tabla que aparecen en el texto, por cualquiera de
-   * sus grafías (español, damana u «otras grafías vistas»), sin distinguir
-   * tildes ni mayúsculas.
+   * Proper names from the table that appear in the text, under any of
+   * their spellings (Spanish, Damana or «other spellings seen»), ignoring
+   * accents and capitals.
    */
   nombresPropiosEn(texto: string): NombrePropioEncontrado[] {
     const nombres = this.obtenerNombresPropios();
@@ -269,19 +269,19 @@ export class RetrievalService {
   }
 
   /**
-   * Los K fragmentos del corpus más similares al texto, por TF-IDF sobre
-   * tokens normalizados del idioma indicado. Fuentes: oraciones (pares
-   * alineados frase a frase), frases y conjugaciones. Las oraciones con
-   * estado='revisar' participan con la mitad del puntaje.
+   * The K corpus fragments most similar to the text, by TF-IDF over
+   * normalized tokens of the given language. Sources: sentences (pairs
+   * aligned sentence by sentence), phrases and conjugations. Sentences with
+   * estado='revisar' take part with half the score.
    */
   similares(texto: string, idioma: Idioma, k = K_FRAGMENTOS): FragmentoRecuperado[] {
     const indices = this.obtenerIndices();
     const tokens = tokensNormalizados(texto);
     const directa = this.puntuar(tokens, idioma, indices);
 
-    // Segunda pasada: si la consulta trae formas verbales, se repite la
-    // búsqueda añadiendo las otras personas del mismo lema. Solo en damana,
-    // que es donde los lemas relacionan formas.
+    // Second pass: if the query carries verb forms, the search is
+    // repeated adding the other persons of the same lemma. Only in Damana,
+    // which is where lemmas relate forms.
     const hermanas =
       idioma === Idioma.damana
         ? this.formasHermanas(tokens, indices)
@@ -305,9 +305,9 @@ export class RetrievalService {
   }
 
   /**
-   * Otras formas del mismo verbo que aparecen en la consulta, limitadas a
-   * las que existen en el corpus (el resto solo añadiría ruido). Devuelve
-   * forma → lema, para poder marcar de dónde vino cada ejemplo.
+   * Other forms of the same verb that appear in the query, limited to
+   * those that exist in the corpus (the rest would only add noise). Returns
+   * form → lemma, to be able to mark where each example came from.
    */
   private formasHermanas(tokens: string[], indices: Indices): Map<string, string> {
     const hermanas = new Map<string, string>();
@@ -324,15 +324,15 @@ export class RetrievalService {
   }
 
   /**
-   * Cada fragmento se queda con su mejor puntaje: el directo, o el de la
-   * búsqueda expandida rebajado por PESO_LEMA. Así una coincidencia real
-   * siempre gana a un pariente verbal.
+   * Each fragment keeps its best score: the direct one, or the one from the
+   * expanded search discounted by PESO_LEMA. That way a real match
+   * always beats a verbal relative.
    *
-   * Las conjugaciones quedan fuera de la expansión: medido sobre 200
-   * consultas reales, se llevaban 55 de los 56 huecos ganados y echaban
-   * fuera oraciones. Traer la fila «te lee» cuando se preguntó por «nos
-   * lee» no enseña nada —el glosario ya va aparte en el prompt—; lo que
-   * aporta es ver el verbo dentro de una oración.
+   * Conjugations are left out of the expansion: measured over 200
+   * real queries, they took 55 of the 56 slots gained and pushed
+   * sentences out. Bringing the «te lee» row when the question was about «nos
+   * lee» teaches nothing — the glossary already goes separately in the prompt —; what
+   * helps is seeing the verb inside a sentence.
    */
   private fusionar(
     directa: number[],
@@ -354,7 +354,7 @@ export class RetrievalService {
     });
   }
 
-  /** Qué verbo hermano contiene este fragmento (para la advertencia). */
+  /** Which sibling verb this fragment contains (for the warning). */
   private lemaPresenteEn(
     fragmento: FragmentoCorpus,
     hermanas: Map<string, string>,
@@ -374,10 +374,10 @@ export class RetrievalService {
   }
 
   /**
-   * Relaciona cada forma conjugada con su lema y viceversa. Solo se
-   * conservan las formas que aparecen de verdad en el corpus: de las 267
-   * conjugaciones registradas, la mayoría no sale en ninguna oración, y
-   * añadirlas a las consultas sería ruido.
+   * Relates each conjugated form to its lemma and vice versa. Only
+   * forms that really appear in the corpus are kept: of the 267
+   * recorded conjugations, most do not show up in any sentence, and
+   * adding them to the queries would be noise.
    */
   private construirIndiceDeLemas(
     fragmentos: FragmentoCorpus[],
@@ -388,8 +388,8 @@ export class RetrievalService {
 
     for (const { lema, damana } of this.repo.formasPorLema()) {
       for (const forma of tokensNormalizados(damana)) {
-        // La primera palabra basta: las formas de varias palabras llevan la
-        // marca verbal al inicio (p. ej. «nujkunanún nanka»).
+        // The first word is enough: multi-word forms carry the
+        // verbal marker at the start (e.g. «nujkunanún nanka»).
         if (!lemaDeForma.has(forma)) lemaDeForma.set(forma, lema);
         if (!enCorpus.has(forma)) continue;
         const formas = formasDelLema.get(lema) ?? [];

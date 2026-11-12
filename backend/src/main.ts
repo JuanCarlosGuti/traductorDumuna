@@ -7,10 +7,10 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   configurarApp(app);
 
-  // Render pone un proxy delante: sin esto req.ip sería siempre el del
-  // proxy y el límite de intentos de login se aplicaría a todo el mundo a
-  // la vez, con lo que un atacante podría dejar fuera al dueño. Se confía
-  // solo en el último salto.
+  // Render puts a proxy in front: without this req.ip would always be the
+  // proxy's and the login attempt limit would apply to everyone at
+  // once, so an attacker could lock the owner out. Only the last
+  // hop is trusted.
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   const config = new DocumentBuilder()
@@ -24,8 +24,8 @@ async function bootstrap(): Promise<void> {
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, config));
 
-  // Configurable por env para convivir con otras apps en la misma máquina (p. ej. otro
-  // proyecto ocupando el 3000) y para despliegues donde el puerto lo asigna la plataforma.
+  // Configurable via env to coexist with other apps on the same machine (e.g. another
+  // project using 3000) and for deployments where the platform assigns the port.
   const puerto = Number(process.env.PORT) || 3000;
   await app.listen(puerto);
   console.log(`Backend escuchando en http://localhost:${puerto} (docs en /api/docs)`);

@@ -135,12 +135,12 @@ describe('PendientesService', () => {
     const encabezados = (hoja.getRow(1).values as string[]).slice(1);
     expect(encabezados).toEqual(['id', 'ambito', 'palabra_es', 'palabra_dm', 'ejemplo_es', 'ejemplo_dm', 'variante', 'notas']);
     const fila2 = hoja.getRow(2);
-    expect(fila2.getCell(3).value).toBe('vecina'); // la más pedida primero
+    expect(fila2.getCell(3).value).toBe('vecina'); // most requested first
     expect(fila2.getCell(5).value).toBe('mi vecina cocina en la casa');
     expect(fila2.getCell(4).value ?? '').toBe('');
     expect((fila2.getCell(4).fill as ExcelJS.FillPattern).fgColor?.argb).toBe(AMARILLO);
     expect((fila2.getCell(6).fill as ExcelJS.FillPattern).fgColor?.argb).toBe(AMARILLO);
-    expect(hoja.getRow(3).getCell(3).value).toBe('ñame'); // la ñ intacta
+    expect(hoja.getRow(3).getCell(3).value).toBe('ñame'); // the ñ intact
     expect(libro.getWorksheet('instrucciones')).toBeDefined();
 
     expect(repo.listar().map((p) => p.estado)).toEqual(['exportada', 'exportada']);

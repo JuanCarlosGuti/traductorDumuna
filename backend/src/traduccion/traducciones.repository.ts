@@ -5,17 +5,17 @@ import { CONEXION_DB } from '../database/database.constants';
 import { DireccionTraduccion, ParGlosaDto } from './dto/traduccion.dto';
 
 /**
- * Consumo informado por el proveedor para una llamada. Con Anthropic los
- * cuatro campos vienen de usage; los proveedores compatibles traen
- * prompt_tokens/completion_tokens y rara vez los de caché. null = no lo
- * informó.
+ * Usage reported by the provider for one call. With Anthropic all
+ * four fields come from usage; compatible providers bring
+ * prompt_tokens/completion_tokens and rarely the cache ones. null = not
+ * reported.
  */
 export interface UsoModelo {
   tokensEntrada: number | null;
   tokensSalida: number | null;
-  /** Tokens servidos desde la caché de prompts (cobrados al 10 %). */
+  /** Tokens served from the prompt cache (billed at 10%). */
   tokensCacheLeidos: number | null;
-  /** Tokens escritos en la caché de prompts (cobrados al 125 %). */
+  /** Tokens written to the prompt cache (billed at 125%). */
   tokensCacheCreados: number | null;
 }
 
@@ -23,29 +23,29 @@ export interface RegistroTraduccion {
   texto: string;
   traduccion: string;
   direccion: DireccionTraduccion;
-  /** Similitud del mejor ejemplo recuperado (0 si no hubo ninguno). */
+  /** Similarity of the best retrieved example (0 if there was none). */
   puntajeTop: number;
-  /** Media de las similitudes de los K ejemplos: discrimina mejor que el top. */
+  /** Mean of the similarities of the K examples: discriminates better than the top. */
   puntajeMedio: number;
-  /** De qué fuente vino el mejor match; null si no hubo ejemplos. */
+  /** Which source the best match came from; null if there were no examples. */
   fuenteTop: FuenteCorpus | null;
   ejemplosRecuperados: number;
-  /** Cuántos ejemplos venían de oraciones o frases (la lengua en uso). */
+  /** How many examples came from sentences or phrases (the language in use). */
   ejemplosEnContexto: number;
-  /** Palabras sin equivalente (columna histórica palabras_dudosas). */
+  /** Words without an equivalent (historical column palabras_dudosas). */
   palabrasDudosas: string[];
   vocabularioUsado: { espanol: string; damana: string }[];
   modelo: string;
   confianza?: number;
   reglasAplicadas?: string[];
   glosa?: ParGlosaDto[];
-  /** null si el proveedor no informó el consumo. */
+  /** null if the provider did not report usage. */
   uso?: UsoModelo | null;
-  /** Lo que tardó la llamada al modelo (sin contar el retrieval). */
+  /** How long the model call took (not counting retrieval). */
   duracionMs?: number | null;
 }
 
-/** Fila tal como se lee de la tabla, para análisis posteriores. */
+/** Row as read from the table, for later analysis. */
 export interface TraduccionRegistrada {
   creadoEn: string;
   texto: string;
@@ -54,7 +54,7 @@ export interface TraduccionRegistrada {
   puntajeMedio: number;
   fuenteTop: FuenteCorpus | null;
   ejemplosRecuperados: number;
-  /** null en las filas registradas antes de la v5 (no se medía). */
+  /** null in rows logged before v5 (it was not measured). */
   ejemplosEnContexto: number | null;
   palabrasDudosas: string[];
 }
@@ -63,7 +63,7 @@ export interface TraduccionRegistrada {
 export class TraduccionesRepository {
   constructor(@Inject(CONEXION_DB) private readonly db: Database) {}
 
-  /** Todas las traducciones registradas, de la más antigua a la más reciente. */
+  /** All logged translations, from oldest to most recent. */
   listar(): TraduccionRegistrada[] {
     return (
       this.db
@@ -88,9 +88,9 @@ export class TraduccionesRepository {
   }
 
   /**
-   * Guarda una traducción y sus señales de apoyo. Los campos de lista se
-   * serializan como JSON (SQLite no tiene tipo array y el volumen es
-   * mínimo: una fila por traducción).
+   * Stores a translation and its support signals. List fields are
+   * serialized as JSON (SQLite has no array type and the volume is
+   * minimal: one row per translation).
    */
   registrar(registro: RegistroTraduccion, ahora: Date = new Date()): void {
     this.db

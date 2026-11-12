@@ -7,11 +7,11 @@ import { resolverDirDatos, rutaDbPorDefecto } from '../importador/rutas-datos';
 import { NecesitoModule } from './necesito.module';
 import { NecesitoService } from './necesito.service';
 
-/** El hablante rellena la columna vacía de cada archivo. */
+/** The speaker fills in the empty column of each file. */
 export const ARCHIVO_ESPANOL = 'por_traducir_espanol.xlsx';
 export const ARCHIVO_DAMANA = 'por_traducir_damana.xlsx';
 
-// Módulo CLI propio: no arrastra controladores HTTP.
+// Own CLI module: it does not drag in HTTP controllers.
 @Module({
   imports: [
     DatabaseModule.forRoot({ rutaDb: rutaDbPorDefecto() }),
@@ -45,7 +45,7 @@ async function escribirHoja(
   };
   filas.forEach((f) => hoja.addRow(f));
 
-  // Las oraciones de ejemplo son largas: se ajustan y se alinean arriba.
+  // Example sentences are long: they are wrapped and top-aligned.
   hoja.eachRow((fila, numero) => {
     if (numero === 1) return;
     fila.alignment = { vertical: 'top', wrapText: true };
@@ -68,7 +68,7 @@ async function main(): Promise<void> {
   const dirDatos = resolverDirDatos();
   const hoy = new Date().toISOString().slice(0, 10);
 
-  // 1) español -> damana
+  // 1) Spanish -> Damana
   const espanol = servicio.calcular(hoy);
   await escribirHoja(
     path.join(dirDatos, ARCHIVO_ESPANOL),
@@ -84,7 +84,7 @@ async function main(): Promise<void> {
     espanol,
   );
 
-  // 2) damana -> español
+  // 2) Damana -> Spanish
   const damana = servicio.calcularDamana();
   await escribirHoja(
     path.join(dirDatos, ARCHIVO_DAMANA),
@@ -111,7 +111,7 @@ async function main(): Promise<void> {
   await app.close();
 }
 
-// Solo corre como CLI; al importarlo desde un test no ejecuta nada.
+// Only runs as a CLI; importing it from a test executes nothing.
 if (require.main === module) {
   main().catch((e) => {
     console.error(e);

@@ -29,7 +29,7 @@ describe('Buscar', () => {
   let router: Router;
   let queryParamMap: BehaviorSubject<ParamMap>;
 
-  /** El estado de la búsqueda vive en la URL: se simula la ruta activa. */
+  /** The search state lives in the URL: the active route is simulated. */
   const arrancarCon = async (params: Record<string, string>) => {
     queryParamMap = new BehaviorSubject(convertToParamMap(params));
     fixture = await montar(Buscar, [
@@ -77,7 +77,7 @@ describe('Buscar', () => {
     queryParamMap.next(convertToParamMap({ q: 'ñingui' }));
     await asentar(fixture);
     const segunda = http.expectOne((r) => r.url === '/api/buscar');
-    expect(segunda.request.params.get('q')).toBe('ñingui'); // ñ intacta
+    expect(segunda.request.params.get('q')).toBe('ñingui'); // ñ intact
     segunda.flush({ ...RESULTADOS, consulta: 'ñingui', resultados: [], total: 0 });
     await asentar(fixture);
   });

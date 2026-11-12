@@ -26,14 +26,14 @@ export class Diccionario {
   protected readonly cargando = signal(true);
   protected readonly porPagina = POR_PAGINA;
 
-  /** damana → español: frecuencias filtradas por la palabra damana. */
+  /** Damana → Spanish: frequencies filtered by the Damana word. */
   protected readonly palabrasFiltradas = computed(() => {
     const filtro = normalizar(this.filtro().trim());
     if (!filtro) return this.palabras();
     return this.palabras().filter((f) => f.palabra.includes(filtro));
   });
 
-  /** español → damana: vocabulario filtrado por el lado español, ordenado. */
+  /** Spanish → Damana: vocabulary filtered by the Spanish side, sorted. */
   protected readonly entradasFiltradas = computed(() => {
     const filtro = normalizar(this.filtro().trim());
     const entradas = filtro

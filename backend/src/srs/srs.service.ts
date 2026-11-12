@@ -38,9 +38,9 @@ export class SrsService {
   ) {}
 
   /**
-   * Próxima tarjeta a repasar: primero las vencidas (proxima_revision más
-   * antigua), después las nunca vistas (vocabulario primero, luego las
-   * TOP_FRECUENCIAS palabras más frecuentes por orden de frecuencia).
+   * Next card to review: first the overdue ones (oldest
+   * proxima_revision), then the never-seen ones (vocabulary first, then the
+   * TOP_FRECUENCIAS most frequent words in frequency order).
    */
   siguiente(ahora: Date = new Date()): EstadoSrsDto {
     const pool = this.pool();
@@ -122,7 +122,7 @@ export class SrsService {
     };
   }
 
-  /** Mazo: todo el vocabulario + las 300 palabras más frecuentes (sin duplicar). */
+  /** Deck: the whole vocabulary + the 300 most frequent words (no duplicates). */
   private pool(): CartaPool[] {
     const vocabulario: CartaPool[] = this.repo.listarVocabulario().map((v) => ({
       palabra: v.damana,
@@ -147,8 +147,8 @@ export class SrsService {
   private armarTarjeta(carta: CartaPool, progreso?: FilaProgreso): TarjetaSrsDto {
     let traduccion = carta.traduccion;
     if (traduccion === undefined) {
-      // Palabra frecuente sin entrada de vocabulario: el reverso son sus
-      // traducciones candidatas por co-ocurrencia.
+      // Frequent word without a vocabulary entry: the back shows its
+      // candidate translations by co-occurrence.
       const candidatas = this.palabraService
         .ficha(carta.palabra)
         .traduccionesCandidatas.slice(0, MAX_CANDIDATAS_TARJETA)

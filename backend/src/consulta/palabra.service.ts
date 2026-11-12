@@ -52,7 +52,7 @@ export class PalabraService {
     };
   }
 
-  /** Traducciones directas: entradas de vocabulario cuyo damana ES la palabra. */
+  /** Direct translations: vocabulary entries whose Damana side IS the word. */
   private entradasVocabulario(palabraNormalizada: string): EntradaVocabularioFichaDto[] {
     return this.repo
       .listarVocabulario()
@@ -65,8 +65,8 @@ export class PalabraService {
       }));
   }
 
-  /** Conjugaciones en cuya forma damana aparece la palabra (exacta o dentro
-   *  de una forma de varias palabras), con su glosa y lema. */
+  /** Conjugations whose Damana form contains the word (exact or inside
+   *  a multi-word form), with their gloss and lemma. */
   private formasVerbales(palabraNormalizada: string): FormaVerbalDto[] {
     return this.repo
       .conjugacionesConPalabra(palabraNormalizada)
@@ -74,9 +74,9 @@ export class PalabraService {
   }
 
   /**
-   * Co-ocurrencia simple: cuenta las palabras españolas de todos los
-   * textos paralelos donde aparece el token, excluyendo stopwords y
-   * palabras de una sola letra.
+   * Simple co-occurrence: counts the Spanish words of all the
+   * parallel texts where the token appears, excluding stopwords and
+   * single-letter words.
    */
   private traduccionesCandidatas(
     palabraNormalizada: string,

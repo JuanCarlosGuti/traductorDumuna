@@ -1,22 +1,22 @@
-// Puntos de código construidos numéricamente para que el comportamiento
-// no dependa del encoding del archivo fuente.
-const U_DIERESIS = String.fromCharCode(0x00fc); // ü precompuesta
-const U_MAYUS_DIERESIS = String.fromCharCode(0x00dc); // Ü precompuesta
+// Code points built numerically so that behaviour
+// does not depend on the source file's encoding.
+const U_DIERESIS = String.fromCharCode(0x00fc); // precomposed ü
+const U_MAYUS_DIERESIS = String.fromCharCode(0x00dc); // precomposed Ü
 const DIERESIS_COMBINANTE = String.fromCharCode(0x0308); // ◌̈
 const U_BARRADA = String.fromCharCode(0x0289); // ʉ
 const U_BARRADA_MAYUS = String.fromCharCode(0x0244); // Ʉ
 
 /**
- * Corrige artefactos ortográficos en texto damana al importar: algunas
- * fuentes (documentos Word) escriben ü/Ü donde el alfabeto damana usa
- * ʉ/Ʉ — la ü no existe en damana, así que la conversión es inequívoca.
- * Cubre tanto la forma precompuesta (U+00FC/U+00DC) como la descompuesta
- * (u/U + diéresis combinante U+0308).
+ * Fixes spelling artefacts in Damana text on import: some
+ * sources (Word documents) write ü/Ü where the Damana alphabet uses
+ * ʉ/Ʉ — ü does not exist in Damana, so the conversion is unambiguous.
+ * Covers both the precomposed form (U+00FC/U+00DC) and the decomposed one
+ * (u/U + combining diaeresis U+0308).
  *
- * NO toca la u simple (u y ʉ son letras distintas y no se puede adivinar)
- * ni las comillas tipográficas «' '» (son puntuación de citas, no
- * apóstrofes internos). Solo debe aplicarse a columnas damana — en
- * español la ü es legítima (pingüino).
+ * Does NOT touch plain u (u and ʉ are different letters and it cannot be guessed)
+ * nor typographic quotes «' '» (they are quotation punctuation, not
+ * internal apostrophes). It must only be applied to Damana columns — in
+ * Spanish ü is legitimate (pingüino).
  */
 export function corregirOrtografiaDamana(texto: string): string {
   return texto
@@ -27,10 +27,10 @@ export function corregirOrtografiaDamana(texto: string): string {
 }
 
 /**
- * Palabras españolas con ü legítima que pueden aparecer dentro de una
- * oración damana (préstamos, nombres). Lista explícita a propósito: una
- * regla como «güe/güi es español» se llevaría por delante formas damana
- * reales escritas con el apaño ü (p. ej. bugüi → bugʉi).
+ * Spanish words with a legitimate ü that may appear inside a
+ * Damana sentence (loanwords, names). An explicit list on purpose: a
+ * rule such as «güe/güi is Spanish» would wipe out real Damana
+ * forms written with the ü workaround (e.g. bugüi → bugʉi).
  */
 const ESPANOL_CON_DIERESIS = new Set(
   [
@@ -47,9 +47,9 @@ function esEspanolConDieresis(palabra: string): boolean {
 }
 
 /**
- * Normaliza damana escrito a mano por hablantes (formato de elicitación):
- * la ʉ puede venir como «ü» o como «u+» (y «Ü» / «U+» para Ʉ). Las
- * palabras españolas con ü de la lista quedan intactas.
+ * Normalizes Damana handwritten by speakers (elicitation format):
+ * ʉ may come as «ü» or as «u+» (and «Ü» / «U+» for Ʉ). The
+ * Spanish words with ü in the list are left intact.
  */
 export function normalizarDamanaEscrito(texto: string): string {
   const protegidas: string[] = [];

@@ -8,7 +8,7 @@ import { provideRouter, Router, UrlTree } from '@angular/router';
 import { sesionIniciada } from './auth.guard';
 import { AuthService } from './auth.service';
 
-/** El guard usa inject(): hay que llamarlo dentro de un contexto de DI. */
+/** The guard uses inject(): it must be called inside a DI context. */
 const ejecutar = () =>
   TestBed.runInInjectionContext(
     () => sesionIniciada(null as never, null as never) as Promise<boolean | UrlTree>,
@@ -33,7 +33,7 @@ describe('sesionIniciada', () => {
   it('con sesión deja pasar sin preguntar al servidor', async () => {
     localStorage.setItem('damana.token', 't');
     expect(await ejecutar()).toBe(true);
-    // Sin llamadas: http.verify() del afterEach lo confirma.
+    // No calls: the afterEach's http.verify() confirms it.
   });
 
   it('sin sesión y con auth activa manda a /entrar', async () => {
@@ -63,6 +63,6 @@ describe('sesionIniciada', () => {
     http.expectOne('/api/auth/estado').flush({ activa: false });
     expect(await primera).toBe(true);
 
-    expect(await ejecutar()).toBe(true); // sin segunda llamada
+    expect(await ejecutar()).toBe(true); // no second call
   });
 });

@@ -10,7 +10,7 @@ describe('FrecuenciasService', () => {
   beforeEach(() => {
     db = new Database(':memory:');
     ejecutarMigraciones(db);
-    // Entrada de vocabulario con categoría para kʉnʉnka
+    // Vocabulary entry with a category for kʉnʉnka
     db.prepare(
       `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
        VALUES ('tiene', 'kʉnʉnka', 'Verbos', NULL, 'diccionario wiwa')`,
@@ -19,19 +19,19 @@ describe('FrecuenciasService', () => {
       `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
        VALUES (?, ?, 'frases', 1, ?)`,
     );
-    // jehova: SOLO con mayúscula inicial → probable nombre propio
+    // jehova: ONLY with an initial capital → probably a proper name
     ins.run('jehova', 'Jehová', 0);
     ins.run('jehova', 'Jehová', 1);
     ins.run('jehova', 'Jehová', 2);
-    // nʉnka: minúscula (caso con ʉ) → se conserva
+    // nʉnka: lowercase (case with ʉ) → kept
     ins.run('nʉnka', 'nʉnka', 3);
     ins.run('nʉnka', 'nʉnka', 4);
-    // shkua: aparece capitalizada a inicio de oración Y en minúscula → se conserva
+    // shkua: appears capitalized at the start of a sentence AND in lowercase → kept
     ins.run('shkua', 'Shkua', 5);
     ins.run('shkua', 'shkua', 6);
-    // ñandu: SOLO con Ñ mayúscula (caso con ñ) → probable nombre propio
+    // ñandu: ONLY with capital Ñ (case with ñ) → probably a proper name
     ins.run('ñandu', 'Ñandú', 7);
-    // kʉnʉnka: en vocabulario con categoría Verbos
+    // kʉnʉnka: in the vocabulary with category Verbos
     ins.run('kʉnʉnka', 'kʉnʉnka', 8);
     servicio = new FrecuenciasService(new CorpusRepository(db));
   });
@@ -41,7 +41,7 @@ describe('FrecuenciasService', () => {
   it('excluye probables nombres propios (solo con mayúscula inicial)', () => {
     const palabras = servicio.listar(500).map((f) => f.palabra);
     expect(palabras).not.toContain('jehova');
-    expect(palabras).not.toContain('ñandu'); // la Ñ mayúscula también cuenta
+    expect(palabras).not.toContain('ñandu'); // capital Ñ counts too
     expect(palabras).toContain('nʉnka');
     expect(palabras).toContain('shkua');
   });

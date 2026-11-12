@@ -59,8 +59,8 @@ describe('Diccionario', () => {
 
   it('en modo español el filtro distingue «año» de «ano»', async () => {
     await arrancar([frecuencia('nʉnka', 283)]);
-    // Ojo: el botón del modo damana dice «damana → español», así que buscar
-    // por texto «español» cazaría el equivocado. Se va por posición.
+    // Careful: the Damana mode button says «damana → español», so searching
+    // by the text «español» would catch the wrong one. Go by position.
     const [, aEspanol] = buscarTodos(fixture, '.modos button');
     aEspanol.click();
     await asentar(fixture);

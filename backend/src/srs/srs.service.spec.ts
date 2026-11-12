@@ -18,14 +18,14 @@ describe('SrsService', () => {
   beforeEach(() => {
     db = new Database(':memory:');
     ejecutarMigraciones(db);
-    // Vocabulario: entradas con ʉ y con ñ
+    // Vocabulary: entries with ʉ and with ñ
     db.prepare(
       "INSERT INTO vocabulario (espanol, damana, notas) VALUES ('agua', 'nʉnka', NULL)",
     ).run();
     db.prepare(
       "INSERT INTO vocabulario (espanol, damana, notas) VALUES ('otra vez', 'ñingui', NULL)",
     ).run();
-    // Frase para que 'gontka' exista como palabra frecuente con paralelo
+    // Phrase so that 'gontka' exists as a frequent word with a parallel
     db.prepare(
       "INSERT INTO frases (fuente, damana, espanol, notas) VALUES ('Prueba', 'gontka nanu', 'hizo esto aqui', NULL)",
     ).run();
@@ -57,7 +57,7 @@ describe('SrsService', () => {
       repeticiones: 0,
     });
     expect(estado.pendientes).toBe(0);
-    // 2 de vocabulario + 2 frecuentes (gontka, nanu)
+    // 2 from vocabulary + 2 frequent (gontka, nanu)
     expect(estado.nuevas).toBe(4);
   });
 
@@ -67,16 +67,16 @@ describe('SrsService', () => {
     const estado = servicio.siguiente(dia0);
     expect(estado.tarjeta!.palabra).toBe('gontka');
     expect(estado.tarjeta!.tipo).toBe('frecuencia');
-    expect(estado.tarjeta!.traduccion).toContain('hizo'); // 'esto'/'aqui' también candidatas
+    expect(estado.tarjeta!.traduccion).toContain('hizo'); // 'esto'/'aqui' are candidates too
   });
 
   it('responder "bien" programa la revisión y la tarjeta vence al día siguiente', () => {
     const r = servicio.responder('nʉnka', Calificacion.bien, dia0);
     expect(r.intervaloDias).toBe(1);
 
-    // Recién respondida: ya no está pendiente hoy
+    // Just answered: no longer pending today
     expect(servicio.siguiente(dia0).pendientes).toBe(0);
-    // Al día siguiente vence y vuelve primero
+    // The next day it is due and comes back first
     const manana = servicio.siguiente(dias(1.1));
     expect(manana.pendientes).toBe(1);
     expect(manana.tarjeta!.palabra).toBe('nʉnka');
@@ -91,8 +91,8 @@ describe('SrsService', () => {
   });
 
   it('prioriza la tarjeta vencida más antigua', () => {
-    servicio.responder('nʉnka', Calificacion.bien, dia0); // vence día 1
-    servicio.responder('ñingui', Calificacion.bien, dias(0.5)); // vence día 1.5
+    servicio.responder('nʉnka', Calificacion.bien, dia0); // due day 1
+    servicio.responder('ñingui', Calificacion.bien, dias(0.5)); // due day 1.5
     const estado = servicio.siguiente(dias(2));
     expect(estado.pendientes).toBe(2);
     expect(estado.tarjeta!.palabra).toBe('nʉnka');
@@ -106,7 +106,7 @@ describe('SrsService', () => {
 
   it('el progreso sobrevive a una reimportación (DELETE de tablas del corpus)', () => {
     servicio.responder('nʉnka', Calificacion.bien, dia0);
-    db.exec('DELETE FROM tokens_damana'); // lo que hace el importador
+    db.exec('DELETE FROM tokens_damana'); // what the importer does
     const fila = db
       .prepare('SELECT repeticiones FROM progreso_srs WHERE palabra = ?')
       .get('nʉnka') as { repeticiones: number };

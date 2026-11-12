@@ -44,7 +44,7 @@ describe('AuthService', () => {
   it('recupera la sesión guardada al recargar', () => {
     localStorage.setItem('damana.token', 'abc.def.ghi');
     localStorage.setItem('damana.usuario', 'juan');
-    // Instancia nueva = arranque en frío, como al recargar la página.
+    // New instance = cold start, as when reloading the page.
     const recargado = TestBed.runInInjectionContext(() => new AuthService());
     expect(recargado.autenticado()).toBe(true);
     expect(recargado.usuario()).toBe('juan');
@@ -69,7 +69,7 @@ describe('AuthService', () => {
     http.expectOne('/api/auth/estado').flush({ activa: true });
     expect(await primera).toBe(true);
 
-    // La segunda no vuelve a preguntar: http.verify() fallaría si lo hiciera.
+    // The second one does not ask again: http.verify() would fail if it did.
     expect(await servicio.exigeSesion()).toBe(true);
   });
 

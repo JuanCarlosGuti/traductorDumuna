@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { Pendiente } from '../../core/modelos';
 
-/** Lanza la descarga de un blob en el navegador; en tests (sin URL.createObjectURL) no hace nada. */
+/** Triggers a blob download in the browser; in tests (no URL.createObjectURL) it does nothing. */
 export function descargarBlob(blob: Blob, nombreArchivo: string): boolean {
   if (typeof URL.createObjectURL !== 'function') return false;
   const url = URL.createObjectURL(blob);
@@ -55,7 +55,7 @@ export class Pendientes {
     }
   }
 
-  /** Botón «exportar lote»: descarga el Excel y recarga la lista (quedan como exportadas). */
+  /** «exportar lote» button: downloads the Excel and reloads the list (they stay as exported). */
   protected async exportar(): Promise<void> {
     if (this.exportando() || this.abiertas().length === 0) return;
     this.exportando.set(true);

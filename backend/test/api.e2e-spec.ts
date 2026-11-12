@@ -17,9 +17,9 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    // Mini-corpus: nʉnka aparece en oraciones, frases y vocabulario;
-    // Jehovága solo con mayúscula (probable nombre propio); 'agua' es la
-    // palabra española que co-ocurre con nʉnka en todos los paralelos.
+    // Mini-corpus: nʉnka appears in sentences, phrases and vocabulary;
+    // Jehovága only capitalized (probable proper name); 'agua' is the
+    // Spanish word that co-occurs with nʉnka in all the parallels.
     dirTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'corpus-api-'));
     fs.writeFileSync(
       path.join(dirTmp, 'corpus_oraciones.csv'),
@@ -77,7 +77,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
         .get('/api/buscar')
         .query({ q: 'nʉnka' })
         .expect(200);
-      expect(res.body.total).toBe(4); // 2 oraciones, 1 frase, 1 vocabulario
+      expect(res.body.total).toBe(4); // 2 sentences, 1 phrase, 1 vocabulary
       const oracion = res.body.resultados[0];
       expect(oracion.fuente).toBe('oraciones');
       expect(oracion.referencia).toBe('oración 1');
@@ -86,7 +86,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
       const fuentes = res.body.resultados.map((r: any) => r.fuente);
       expect(fuentes).toContain('frases');
       expect(fuentes).toContain('vocabulario');
-      // la oración con alineación dudosa queda marcada
+      // the sentence with doubtful alignment is flagged
       const referencias = res.body.resultados.map((r: any) => r.referencia);
       expect(referencias).toContain('oración 2 (revisar)');
     });
@@ -189,7 +189,7 @@ describe('API REST (e2e, SQLite en memoria con mini-corpus v3)', () => {
         .expect(200);
       const palabras = res.body.map((f: any) => f.palabra);
       expect(palabras).toContain('nʉnka');
-      expect(palabras).not.toContain('jehovaga'); // solo 'Jehovága'
+      expect(palabras).not.toContain('jehovaga'); // only 'Jehovága'
       expect(res.body[0]).toEqual({
         palabra: 'nʉnka',
         frecuencia: 4,

@@ -1,7 +1,7 @@
 import { normalizar } from '../comun/texto/normalizador';
 import { normalizarDamanaEscrito } from '../comun/texto/ortografia';
 
-/** Fila del formato de elicitación (hoja «elicitacion»), ya limpia. */
+/** Row of the elicitation format («elicitacion» sheet), already cleaned. */
 export interface FilaElicitacion {
   id: string;
   ambito: string;
@@ -11,7 +11,7 @@ export interface FilaElicitacion {
   ejemploDm: string;
   variante: string;
   notas: string;
-  /** Archivo del que salió (para trazabilidad). */
+  /** File it came from (for traceability). */
   archivo: string;
 }
 
@@ -46,23 +46,23 @@ export interface PlanElicitacion {
   oraciones: OracionElicitada[];
   pruebas: PruebaTraduccion[];
   pendientes: PendienteElicitacion[];
-  /** Palabras que llegaron completas: cierran su pendiente si lo había. */
+  /** Words that arrived complete: they close their pending item if there was one. */
   resueltas: string[];
-  /** ids repetidos entre archivos: se quedó la última aparición. */
+  /** ids repeated across files: the last occurrence was kept. */
   idsRepetidos: number;
 }
 
 export const FUENTE_ELICITACION = 'elicitacion';
 
-/** Una de cada PROPORCION_PRUEBA filas completas se reserva para evaluar. */
+/** One in every PROPORCION_PRUEBA complete rows is reserved for evaluation. */
 export const PROPORCION_PRUEBA = 10;
 
 /**
- * Hash FNV-1a de 32 bits: estable entre ejecuciones y plataformas. Se usa
- * en vez de «cada décima fila» para que una fila reservada como prueba
- * siga siéndolo aunque lleguen más lotes o cambie el orden: si la
- * reserva se moviera, una prueba de ayer sería ejemplo de retrieval hoy y
- * la evaluación dejaría de ser comparable entre versiones.
+ * 32-bit FNV-1a hash: stable across runs and platforms. It is used
+ * instead of «every tenth row» so that a row reserved as a test
+ * stays one even if more batches arrive or the order changes: if the
+ * reservation moved, yesterday's test would be a retrieval example today and
+ * the evaluation would stop being comparable across versions.
  */
 export function hashEstable(texto: string): number {
   let h = 0x811c9dc5;
@@ -77,7 +77,7 @@ export function esFilaDePrueba(id: string): boolean {
   return hashEstable(id.trim()) % PROPORCION_PRUEBA === 0;
 }
 
-/** Convierte una fila cruda (encabezados normalizados) en FilaElicitacion. */
+/** Converts a raw row (normalized headers) into a FilaElicitacion. */
 export function interpretarFila(
   cruda: Record<string, string>,
   archivo: string,
@@ -99,9 +99,9 @@ export function interpretarFila(
 }
 
 /**
- * Funde varios lotes en uno: el id manda (idempotente por id), y si un id
- * aparece en más de un archivo gana el último en orden alfabético de
- * archivo, que es el más reciente por convención de nombre.
+ * Merges several batches into one: the id rules (idempotent by id), and if an id
+ * appears in more than one file the last one in alphabetical file
+ * order wins, which is the most recent by naming convention.
  */
 export function fundirPorId(filas: FilaElicitacion[]): {
   filas: FilaElicitacion[];
@@ -118,10 +118,10 @@ export function fundirPorId(filas: FilaElicitacion[]): {
 }
 
 /**
- * Qué produce cada fila. Una fila alimenta DOS cosas: una entrada de
- * vocabulario (palabra_es → palabra_dm) y una oración cotidiana
- * (ejemplo_es → ejemplo_dm). Lo que falte no se descarta: queda como
- * pendiente para que las hablantes lo llenen.
+ * What each row produces. A row feeds TWO things: a vocabulary
+ * entry (palabra_es → palabra_dm) and an everyday sentence
+ * (ejemplo_es → ejemplo_dm). Whatever is missing is not discarded: it stays as
+ * pending for the speakers to fill in.
  */
 export function planificarElicitacion(filasCrudas: FilaElicitacion[]): PlanElicitacion {
   const { filas, repetidos } = fundirPorId(filasCrudas);

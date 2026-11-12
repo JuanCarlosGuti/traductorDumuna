@@ -9,9 +9,9 @@ import { AuthService } from './auth.service';
 @Module({})
 export class AuthModule {
   /**
-   * La config se resuelve una sola vez y se comparte entre el guard, el
-   * controlador y la firma de tokens; los tests la inyectan a mano en vez
-   * de manipular process.env.
+   * The config is resolved only once and shared between the guard, the
+   * controller and token signing; tests inject it by hand instead
+   * of manipulating process.env.
    */
   static forRoot(config: ConfigAuth = leerConfigAuth()): DynamicModule {
     return {
@@ -26,8 +26,8 @@ export class AuthModule {
       providers: [
         { provide: CONFIG_AUTH, useValue: config },
         AuthService,
-        // Global: protege TODAS las rutas de la app, no solo las de este
-        // módulo. Lo que quede fuera hay que marcarlo con @Publico().
+        // Global: protects ALL the app's routes, not only the ones in this
+        // module. Anything left outside must be marked with @Publico().
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
       exports: [AuthService, CONFIG_AUTH],

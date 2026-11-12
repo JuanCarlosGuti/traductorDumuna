@@ -1,4 +1,4 @@
-// Espejo de los DTOs del backend (backend/src/consulta, srs, traduccion y pendientes).
+// Mirror of the backend DTOs (backend/src/consulta, srs, traduccion and pendientes).
 
 export type Idioma = 'damana' | 'espanol';
 export type FuenteCorpus = 'oraciones' | 'frases' | 'vocabulario' | 'conjugaciones';

@@ -5,8 +5,8 @@ import { catchError, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
 /**
- * Añade el token a cada llamada a la API y, si el servidor responde 401
- * (sesión caducada o secreto de firma cambiado), limpia y manda al login.
+ * Adds the token to every API call and, if the server answers 401
+ * (session expired or signing secret changed), cleans up and sends to login.
  */
 export const authInterceptor: HttpInterceptorFn = (peticion, siguiente) => {
   const auth = inject(AuthService);
@@ -22,8 +22,8 @@ export const authInterceptor: HttpInterceptorFn = (peticion, siguiente) => {
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse && error.status === 401) {
         auth.salir();
-        // El login mismo devuelve 401 con credenciales malas: ahí no se
-        // redirige, que ya se está en la pantalla correcta.
+        // Login itself returns 401 on bad credentials: no redirect
+        // there, since we are already on the right screen.
         if (!peticion.url.endsWith('/api/auth/login')) {
           void router.navigate(['/entrar']);
         }

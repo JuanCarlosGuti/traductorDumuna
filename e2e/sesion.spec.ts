@@ -19,7 +19,7 @@ test.describe('Sesión', () => {
   test('credenciales incorrectas: avisa y no deja entrar', async ({ page }) => {
     await page.goto('/entrar');
     await page.getByLabel('Usuario').fill(CREDENCIALES.usuario);
-    // u en vez de ʉ, n en vez de ñ: son letras distintas, no debe entrar
+    // u instead of ʉ, n instead of ñ: they are different letters, it must not get in
     await page.getByLabel('Contraseña').fill('nandu-unkua-2026');
     await page.getByRole('button', { name: 'Entrar' }).click();
 
@@ -51,7 +51,7 @@ test.describe('Sesión', () => {
 
   test('un token caducado echa al login en la siguiente llamada', async ({ page }) => {
     await entrar(page);
-    // Se simula la caducidad estropeando el token guardado.
+    // Expiry is simulated by corrupting the stored token.
     await page.evaluate(() => localStorage.setItem('damana.token', 'token.ya.no.vale'));
     await page.goto('/gramatica');
     await expect(page).toHaveURL(/\/entrar/);

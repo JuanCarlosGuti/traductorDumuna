@@ -11,10 +11,10 @@ export enum FuenteCorpus {
 }
 
 /**
- * De qué registro de lengua viene un ejemplo. El corpus bíblico (lfb) es
- * la fuente principal de gramática y morfología, pero los ejemplos
- * cotidianos (elicitación con hablantes, frases de reuniones) mandan
- * cuando los hay; las conjugaciones son el dominio «gramática».
+ * Which language register an example comes from. The biblical corpus (lfb) is
+ * the main source of grammar and morphology, but everyday
+ * examples (elicitation with speakers, phrases from meetings) take priority
+ * when available; conjugations are the «grammar» domain.
  */
 export enum DominioCorpus {
   biblico = 'biblico',

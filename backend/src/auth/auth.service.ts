@@ -3,9 +3,9 @@ import { JwtService } from '@nestjs/jwt';
 import { createHash, timingSafeEqual } from 'crypto';
 import { CONFIG_AUTH, ConfigAuth } from './auth.config';
 
-/** Intentos fallidos que se toleran por IP antes de bloquear. */
+/** Failed attempts tolerated per IP before blocking. */
 export const MAX_INTENTOS = 8;
-/** Cuánto dura el bloqueo una vez agotados los intentos. */
+/** How long the block lasts once the attempts are used up. */
 export const BLOQUEO_MS = 10 * 60 * 1000;
 
 interface Intentos {
@@ -14,10 +14,10 @@ interface Intentos {
 }
 
 /**
- * Compara en tiempo constante. Un `===` normal corta en el primer carácter
- * distinto, y esa diferencia de microsegundos, medida muchas veces, deja
- * adivinar la contraseña carácter a carácter. Se comparan los digests
- * SHA-256 porque timingSafeEqual exige que ambos lados midan lo mismo.
+ * Constant-time comparison. A plain `===` stops at the first differing
+ * character, and that difference of microseconds, measured many times, lets
+ * the password be guessed character by character. The SHA-256 digests are
+ * compared because timingSafeEqual requires both sides to have the same length.
  */
 function igualSeguro(a: string, b: string): boolean {
   const ha = createHash('sha256').update(a, 'utf8').digest();
@@ -35,9 +35,9 @@ export class AuthService {
   ) {}
 
   /**
-   * Las dos comparaciones se hacen SIEMPRE, sin cortocircuitar: si un
-   * usuario equivocado saltara la comprobación de contraseña, el tiempo de
-   * respuesta revelaría cuándo se acertó el usuario.
+   * Both comparisons are ALWAYS made, without short-circuiting: if a
+   * wrong user skipped the password check, the response
+   * time would reveal when the user was right.
    */
   verificar(usuario: string, password: string): boolean {
     const usuarioOk = igualSeguro(usuario, this.config.usuario);
@@ -49,7 +49,7 @@ export class AuthService {
     return this.jwt.sign({ sub: usuario });
   }
 
-  /** El usuario del token, o null si viene manipulado o caducado. */
+  /** The user in the token, or null if it has been tampered with or has expired. */
   usuarioDelToken(token: string): string | null {
     try {
       const carga = this.jwt.verify<{ sub?: string }>(token);
@@ -83,7 +83,7 @@ export class AuthService {
     this.intentosPorIp.delete(ip);
   }
 
-  /** Evita que el mapa crezca sin límite con IPs que ya no importan. */
+  /** Keeps the map from growing without bound with IPs that no longer matter. */
   private purgar(ahora: number): void {
     for (const [ip, intentos] of this.intentosPorIp) {
       if (ahora - intentos.ultimo > BLOQUEO_MS) this.intentosPorIp.delete(ip);

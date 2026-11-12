@@ -127,7 +127,7 @@ describe('TraduccionService', () => {
     };
   }
 
-  /** El system viaja como bloques (caché de prompts): se junta su texto. */
+  /** The system prompt travels as blocks (prompt cache): their text is joined. */
   const sistemaDe = (params: any): string =>
     (params.system as { text: string }[]).map((b) => b.text).join('\n');
 
@@ -193,8 +193,8 @@ describe('TraduccionService', () => {
       expect(params.model).toBe(MODELO_CLAUDE);
       expect(params.output_config.format.type).toBe('json_schema');
       expect(params.output_config.format.schema.required).toContain('palabras_sin_equivalente');
-      // claude-opus-5-5 rechaza temperature con 400: nunca se envía. El
-      // esfuerzo solo va si se configuró.
+      // claude-opus-5-5 rejects temperature with a 400: it is never sent. The
+      // effort only goes if it was configured.
       expect(params.temperature).toBeUndefined();
       expect(params.output_config.effort).toBeUndefined();
       expect(sistemaDe(params)).toContain('traductor');
@@ -258,7 +258,7 @@ describe('TraduccionService', () => {
       const cliente = clienteFalso(JSON_TRADUCCION);
       const r = await crearServicio(cliente, CONFIG_ANTHROPIC).traducir(esADm('no quiero agua'));
       expect(r.disparadores).toEqual(['negacion']);
-      expect(r.reglas).toEqual([]); // la base de prueba solo tiene -nzhe (posesivo)
+      expect(r.reglas).toEqual([]); // the test database only has -nzhe (possessive)
       expect(r.diccionario).toContainEqual(
         expect.objectContaining({ palabra: 'No quiero', damana: 'Nandunun', coincidencia: 'frase' }),
       );
@@ -270,7 +270,7 @@ describe('TraduccionService', () => {
       expect(usuario).toContain('No quiero → Nandunun');
       expect(usuario).not.toContain('(ninguna regla aplicable)');
 
-      // Afirmativa: ni rasgo, ni aviso, ni la forma negada en el diccionario.
+      // Affirmative: no feature, no warning, no negated form in the dictionary.
       const cliente2 = clienteFalso(JSON_TRADUCCION);
       const r2 = await crearServicio(cliente2, CONFIG_ANTHROPIC).traducir(esADm('quiero agua'));
       expect(r2.disparadores).toEqual([]);
@@ -289,7 +289,7 @@ describe('TraduccionService', () => {
           cache_control: { type: 'ephemeral' },
         },
       ]);
-      // El mensaje de usuario cambia con cada frase: va sin marca de caché.
+      // The user message changes with every sentence: it goes without a cache marker.
       expect(typeof params.messages[0].content).toBe('string');
     });
 
@@ -538,12 +538,12 @@ describe('TraduccionService', () => {
       const cuerpo = JSON.parse(opciones.body);
       expect(cuerpo.model).toBe('openai/gpt-oss-120b');
       expect(cuerpo.response_format).toEqual({ type: 'json_object' });
-      expect(cuerpo.temperature).toBe(0.2); // baja por defecto: misma frase, misma traducción
+      expect(cuerpo.temperature).toBe(0.2); // low by default: same sentence, same translation
       expect(cuerpo.messages[0].role).toBe('system');
       expect(cuerpo.messages[1].role).toBe('user');
       expect(cuerpo.messages[1].content).toContain('=== FRASE A TRADUCIR ===');
       expect(cuerpo.messages[1].content).toContain('nʉnka gontka');
-      // usage estilo OpenAI: prompt/completion; de caché no informa → null
+      // OpenAI-style usage: prompt/completion; it does not report cache → null
       expect(filasRegistradas()[0]).toMatchObject({
         tokens_entrada: 2500,
         tokens_salida: 120,

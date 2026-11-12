@@ -1,5 +1,5 @@
-// Stopwords españolas básicas, ya en forma normalizada (sin tildes,
-// minúsculas): 'más'→'mas', 'él'→'el', 'qué'→'que', etc.
+// Basic Spanish stopwords, already in normalized form (no accents,
+// lowercase): 'más'→'mas', 'él'→'el', 'qué'→'que', etc.
 const STOPWORDS_ES = new Set([
   'a', 'al', 'algo', 'algunas', 'algunos', 'ante', 'antes', 'como', 'con',
   'contra', 'cual', 'cuando', 'de', 'del', 'desde', 'donde', 'durante',
@@ -16,21 +16,21 @@ const STOPWORDS_ES = new Set([
 ]);
 
 /**
- * Negaciones del español, normalizadas. Varias son también stopwords («no»,
- * «ni», «nada»), pero para el traductor cuentan como contenido: cambian el
- * sentido de la frase y en damana se expresan en la forma del verbo.
+ * Spanish negations, normalized. Several are also stopwords («no»,
+ * «ni», «nada»), but for the translator they count as content: they change the
+ * meaning of the sentence and in Damana they are expressed in the verb form.
  */
 const NEGACIONES_ES = new Set([
   'no', 'nunca', 'jamas', 'nadie', 'nada', 'ni', 'tampoco', 'ningun',
   'ninguno', 'ninguna', 'ningunos', 'ningunas',
 ]);
 
-/** Recibe la palabra YA normalizada (ver normalizar()). */
+/** Receives the word ALREADY normalized (see normalizar()). */
 export function esStopwordEspanol(palabraNormalizada: string): boolean {
   return STOPWORDS_ES.has(palabraNormalizada);
 }
 
-/** Recibe la palabra YA normalizada (ver normalizar()). */
+/** Receives the word ALREADY normalized (see normalizar()). */
 export function esNegacionEspanol(palabraNormalizada: string): boolean {
   return NEGACIONES_ES.has(palabraNormalizada);
 }

@@ -70,7 +70,7 @@ describe('IndiceDiccionario (español → damana)', () => {
       damana: 'Urraga',
       coincidencia: 'exacta',
     });
-    // «en» es palabra gramatical pero tiene entrada exacta: se incluye
+    // «en» is a function word but has an exact entry: it is included
     expect(r.find((a) => a.palabra === 'en')).toMatchObject({ damana: 'Mba' });
   });
 
@@ -119,16 +119,16 @@ describe('IndiceDiccionario (español → damana)', () => {
     expect(buscar('no tengo agua')).toContainEqual(
       expect.objectContaining({ palabra: 'No tengo', damana: 'Nʉjkʉnanun', coincidencia: 'frase' }),
     );
-    // Afirmativa: la forma negada NO debe aparecer (antes salía como «frase»
-    // porque «no» se descartaba como stopword).
+    // Affirmative: the negated form must NOT appear (it used to show up as «frase»
+    // because «no» was discarded as a stopword).
     expect(buscar('tengo agua').map((a) => a.damana)).not.toContain('Nʉjkʉnanun');
-    // Otra negación distinta de «no» tampoco la activa.
+    // Another negation other than «no» does not trigger it either.
     expect(buscar('nunca quiero').map((a) => a.damana)).not.toContain('Nandunun');
   });
 });
 
 describe('IndiceDiccionario (sinónimos coloquiales del español)', () => {
-  // Como el vocabulario real: registra «Madre», no «mamá».
+  // Like the real vocabulary: it records «Madre», not «mamá».
   const indice = new IndiceDiccionario([
     entrada(1, 'Madre', 'Abu', 'Personas y familia'),
     entrada(2, 'Padre', 'Ade', 'Personas y familia'),

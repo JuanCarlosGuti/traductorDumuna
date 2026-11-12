@@ -1,8 +1,8 @@
 import type { Database } from 'better-sqlite3';
 
-// Esquema versionado con PRAGMA user_version. Cada posición del array es
-// una versión; se aplican en orden las que falten. La DB es regenerable
-// (el importador hace DELETE + INSERT), así que no hay migraciones de datos.
+// Schema versioned with PRAGMA user_version. Each array position is
+// a version; the missing ones are applied in order. The DB is regenerable
+// (the importer does DELETE + INSERT), so there are no data migrations.
 const MIGRACIONES: string[] = [
   `
   CREATE TABLE capitulos (
@@ -37,8 +37,8 @@ const MIGRACIONES: string[] = [
 
   CREATE INDEX idx_tokens_palabra ON tokens_damana (palabra_normalizada);
   `,
-  // v2: progreso de repetición espaciada (SM-2 simplificado). No la toca
-  // el importador: sobrevive a las reimportaciones del corpus.
+  // v2: spaced-repetition progress (simplified SM-2). The importer does not
+  // touch it: it survives corpus re-imports.
   `
   CREATE TABLE progreso_srs (
     palabra TEXT PRIMARY KEY,
@@ -49,10 +49,10 @@ const MIGRACIONES: string[] = [
     actualizado_en TEXT NOT NULL
   );
   `,
-  // v3 (corpus v3): capitulos → oraciones (pares oración a oración, con
-  // estado de alineación), vocabulario con categoria/fuente, y la tabla
-  // nueva conjugaciones. Las tablas de contenido se reconstruyen (la DB
-  // es regenerable con el importador); progreso_srs se conserva intacta.
+  // v3 (corpus v3): capitulos → oraciones (sentence-by-sentence pairs, with
+  // alignment state), vocabulario with categoria/fuente, and the new
+  // conjugaciones table. Content tables are rebuilt (the DB
+  // is regenerable with the importer); progreso_srs is kept intact.
   `
   DROP TABLE capitulos;
   DROP TABLE frases;
@@ -101,9 +101,9 @@ const MIGRACIONES: string[] = [
   );
   CREATE INDEX idx_tokens_palabra ON tokens_damana (palabra_normalizada);
   `,
-  // v4: registro de traducciones para aprendizaje activo — qué se pidió y
-  // con cuánto apoyo del corpus se resolvió. Como progreso_srs, el
-  // importador NO la toca: sobrevive a las reimportaciones del corpus.
+  // v4: translation log for active learning — what was asked and
+  // with how much corpus support it was solved. Like progreso_srs, the
+  // importer does NOT touch it: it survives corpus re-imports.
   `
   CREATE TABLE traducciones (
     creado_en TEXT NOT NULL,
@@ -123,28 +123,28 @@ const MIGRACIONES: string[] = [
   );
   CREATE INDEX idx_traducciones_creado ON traducciones (creado_en);
   `,
-  // v5: cuántos de los ejemplos venían de oraciones o frases, es decir, del
-  // verbo o la palabra EN USO. Antes se deducía del top-1, pero desde que el
-  // retrieval expande por raíz verbal un top-1 de conjugaciones ya no implica
-  // que no haya contexto debajo. Nullable a propósito: las filas anteriores a
-  // esta columna no lo saben, y NULL las distingue de un 0 real.
+  // v5: how many of the examples came from sentences or phrases, that is, from the
+  // verb or word IN USE. It used to be inferred from the top-1, but since
+  // retrieval expands by verb root a conjugations top-1 no longer implies
+  // that there is no context underneath. Nullable on purpose: rows older than
+  // this column do not know it, and NULL tells them apart from a real 0.
   `
   ALTER TABLE traducciones ADD COLUMN ejemplos_en_contexto INTEGER;
   `,
-  // v6 (traductor de propósito general, oct 2026):
-  //  - dominio en oraciones y frases: 'biblico' (folleto lfb), 'cotidiano'
-  //    (elicitación con hablantes, frases de reuniones/preguntas) o
-  //    'gramatica' (reservado; las conjugaciones lo llevan implícito).
-  //  - reglas y nombres_propios: contenido de reglas_damana.xlsx. El
-  //    importador las reconstruye como al resto del corpus.
-  //  - pendientes: palabras que el traductor no supo traducir o que la
-  //    elicitación dejó sin llenar; se exportan a las hablantes nativas.
-  //  - validadas: pares que el usuario confirmó o corrigió en el traductor.
-  //  Como progreso_srs y traducciones, pendientes y validadas NO las toca
-  //  el importador: sobreviven a las reimportaciones.
-  //  En traducciones, palabras_dudosas pasa a guardar las palabras SIN
-  //  EQUIVALENTE (mismo concepto, nombre nuevo en la API); no se renombra
-  //  la columna para no reescribir el histórico.
+  // v6 (general-purpose translator, Oct 2026):
+  //  - dominio in oraciones and frases: 'biblico' (lfb booklet), 'cotidiano'
+  //    (elicitation with speakers, phrases from meetings/questions) or
+  //    'gramatica' (reserved; conjugations carry it implicitly).
+  //  - reglas and nombres_propios: content of reglas_damana.xlsx. The
+  //    importer rebuilds them like the rest of the corpus.
+  //  - pendientes: words the translator could not translate or that
+  //    elicitation left unfilled; they are exported to the native speakers.
+  //  - validadas: pairs the user confirmed or corrected in the translator.
+  //  Like progreso_srs and traducciones, pendientes and validadas are NOT touched
+  //  by the importer: they survive re-imports.
+  //  In traducciones, palabras_dudosas now stores the words WITHOUT AN
+  //  EQUIVALENT (same concept, new name in the API); the column is not
+  //  renamed so as not to rewrite the history.
   `
   ALTER TABLE oraciones ADD COLUMN dominio TEXT NOT NULL DEFAULT 'biblico'
     CHECK (dominio IN ('biblico', 'cotidiano', 'gramatica'));
@@ -200,11 +200,11 @@ const MIGRACIONES: string[] = [
   ALTER TABLE traducciones ADD COLUMN reglas_aplicadas TEXT;
   ALTER TABLE traducciones ADD COLUMN glosa TEXT;
   `,
-  // v7: consumo de cada traducción —tokens de entrada y salida, tokens
-  // servidos y escritos por la caché de prompts, y duración— para seguir el
-  // gasto de los créditos de Anthropic y comprobar que la caché entra.
-  // Nullable a propósito: las filas anteriores no lo saben y los proveedores
-  // compatibles pueden no informarlo.
+  // v7: usage of each translation — input and output tokens, tokens
+  // served and written by the prompt cache, and duration — to track
+  // Anthropic credit spending and check that the cache kicks in.
+  // Nullable on purpose: earlier rows do not know it and compatible
+  // providers may not report it.
   `
   ALTER TABLE traducciones ADD COLUMN tokens_entrada INTEGER;
   ALTER TABLE traducciones ADD COLUMN tokens_salida INTEGER;

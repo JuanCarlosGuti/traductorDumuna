@@ -9,8 +9,8 @@ import { Gramatica } from './vistas/gramatica/gramatica';
 import { Pendientes } from './vistas/pendientes/pendientes';
 import { Traductor } from './vistas/traductor/traductor';
 
-// Todo pide sesión salvo /entrar. El guard deja pasar igualmente cuando el
-// servidor no exige credenciales (desarrollo local).
+// Everything requires a session except /entrar. The guard still lets through when the
+// server does not require credentials (local development).
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'buscar' },
   { path: 'entrar', component: Entrar, title: 'Entrar — Corpus Damana' },

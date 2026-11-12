@@ -8,15 +8,15 @@ export interface EntradaCubrible {
 }
 
 /**
- * ¿Qué palabras ya sabe el vocabulario? Sirve para no pedirles a las
- * hablantes (que cobran por palabra) algo que el corpus ya tiene: una fila
- * de elicitación sin llenar cuya palabra_es ya existe no se registra como
- * pendiente, y una pendiente abierta que el vocabulario cubre se cierra.
+ * Which words does the vocabulary already know? Used to avoid asking the
+ * speakers (who charge per word) for something the corpus already has: an unfilled
+ * elicitation row whose palabra_es already exists is not recorded as
+ * pending, and an open pending item that the vocabulary covers is closed.
  *
- * Se compara con las mismas reglas que usa el traductor para encontrar una
- * palabra en el diccionario: alternativas del lado español («Igual, lo
- * mismo», «Ese o esa», paréntesis fuera), sin tildes ni mayúsculas, y el
- * singular de la palabra pedida (flores → flor). ʉ ≠ u y ñ ≠ n, como siempre.
+ * The comparison uses the same rules the translator uses to find a
+ * word in the dictionary: alternatives on the Spanish side («Igual, lo
+ * mismo», «Ese o esa», parentheses removed), no accents or capitals, and the
+ * singular of the requested word (flores → flor). ʉ ≠ u and ñ ≠ n, as always.
  */
 export class CoberturaVocabulario {
   private readonly espanol = new Set<string>();
@@ -24,8 +24,8 @@ export class CoberturaVocabulario {
 
   constructor(entradas: EntradaCubrible[]) {
     for (const e of entradas) {
-      // Lo que va entre paréntesis también cuenta como alternativa:
-      // «Territorio (tierra)» cubre «tierra».
+      // What goes in parentheses also counts as an alternative:
+      // «Territorio (tierra)» covers «tierra».
       const parentesis = [...e.espanol.matchAll(/\(([^)]*)\)/g)].map((m) => m[1]);
       for (const texto of [e.espanol, ...parentesis]) {
         for (const alternativa of alternativasEspanol(texto)) {
@@ -43,7 +43,7 @@ export class CoberturaVocabulario {
       const clave = claveEspanol(alternativa);
       if (!clave) continue;
       if (this.espanol.has(clave)) return true;
-      // Solo palabras sueltas: «flores» → «flor»; una frase no se singulariza.
+      // Single words only: «flores» → «flor»; a phrase is not singularized.
       if (!clave.includes(' ') && candidatosSingular(clave).some((s) => this.espanol.has(s))) return true;
     }
     return false;

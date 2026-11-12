@@ -3,9 +3,9 @@ import * as ExcelJS from 'exceljs';
 import { PendienteDto } from './dto/pendientes.dto';
 import { Pendiente, PendientesRepository } from './pendientes.repository';
 
-/** Mismo color que usan las plantillas que ya se mandaron a las hablantes. */
+/** Same colour used by the templates already sent to the speakers. */
 export const AMARILLO = 'FFFFF2CC';
-/** El ejemplo de la elicitación debe ser corto: la frase del usuario se acorta. */
+/** The elicitation example must be short: the user's sentence is shortened. */
 export const MAX_CARACTERES_EJEMPLO = 120;
 
 export const COLUMNAS_ELICITACION = [
@@ -25,7 +25,7 @@ export interface LoteExportado {
   filas: number;
 }
 
-/** Acorta en límite de palabra y marca el corte con «…». */
+/** Shortens at a word boundary and marks the cut with «…». */
 export function acortar(texto: string, maximo = MAX_CARACTERES_EJEMPLO): string {
   const limpio = texto.replace(/\s+/g, ' ').trim();
   if (limpio.length <= maximo) return limpio;
@@ -33,7 +33,7 @@ export function acortar(texto: string, maximo = MAX_CARACTERES_EJEMPLO): string 
   return `${limpio.slice(0, corte > maximo / 2 ? corte : maximo).trim()}…`;
 }
 
-/** Una pendiente como fila del formato de elicitación (lo vacío lo llena la nativa). */
+/** A pending item as a row of the elicitation format (the native speaker fills in the blanks). */
 export function filaDeElicitacion(p: Pendiente): Record<(typeof COLUMNAS_ELICITACION)[number], string> {
   const esEspanol = p.idioma === 'espanol';
   const contexto = acortar(p.contexto ?? '');
@@ -62,11 +62,11 @@ export class PendientesService {
   }
 
   /**
-   * Genera formato_elicitacion_pendientes_<fecha>.xlsx con las pendientes
-   * abiertas (las más pedidas primero) y las marca como exportadas. Las
-   * celdas que deben llenar las hablantes van en amarillo, como en las
-   * plantillas anteriores; el id es estable (pend_<rowid>) para que el
-   * importador lo reconozca cuando el lote vuelva lleno.
+   * Generates formato_elicitacion_pendientes_<fecha>.xlsx with the open
+   * pending items (most requested first) and marks them as exported. The
+   * cells the speakers must fill in are yellow, as in the
+   * previous templates; the id is stable (pend_<rowid>) so that the
+   * importer recognizes it when the batch comes back filled in.
    */
   async exportarLote(hoy: Date = new Date()): Promise<LoteExportado> {
     const pendientes = this.repo.listarAbiertas();

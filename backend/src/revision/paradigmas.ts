@@ -7,21 +7,21 @@ export interface FilaParadigma {
   id: string;
   ejemploEs: string;
   variante: VarianteParadigma;
-  /** Qué casilla del paradigma es: «comer · yo · presente». */
+  /** Which cell of the paradigm it is: «comer · yo · presente». */
   etiqueta: string;
 }
 
 type Fila = [oracion: string, variante: VarianteParadigma, etiqueta: string];
 
 /**
- * Oraciones casi iguales a propósito: cambian UNA cosa cada vez (la
- * persona, el tiempo, la negación), para que al compararlas se vea qué
- * pone el damana en cada caso. El vocabulario del español ya enseña las
- * palabras; lo que falta es la gramática, que es muy distinta.
+ * Sentences that are almost equal on purpose: they change ONE thing at a time (the
+ * person, the tense, the negation), so that comparing them shows what
+ * Damana uses in each case. The Spanish vocabulary already teaches the
+ * words; what is missing is the grammar, which is very different.
  *
- * LISTA DE SOLO AÑADIR: el id sale de la posición. Insertar o reordenar
- * cambiaría los ids de un lote que las hablantes ya pueden tener lleno.
- * Lo nuevo va SIEMPRE al final.
+ * APPEND-ONLY LIST: the id comes from the position. Inserting or reordering
+ * would change the ids of a batch the speakers may already have filled in.
+ * New items ALWAYS go at the end.
  */
 function verbo(nombre: string, formas: [string, string, string, string, string, string, string, string, string, string, string, string, string, string]): Fila[] {
   const [yo, tu, el, nos, uds, ellos, yoPas, yoFut, yoNeg, tuPreg, elPas, elFut, elNeg, elPreg] = formas;
@@ -65,7 +65,7 @@ const FILAS: Fila[] = [
     'Ayer él vio el perro.', 'Mañana él va a ver el perro.', 'Él no ve el perro.', '¿Él ve el perro?',
   ]),
 
-  // A quién le pasa la acción
+  // Who the action happens to
   ['Él me ve.', '', 'a quién · a mí'],
   ['Él te ve.', '', 'a quién · a ti'],
   ['Él nos ve.', 'plural', 'a quién · a nosotros'],
@@ -75,7 +75,7 @@ const FILAS: Fila[] = [
   ['Mi mamá me da yuca.', '', 'a quién · dar a mí'],
   ['Yo le doy yuca a mi mamá.', '', 'a quién · dar a ella'],
 
-  // Órdenes
+  // Commands
   ['Come la yuca.', '', 'orden · comer'],
   ['No comas la yuca.', 'negativo', 'orden · no comer'],
   ['Vamos al río.', 'plural', 'orden · vamos'],
@@ -83,7 +83,7 @@ const FILAS: Fila[] = [
   ['No vayas al río.', 'negativo', 'orden · no ir'],
   ['Siéntate aquí.', '', 'orden · sentarse'],
 
-  // El nombre: cuántos, de quién, dónde
+  // The noun: how many, whose, where
   ['La casa.', '', 'nombre · una casa'],
   ['Las casas.', 'plural', 'nombre · varias casas'],
   ['Mi casa.', '', 'de quién · mía'],
@@ -105,7 +105,7 @@ const FILAS: Fila[] = [
   ['Los perros grandes.', 'plural', 'cómo es · grandes'],
   ['El perro de mi hermano.', '', 'de quién · de mi hermano'],
 
-  // Decir cómo es algo
+  // Saying what something is like
   ['La casa es grande.', '', 'es · afirmación'],
   ['La casa no es grande.', 'negativo', 'es · negación'],
   ['¿La casa es grande?', 'pregunta', 'es · pregunta'],
@@ -114,7 +114,7 @@ const FILAS: Fila[] = [
   ['El agua está fría.', '', 'está · afirmación'],
   ['El agua no está fría.', 'negativo', 'está · negación'],
 
-  // Haber y tener
+  // There is / to have
   ['Hay agua.', '', 'hay · afirmación'],
   ['No hay agua.', 'negativo', 'hay · negación'],
   ['¿Hay agua?', 'pregunta', 'hay · pregunta'],
@@ -123,7 +123,7 @@ const FILAS: Fila[] = [
   ['¿Tienes un perro?', 'pregunta', 'tener · pregunta'],
   ['Mi mamá tiene dos mochilas.', 'plural', 'tener · ella, plural'],
 
-  // Preguntas con palabra de pregunta
+  // Questions with a question word
   ['¿Qué es esto?', 'pregunta', 'pregunta · qué'],
   ['¿Quién vino?', 'pregunta', 'pregunta · quién'],
   ['¿Dónde está tu mamá?', 'pregunta', 'pregunta · dónde'],
@@ -133,7 +133,7 @@ const FILAS: Fila[] = [
   ['¿Cómo te llamas?', 'pregunta', 'pregunta · cómo'],
   ['¿Para dónde vas?', 'pregunta', 'pregunta · para dónde'],
 
-  // Unir dos ideas
+  // Joining two ideas
   ['Mi mamá cocina y mi papá trabaja.', '', 'unir · y'],
   ['Quiero ir al río pero llueve.', '', 'unir · pero'],
   ['Si llueve, no voy al río.', 'negativo', 'unir · si'],
@@ -156,10 +156,10 @@ export const PARADIGMAS: FilaParadigma[] = FILAS.map(([ejemploEs, variante, etiq
 export const ARCHIVO_PARADIGMAS = 'formato_elicitacion_lote2_gramatica.xlsx';
 
 /**
- * El lote de gramática en el MISMO formato de elicitación, para que el
- * importador lo absorba sin cambios cuando vuelva lleno: cada oración
- * traducida entra como ejemplo cotidiano (y 1 de cada 10 queda de prueba).
- * No pide palabra suelta: solo se llena ejemplo_dm.
+ * The grammar batch in the SAME elicitation format, so that the
+ * importer absorbs it unchanged when it comes back filled in: each translated
+ * sentence goes in as an everyday example (and 1 in 10 is kept as a test).
+ * It does not ask for a single word: only ejemplo_dm is filled in.
  */
 export function construirLibroParadigmas(): ExcelJS.Workbook {
   const libro = new ExcelJS.Workbook();

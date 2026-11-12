@@ -19,8 +19,8 @@ export class AuthService {
   private readonly _usuario = signal<string | null>(leer(CLAVE_USUARIO));
 
   /**
-   * null mientras no se ha preguntado al servidor. En local, sin
-   * credenciales configuradas, la API viene abierta y no se pide login.
+   * null until the server has been asked. Locally, with no
+   * credentials configured, the API comes open and no login is required.
    */
   private readonly _exigeSesion = signal<boolean | null>(null);
 
@@ -31,7 +31,7 @@ export class AuthService {
     return this._token();
   }
 
-  /** Se consulta una sola vez por carga de la app. */
+  /** Queried only once per app load. */
   async exigeSesion(): Promise<boolean> {
     const conocido = this._exigeSesion();
     if (conocido !== null) return conocido;
@@ -42,7 +42,7 @@ export class AuthService {
       this._exigeSesion.set(activa);
       return activa;
     } catch {
-      // Si no se puede preguntar, se asume lo seguro: pedir sesión.
+      // If it cannot be asked, the safe option is assumed: require a session.
       this._exigeSesion.set(true);
       return true;
     }
@@ -66,8 +66,8 @@ export class AuthService {
   }
 }
 
-// localStorage puede lanzar (modo privado de Safari, cookies bloqueadas):
-// en ese caso la sesión dura lo que la pestaña, que es mejor que un error.
+// localStorage can throw (Safari private mode, blocked cookies):
+// in that case the session lasts as long as the tab, which is better than an error.
 function leer(clave: string): string | null {
   try {
     return localStorage.getItem(clave);
@@ -80,7 +80,7 @@ function guardar(clave: string, valor: string): void {
   try {
     localStorage.setItem(clave, valor);
   } catch {
-    /* sesión solo en memoria */
+    /* in-memory session only */
   }
 }
 
@@ -88,6 +88,6 @@ function borrar(clave: string): void {
   try {
     localStorage.removeItem(clave);
   } catch {
-    /* nada que limpiar */
+    /* nothing to clean up */
   }
 }

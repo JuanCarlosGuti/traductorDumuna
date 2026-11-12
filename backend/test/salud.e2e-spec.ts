@@ -17,8 +17,8 @@ const config: ConfigAuth = {
   duracionDias: 30,
 };
 
-// El healthcheck de kamal-proxy no tiene sesión: debe responder sin token
-// aunque la autenticación esté activa, y debe decir 503 si no hay corpus.
+// The kamal-proxy healthcheck has no session: it must answer without a token
+// even if authentication is active, and must say 503 if there is no corpus.
 describe('Salud (e2e, con autenticación activa)', () => {
   let app: INestApplication;
 

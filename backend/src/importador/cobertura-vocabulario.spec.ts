@@ -27,7 +27,7 @@ describe('CoberturaVocabulario', () => {
     expect(cobertura.cubreEspanol('esa')).toBe(true);
     expect(cobertura.cubreEspanol('tierra')).toBe(true);
     expect(cobertura.cubreEspanol('territorio')).toBe(true);
-    // y también cuando la pendiente trae el paréntesis
+    // and also when the pending item carries the parenthesis
     expect(cobertura.cubreEspanol('sal (de cocina)')).toBe(true);
   });
 

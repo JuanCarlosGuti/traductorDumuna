@@ -1,6 +1,6 @@
-// Espejo del normalizador del backend (backend/src/comun/texto/normalizador.ts):
-// minúsculas sin tildes, preservando ʉ (U+0289) y ñ. Puntos de código
-// construidos numéricamente para no depender del encoding del archivo.
+// Mirror of the backend normalizer (backend/src/comun/texto/normalizador.ts):
+// lowercase without accents, preserving ʉ (U+0289) and ñ. Code points
+// built numerically so as not to depend on the file's encoding.
 const TILDE_COMBINANTE = String.fromCharCode(0x0303);
 const N_DESCOMPUESTA = 'n' + TILDE_COMBINANTE;
 const ENYE = String.fromCharCode(0x00f1);

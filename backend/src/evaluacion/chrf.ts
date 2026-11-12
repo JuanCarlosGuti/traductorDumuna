@@ -1,12 +1,12 @@
 /**
- * chrF (Popović 2015) en su forma simple: F-beta sobre n-gramas de
- * caracteres de 1 a N, con precisión y cobertura promediadas sobre los
- * órdenes. Implementación propia, sin dependencias.
+ * chrF (Popović 2015) in its simple form: F-beta over character
+ * n-grams from 1 to N, with precision and recall averaged over the
+ * orders. Own implementation, no dependencies.
  *
- * Preparación del texto: NFC, minúsculas, sin espacios (como el chrF de
- * referencia, que ignora los blancos) y sin puntuación: un punto final de
- * más no debe restar. ʉ y ñ cuentan como caracteres propios: «nunka» y
- * «nʉnka» difieren en un carácter, que es lo que queremos medir.
+ * Text preparation: NFC, lowercase, no spaces (like the reference
+ * chrF, which ignores whitespace) and no punctuation: an extra final
+ * full stop must not subtract. ʉ and ñ count as characters of their own: «nunka» and
+ * «nʉnka» differ by one character, which is what we want to measure.
  */
 export const ORDEN_MAXIMO = 6;
 export const BETA = 2;
@@ -18,7 +18,7 @@ export function prepararTexto(texto: string): string {
     .replace(/[^\p{L}\p{N}']/gu, '');
 }
 
-/** Conteo de n-gramas de caracteres de un texto ya preparado. */
+/** Character n-gram count of an already prepared text. */
 export function ngramas(texto: string, n: number): Map<string, number> {
   const conteo = new Map<string, number>();
   for (let i = 0; i + n <= texto.length; i++) {
@@ -44,11 +44,11 @@ function sumar(m: Map<string, number>): number {
 }
 
 /**
- * chrF entre 0 y 1. Si la referencia y la hipótesis están vacías vale 1;
- * si solo una lo está, 0. Los órdenes para los que la referencia o la
- * hipótesis no tienen n-gramas (textos muy cortos) no cuentan en la
- * media, para no penalizar una respuesta de tres letras por no tener
- * 6-gramas.
+ * chrF between 0 and 1. If both reference and hypothesis are empty it is 1;
+ * if only one is, 0. Orders for which the reference or the
+ * hypothesis has no n-grams (very short texts) do not count in the
+ * average, so as not to penalize a three-letter answer for having no
+ * 6-grams.
  */
 export function chrF(
   hipotesis: string,

@@ -59,8 +59,8 @@ describe('leerConfigAuth', () => {
 });
 
 describe('leerConfigAuth en Render', () => {
-  // Render define RENDER=true sola; NODE_ENV no se puede usar allí porque
-  // rompería `npm ci` (omitiría las devDependencies del build).
+  // Render sets RENDER=true by itself; NODE_ENV cannot be used there because
+  // it would break `npm ci` (it would skip the build's devDependencies).
   it('trata RENDER=true como producción y exige credenciales', () => {
     expect(() =>
       leerConfigAuth({ RENDER: 'true' } as NodeJS.ProcessEnv),

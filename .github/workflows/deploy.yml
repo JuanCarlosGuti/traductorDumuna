@@ -18,17 +18,17 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      # Monorepo con workspaces y un solo package-lock en la raíz: se instala
-      # desde la raíz o los módulos quedan donde el runtime no los encuentra.
+      # Monorepo with workspaces and a single package-lock at the root: install
+      # from the root or the modules end up where the runtime cannot find them.
       - run: npm ci
       - run: npm test
       - run: npm run test:e2e
       - run: npm run test:front
-      # Construir aquí, aparte del docker build, hace que un error de Angular
-      # salga en su propio paso y no escondido en la salida de Docker.
+      # Building here, apart from the docker build, makes an Angular error
+      # show up in its own step instead of hidden in the Docker output.
       - run: npm run build
-      # Playwright (npm run test:navegador) no corre aquí: necesita descargar
-      # Chromium y tarda minutos; se corre en local antes de subir.
+      # Playwright (npm run test:navegador) does not run here: it needs to download
+      # Chromium and takes minutes; it is run locally before pushing.
 
   imagen:
     name: Docker (la imagen construye y trae la SPA y el corpus)
@@ -37,8 +37,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - run: docker build -t corpus-damana:ci .
-      # Lo que ha salvado despliegues en los otros repos: que el Angular
-      # construido y la base importada estén DENTRO de la imagen.
+      # What has saved deployments in the other repos: making sure the built
+      # Angular app and the imported database are INSIDE the image.
       - name: Verificar SPA y corpus dentro de la imagen
         run: |
           docker run --rm --entrypoint sh corpus-damana:ci -c \
@@ -47,14 +47,14 @@ jobs:
 
   desplegar:
     name: Desplegar al servidor propio (Kamal)
-    # Cuelga de TODAS las pruebas; solo desde main y solo en push, nunca desde
+    # Depends on ALL the tests; only from main and only on push, never from
     # un PR.
     needs: [pruebas, imagen]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write     # para publicar la imagen en GHCR con el GITHUB_TOKEN
+      packages: write     # to publish the image to GHCR with the GITHUB_TOKEN
     steps:
       - uses: actions/checkout@v4
 
@@ -66,23 +66,23 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      # La llave privada es la de infra-servidor (secret SSH_PRIVATE_KEY); el
-      # servidor solo conoce la pública.
+      # The private key is the infra-servidor one (secret SSH_PRIVATE_KEY); the
+      # server only knows the public key.
       - name: Configurar SSH
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          # Sin -H y solo ed25519 a propósito: las entradas con hash y de
-          # varios tipos hacen que Net::SSH (el cliente Ruby de Kamal) falle
-          # con HostKeyMismatch aunque la huella sea correcta.
+          # No -H and ed25519 only, on purpose: hashed entries and entries of
+          # several types make Net::SSH (Kamal's Ruby client) fail
+          # with HostKeyMismatch even when the fingerprint is correct.
           ssh-keyscan -t ed25519 "${{ secrets.SERVER_IP }}" >> ~/.ssh/known_hosts
 
-      # El repo público solo versiona un corpus de muestra (ver DATA.md). El
-      # corpus real vive en un repo privado y se copia sobre datos/ aquí, antes
-      # de que Kamal construya la imagen (builder.context: .). OBLIGATORIO=1:
-      # si el secreto falta o el clon falla, el despliegue se corta en vez de
-      # publicar la app con el corpus de muestra.
+      # The public repo only versions a sample corpus (see DATA.md). The
+      # real corpus lives in a private repo and is copied over datos/ here, before
+      # Kamal builds the image (builder.context: .). OBLIGATORIO=1:
+      # if the secret is missing or the clone fails, the deployment stops instead of
+      # publishing the app with the sample corpus.
       - name: Traer el corpus real (repo privado de datos)
         env:
           CORPUS_DATOS_REPO: ${{ secrets.CORPUS_DATOS_REPO }}
@@ -92,12 +92,12 @@ jobs:
 
       - name: Desplegar
         env:
-          # config/deploy.yml lee la IP del servidor de aquí (ERB): la
-          # dirección no se versiona en el repo público.
+          # config/deploy.yml reads the server IP from here (ERB): the
+          # address is not versioned in the public repo.
           SERVER_IP: ${{ secrets.SERVER_IP }}
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-          # Claude, motor principal. Si el secreto faltara llegaría vacío y
-          # la app caería sola a Groq (TRADUCTOR_*).
+          # Claude, the main engine. If the secret were missing it would arrive empty and
+          # the app would fall back to Groq (TRADUCTOR_*) on its own.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TRADUCTOR_API_KEY: ${{ secrets.TRADUCTOR_API_KEY }}
           AUTH_USUARIO: ${{ secrets.AUTH_USUARIO }}

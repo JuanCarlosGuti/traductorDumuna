@@ -11,10 +11,10 @@ function desescaparHtml(s: string): string {
 }
 
 /**
- * Convierte un fragmento de concordancia del backend (texto escapado con
- * la palabra encontrada envuelta en <mark>) en segmentos renderizables:
- * cada palabra por separado (para hacerla clicable) y los separadores
- * entre ellas. También sirve para texto plano (sin <mark>).
+ * Converts a concordance fragment from the backend (escaped text with
+ * the matched word wrapped in <mark>) into renderable segments:
+ * each word separately (to make it clickable) and the separators
+ * between them. It also works for plain text (without <mark>).
  */
 export function segmentarFragmento(fragmentoHtml: string): SegmentoFragmento[] {
   const segmentos: SegmentoFragmento[] = [];

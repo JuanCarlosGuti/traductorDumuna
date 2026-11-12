@@ -1,54 +1,54 @@
-# Blueprint de Render (plan gratuito): en render.com → New → Blueprint → elegir este repo.
+# Render Blueprint (free plan): on render.com → New → Blueprint → choose this repo.
 #
-# El proyecto es un monorepo con npm workspaces (package-lock único en la raíz), así que
-# TODO corre desde la raíz con los scripts del package.json raíz:
-#   - build:      compila Angular (→ backend/public) y el backend Nest
-#   - importar:   regenera datos/corpus.db desde los CSV (corpus.db no se versiona; el
-#                 runtime la lee en solo-lectura → el filesystem efímero de Render sirve)
-#   - start:prod: node dist/main.js con cwd en backend/ (así '../datos' resuelve bien)
+# The project is a monorepo with npm workspaces (single package-lock at the root), so
+# EVERYTHING runs from the root with the root package.json scripts:
+#   - build:      compiles Angular (→ backend/public) and the Nest backend
+#   - importar:   regenerates datos/corpus.db from the CSVs (corpus.db is not versioned; the
+#                 runtime reads it read-only → Render's ephemeral filesystem is fine)
+#   - start:prod: node dist/main.js with cwd in backend/ (so '../datos' resolves properly)
 #
-# Motor de traducción: Claude (ANTHROPIC_API_KEY, prioridad; claude-opus-5-5 por defecto,
-# con los créditos API del plan Max). Groq queda como respaldo: solo se usa si falta la
-# clave de Anthropic. Las claves se piden al crear el servicio (sync: false = secreto,
-# nunca en el repo).
+# Translation engine: Claude (ANTHROPIC_API_KEY, priority; claude-opus-5-5 by default,
+# with the Max plan API credits). Groq stays as a fallback: it is only used if the
+# Anthropic key is missing. Keys are requested when creating the service (sync: false = secret,
+# never in the repo).
 #
-# Autenticación: usuario único. AUTH_USUARIO y AUTH_PASSWORD son secretos que se
-# introducen en el panel; SIN ELLOS EL SERVICIO NO ARRANCA en producción, a propósito
-# (una API abierta por descuido no se nota; un arranque fallido sí).
+# Authentication: single user. AUTH_USUARIO and AUTH_PASSWORD are secrets
+# entered in the dashboard; WITHOUT THEM THE SERVICE DOES NOT START in production, on purpose
+# (an API left open by accident goes unnoticed; a failed startup does not).
 #
-# Plan gratis: el servicio se "duerme" tras ~15 min sin visitas; la siguiente petición
-# tarda ~30-60s en despertarlo.
+# Free plan: the service "sleeps" after ~15 min without visits; the next request
+# takes ~30-60s to wake it up.
 
 services:
   - type: web
     name: corpus-damana
     runtime: node
     plan: free
-    # traer-datos copia el corpus real desde el repo privado si están las dos
-    # variables CORPUS_DATOS_*; sin ellas el servicio sale con el corpus de
-    # muestra del repo (ver DATA.md).
+    # traer-datos copies the real corpus from the private repo if both
+    # CORPUS_DATOS_* variables are set; without them the service ships with the repo's
+    # sample corpus (see DATA.md).
     buildCommand: npm ci && node scripts/traer-datos.mjs && npm run build && npm run importar
     startCommand: npm run start:prod
     healthCheckPath: /
     envVars:
       - key: NODE_VERSION
         value: 24.15.0
-      # OJO: no poner NODE_ENV=production aquí. `npm ci` lo interpreta como
-      # --omit=dev y se dejaría fuera @nestjs/cli, ng y ts-node, que son los
-      # que construyen e importan. El código detecta el despliegue por la
-      # variable RENDER, que la plataforma define sola.
-      # Motor principal: Claude. Tiene prioridad sobre Groq
+      # CAREFUL: do not set NODE_ENV=production here. `npm ci` reads it as
+      # --omit=dev and would leave out @nestjs/cli, ng and ts-node, which are the
+      # ones that build and import. The code detects the deployment via the
+      # RENDER variable, which the platform sets by itself.
+      # Main engine: Claude. It takes priority over Groq
       # (backend/src/traduccion/config-traductor.provider.ts).
-      # Repo privado con el corpus real ("dueño/repo") y un token de solo
-      # lectura sobre él. Opcionales: sin ellos se usa el corpus de muestra.
+      # Private repo with the real corpus ("owner/repo") and a read-only
+      # token for it. Optional: without them the sample corpus is used.
       - key: CORPUS_DATOS_REPO
         sync: false
       - key: CORPUS_DATOS_TOKEN
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
-      # Respaldo: Groq, API compatible con OpenAI. Solo entra si falta
-      # ANTHROPIC_API_KEY.
+      # Fallback: Groq, OpenAI-compatible API. It only kicks in if
+      # ANTHROPIC_API_KEY is missing.
       - key: TRADUCTOR_BASE_URL
         value: https://api.groq.com/openai/v1
       - key: TRADUCTOR_MODELO
@@ -59,7 +59,7 @@ services:
         sync: false
       - key: AUTH_PASSWORD
         sync: false
-      # Generado por Render una sola vez y estable después: si cambiara en cada
-      # despliegue, cada deploy cerraría la sesión en todos los dispositivos.
+      # Generated by Render only once and stable afterwards: if it changed on every
+      # deployment, each deploy would log out every device.
       - key: AUTH_JWT_SECRET
         generateValue: true

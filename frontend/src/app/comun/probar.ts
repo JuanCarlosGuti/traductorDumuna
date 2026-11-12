@@ -5,17 +5,17 @@ import { provideRouter } from '@angular/router';
 import { Type } from '@angular/core';
 
 /**
- * Angular zoneless: fixture.whenStable() no espera a las promesas que lanza
- * el componente (las cargas del constructor, por ejemplo), así que hay que
- * ceder el turno al bucle de eventos antes de mirar el DOM. Sin esto los
- * tests leen la plantilla a medio pintar.
+ * Zoneless Angular: fixture.whenStable() does not wait for the promises the
+ * component fires (the constructor's loads, for example), so we must
+ * yield to the event loop before looking at the DOM. Without this the
+ * tests read the template half rendered.
  */
 export async function asentar(fixture: ComponentFixture<unknown>): Promise<void> {
   await new Promise((listo) => setTimeout(listo));
   await fixture.whenStable();
 }
 
-/** Montaje común: router de verdad (vacío) y HttpClient simulado. */
+/** Common setup: real router (empty) and mocked HttpClient. */
 export async function montar<T>(
   componente: Type<T>,
   proveedoresExtra: unknown[] = [],

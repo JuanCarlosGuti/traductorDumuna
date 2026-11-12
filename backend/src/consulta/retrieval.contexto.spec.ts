@@ -14,7 +14,7 @@ import {
   RetrievalService,
 } from './retrieval.service';
 
-/** Palabra sintética distinta por id: los dígitos no son tokens. */
+/** A distinct synthetic word per id: digits are not tokens. */
 const palabraDe = (id: number): string =>
   String(id)
     .split('')
@@ -71,7 +71,7 @@ describe('repartirPorDominio (cupos del prompt)', () => {
     expect(cuenta(DominioCorpus.gramatica)).toBe(CUPO_GRAMATICA);
     expect(cuenta(DominioCorpus.biblico)).toBe(CUPO_BIBLICO_REDUCIDO);
     expect(r.length).toBeLessThanOrEqual(MAX_EJEMPLOS);
-    // los cotidianos van primero aunque los bíblicos puntúen más alto
+    // everyday ones go first even if the biblical ones score higher
     expect(r[0].dominio).toBe(DominioCorpus.cotidiano);
     expect(r.at(-1)!.dominio).toBe(DominioCorpus.biblico);
   });
@@ -156,7 +156,7 @@ describe('RetrievalService.recuperarContexto', () => {
     expect(c.nombresPropios).toEqual([]);
     const dominios = c.ejemplos.map((e) => e.dominio);
     expect(dominios).toContain(DominioCorpus.cotidiano);
-    // los cotidianos van antes que los bíblicos
+    // everyday ones go before the biblical ones
     expect(dominios.indexOf(DominioCorpus.cotidiano)).toBeLessThan(
       dominios.includes(DominioCorpus.biblico) ? dominios.indexOf(DominioCorpus.biblico) : Infinity,
     );

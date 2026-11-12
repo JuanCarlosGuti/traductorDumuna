@@ -1,21 +1,21 @@
 import * as ExcelJS from 'exceljs';
 import { normalizar } from '../comun/texto/normalizador';
 
-/** Una hoja de Excel leída como filas de texto, indexadas por encabezado. */
+/** An Excel sheet read as text rows, indexed by header. */
 export interface HojaLeida {
   nombre: string;
-  /** Encabezados tal cual aparecen en la fila 1. */
+  /** Headers exactly as they appear in row 1. */
   encabezados: string[];
   /**
-   * Cada fila como objeto { encabezadoNormalizado → texto }. Las filas sin
-   * ninguna celda con texto se omiten; las vacías entre medias no cortan.
+   * Each row as an object { normalizedHeader → text }. Rows without
+   * any cell with text are skipped; empty ones in between do not cut it off.
    */
   filas: Record<string, string>[];
 }
 
 /**
- * Texto plano de una celda de ExcelJS: cubre texto enriquecido,
- * hipervínculos, fórmulas (su resultado), fechas y números.
+ * Plain text of an ExcelJS cell: covers rich text,
+ * hyperlinks, formulas (their result), dates and numbers.
  */
 export function textoCelda(valor: ExcelJS.CellValue): string {
   if (valor === null || valor === undefined) return '';
@@ -37,15 +37,15 @@ export function textoCelda(valor: ExcelJS.CellValue): string {
   return String(valor).trim();
 }
 
-/** Encabezado comparable: minúsculas, sin tildes, espacios colapsados. */
+/** Comparable header: lowercase, no accents, spaces collapsed. */
 export function claveEncabezado(encabezado: string): string {
   return normalizar(encabezado).replace(/\s+/g, ' ').trim();
 }
 
 /**
- * Lee todas las hojas de un libro. La fila 1 son los encabezados; si una
- * hoja no tiene encabezados (p. ej. una hoja de instrucciones) vuelve con
- * la lista vacía y cero filas.
+ * Reads all the sheets of a workbook. Row 1 holds the headers; if a
+ * sheet has no headers (e.g. an instructions sheet) it comes back with
+ * an empty list and zero rows.
  */
 export async function leerLibro(ruta: string): Promise<HojaLeida[]> {
   const libro = new ExcelJS.Workbook();
@@ -79,9 +79,9 @@ function leerHoja(hoja: ExcelJS.Worksheet): HojaLeida {
 }
 
 /**
- * Busca en una fila la columna cuyo encabezado contenga alguno de los
- * fragmentos dados (ya normalizados). Permite tolerar variaciones de
- * redacción en las plantillas («qué hace / significado», «significado»).
+ * Finds in a row the column whose header contains any of the
+ * given fragments (already normalized). Lets us tolerate wording
+ * variations in the templates («qué hace / significado», «significado»).
  */
 export function columna(
   fila: Record<string, string>,

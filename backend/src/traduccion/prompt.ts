@@ -3,14 +3,14 @@ import { Disparador } from '../consulta/reglas';
 import { ContextoRecuperado, FragmentoRecuperado } from '../consulta/retrieval.service';
 import { DireccionTraduccion } from './dto/traduccion.dto';
 
-/** Nombres de las claves de cada par de la glosa según la dirección. */
+/** Names of the keys of each gloss pair depending on the direction. */
 export function clavesGlosa(direccion: DireccionTraduccion): { origen: string; destino: string } {
   return direccion === DireccionTraduccion.espanol_a_damana
     ? { origen: 'palabra_es', destino: 'segmento_dm' }
     : { origen: 'palabra_dm', destino: 'segmento_es' };
 }
 
-/** JSON Schema de la respuesta: lo usa la salida estructurada de Anthropic. */
+/** JSON Schema of the response: used by Anthropic's structured output. */
 export function esquemaRespuesta(direccion: DireccionTraduccion): Record<string, unknown> {
   const { origen, destino } = clavesGlosa(direccion);
   return {
@@ -89,9 +89,9 @@ export function armarPromptSistema(direccion: DireccionTraduccion): string {
 }
 
 /**
- * Qué decirle al modelo cuando la frase trae un rasgo para el que el corpus
- * todavía no tiene regla. Se dice tal cual que falta —la confirmarán las
- * hablantes— en vez de dejar que el modelo adivine si existe o no.
+ * What to tell the model when the sentence carries a feature for which the corpus
+ * has no rule yet. It is told plainly that it is missing — the speakers
+ * will confirm it — instead of letting the model guess whether it exists or not.
  */
 const PISTA_SIN_REGLA: Record<Disparador, string> = {
   negacion:
@@ -104,7 +104,7 @@ const PISTA_SIN_REGLA: Record<Disparador, string> = {
   futuro: 'Guíate por las formas de futuro que aparezcan en los ejemplos.',
 };
 
-/** Rasgos detectados en la frase sin ninguna regla del corpus que los cubra. */
+/** Features detected in the sentence with no corpus rule covering them. */
 export function disparadoresSinRegla(contexto: ContextoRecuperado): Disparador[] {
   return contexto.disparadores.filter((d) => !contexto.reglas.some((r) => r.disparador === d));
 }
@@ -117,8 +117,8 @@ function listarEjemplos(ejemplos: FragmentoRecuperado[], vacio: string): string 
   if (ejemplos.length === 0) return `(${vacio})`;
   return ejemplos
     .map((e, i) => {
-      // Se avisa cuando el ejemplo llegó por parentesco verbal: sirve como
-      // muestra del verbo en uso, pero va en otra persona gramatical.
+      // A warning is added when the example arrived through verbal kinship: it serves as
+      // a sample of the verb in use, but it is in another grammatical person.
       const nota = e.porLema ? ` — usa otra conjugación del verbo «${e.porLema}»` : '';
       return `${i + 1}. [${e.referencia}${nota}]\n   español: ${e.espanol}\n   damana: ${e.damana}`;
     })
@@ -199,16 +199,16 @@ const texto = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
 const lista = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean) : [];
 
-/** Palabras que el modelo dejó entre corchetes en la traducción. */
+/** Words the model left in square brackets in the translation. */
 export function palabrasEntreCorchetes(traduccion: string): string[] {
   return [...traduccion.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1].trim()).filter(Boolean);
 }
 
 /**
- * Lleva el JSON del modelo a la forma interna, con tolerancia: claves de la
- * glosa en cualquiera de sus variantes, confianza como número o texto
- * (acotada a 0-1) y las palabras entre corchetes añadidas a la lista de
- * sin equivalente aunque el modelo olvidara listarlas.
+ * Brings the model's JSON to the internal shape, with tolerance: gloss
+ * keys in any of their variants, confidence as a number or text
+ * (clamped to 0-1) and the words in square brackets added to the list of
+ * words without an equivalent even if the model forgot to list them.
  */
 export function normalizarRespuestaModelo(json: Record<string, unknown>): RespuestaModelo {
   const traduccion = texto(json.traduccion);

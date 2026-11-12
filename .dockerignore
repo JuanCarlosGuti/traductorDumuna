@@ -1,8 +1,8 @@
-# Lo que NO entra al contexto de construcción.
+# What does NOT go into the build context.
 #
-# OJO con /datos: el Dockerfile corre `npm run importar`, que necesita los CSV,
-# reglas_damana.xlsx y los formato_elicitacion*.xlsx. Solo se excluyen la base
-# (se regenera dentro) y los Excel de trabajo que nadie lee en el build.
+# CAREFUL with /datos: the Dockerfile runs `npm run importar`, which needs the CSVs,
+# reglas_damana.xlsx and the formato_elicitacion*.xlsx files. Only the database
+# (regenerated inside) and the working Excel files nobody reads at build time are excluded.
 node_modules
 **/node_modules
 dist
@@ -25,6 +25,6 @@ datos/dudas_para_hablantes_*.xlsx
 .env.*
 **/.env
 
-# Fuentes externas en bruto (PDF, texto extraído, informes): no las lee ni el
-# importador ni el runtime; pesan ~8 MB.
+# Raw external sources (PDF, extracted text, reports): neither the importer
+# nor the runtime reads them; they weigh ~8 MB.
 material-externo

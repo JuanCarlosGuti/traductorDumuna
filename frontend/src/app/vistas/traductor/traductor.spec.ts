@@ -93,7 +93,7 @@ describe('Traductor', () => {
     await escribir('mi mamá cocina en la casa');
     await traducir();
 
-    // Petición en vuelo: aviso visible, caja y controles bloqueados.
+    // Request in flight: visible notice, box and controls locked.
     const area = (fixture.nativeElement as HTMLElement).querySelector('textarea')!;
     expect(area.disabled).toBe(true);
     expect((fixture.nativeElement as HTMLElement).querySelector('select')!.disabled).toBe(true);
@@ -105,7 +105,7 @@ describe('Traductor', () => {
     http.expectOne('/api/traducir').flush(RESPUESTA);
     await asentar(fixture);
 
-    // Terminó: se puede volver a escribir (con ʉ) y el aviso desaparece.
+    // Done: typing is possible again (with ʉ) and the notice disappears.
     expect(area.disabled).toBe(false);
     expect(buscarTodos(fixture, '.espera').length).toBe(0);
     await escribir('nʉnka ñingui');
@@ -114,7 +114,7 @@ describe('Traductor', () => {
   });
 
   it('con un proveedor compatible el aviso nombra al modelo y no a Claude', async () => {
-    await arrancar(); // DISPONIBLE: compatible, gpt-oss-120b
+    await arrancar(); // AVAILABLE: compatible, gpt-oss-120b
     await escribir('nʉnka');
     await traducir();
     const aviso = (fixture.nativeElement as HTMLElement).querySelector('.espera')!;
@@ -142,7 +142,7 @@ describe('Traductor', () => {
       ['mamá', 'abu'],
       ['cocina', 'dugwa'],
     ]);
-    // el lado damana va marcado con lang="mbp" para el lector de pantalla
+    // the Damana side is marked with lang="mbp" for the screen reader
     expect(buscarTodos(fixture, '.glosa .destino[lang="mbp"]').length).toBe(3);
   });
 
@@ -202,7 +202,7 @@ describe('Traductor', () => {
     await asentar(fixture);
 
     const campo = (fixture.nativeElement as HTMLElement).querySelector<HTMLTextAreaElement>('#correccion')!;
-    expect(campo.value).toBe('Ranzhe abu urragamba vecina dugwa'); // sin corchetes, para editar
+    expect(campo.value).toBe('Ranzhe abu urragamba vecina dugwa'); // no brackets, for editing
     campo.value = 'Ranzhe abu urragamba anzhirru kʉdugwa';
     campo.dispatchEvent(new Event('input'));
     await asentar(fixture);

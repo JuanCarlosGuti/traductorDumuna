@@ -25,8 +25,8 @@ export class Buscar {
   protected readonly error = signal('');
 
   constructor() {
-    // El estado vive en la URL: navegar = buscar, y el botón «atrás»
-    // deshace los saltos de palabra en palabra.
+    // State lives in the URL: navigating = searching, and the «back» button
+    // undoes the jumps from word to word.
     this.route.queryParamMap
       .pipe(takeUntilDestroyed())
       .subscribe((params) => {
@@ -58,7 +58,7 @@ export class Buscar {
   }
 
   protected buscarPalabra(palabra: string): void {
-    // Clic en una palabra damana de un resultado: nueva búsqueda en damana.
+    // Click on a Damana word in a result: new search in Damana.
     this.navegar(palabra, 'damana');
   }
 

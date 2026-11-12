@@ -55,7 +55,7 @@ describe('DudasService + libro de dudas', () => {
       ['nʉnka', 2],
       ['nunka', 1],
     ]);
-    // el ejemplo sale de una oración aprobada y corta, nunca de una «revisar»
+    // the example comes from a short approved sentence, never from a «revisar» one
     expect(nunka.formas[0].ejemplo).toEqual({ damana: 'nʉnka aikuia', espanol: 'es grande' });
 
     const dia = informe.escritura.find((g) => g.formas.some((f) => f.forma === 'dzwia'))!;
@@ -86,15 +86,15 @@ describe('DudasService + libro de dudas', () => {
     const filaNunka = escritura
       .getRows(2, escritura.rowCount - 1)!
       .find((f) => f.getCell(3).value === 'nʉnka')!;
-    expect(filaNunka.getCell(5).value).toBe('nunka'); // la ʉ y la u, lado a lado
+    expect(filaNunka.getCell(5).value).toBe('nunka'); // ʉ and u, side by side
     expect(filaNunka.getCell(4).value).toBe(2);
-    expect(argb(filaNunka.getCell(14))).toBe(AMARILLO); // ¿cuál es la forma correcta?
+    expect(argb(filaNunka.getCell(14))).toBe(AMARILLO); // which is the correct form?
     expect(argb(filaNunka.getCell(3))).toBeUndefined();
 
     const polisemia = libro.getWorksheet(HOJAS_DUDAS.polisemia)!;
     expect(polisemia.getRow(2).getCell(5).value).toBe('solo cambia la tilde');
 
-    // sobrevive a guardarse y volver a abrirse
+    // survives being saved and reopened
     const copia = new ExcelJS.Workbook();
     await copia.xlsx.load((await libro.xlsx.writeBuffer()) as ExcelJS.Buffer);
     expect(copia.worksheets).toHaveLength(6);
@@ -111,7 +111,7 @@ describe('lote de gramática (paradigmas)', () => {
     for (const v of variantes) {
       expect(['', 'pasado', 'futuro', 'negativo', 'plural', 'pregunta']).toContain(v);
     }
-    // cubre los seis rasgos que disparan reglas
+    // covers the six features that trigger rules
     expect(variantes.size).toBe(6);
   });
 
@@ -123,7 +123,7 @@ describe('lote de gramática (paradigmas)', () => {
       const hoja = libro.getWorksheet('elicitacion')!;
       expect((hoja.getRow(1).values as string[]).slice(1)).toEqual([...COLUMNAS_ELICITACION]);
       expect(argb(hoja.getRow(2).getCell(6))).toBe(AMARILLO); // ejemplo_dm
-      expect(argb(hoja.getRow(2).getCell(4))).toBeUndefined(); // palabra_dm no se pide
+      expect(argb(hoja.getRow(2).getCell(4))).toBeUndefined(); // palabra_dm is not requested
       await libro.xlsx.writeFile(ruta);
 
       const leida = (await leerLibro(ruta)).find((h) => h.nombre === 'elicitacion')!;

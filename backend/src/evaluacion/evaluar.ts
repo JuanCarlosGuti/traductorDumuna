@@ -18,7 +18,7 @@ import {
   renderizarMarkdown,
 } from './evaluador';
 
-// Módulo CLI propio: no arrastra controladores HTTP ni estáticos.
+// Own CLI module: it does not drag in HTTP controllers or static files.
 @Module({
   imports: [
     DatabaseModule.forRoot({ rutaDb: rutaDbPorDefecto() }),
@@ -28,12 +28,12 @@ import {
 })
 class EvaluarCliModule {}
 
-/** La carpeta /evaluaciones vive junto a /datos, en la raíz del repo. */
+/** The /evaluaciones folder lives next to /datos, at the repo root. */
 export function dirEvaluaciones(dirDatos: string): string {
   return path.resolve(dirDatos, '..', 'evaluaciones');
 }
 
-/** --pausa <ms>: espera entre traducciones (Groq gratuito admite ~4 por minuto). */
+/** --pausa <ms>: wait between translations (free Groq allows ~4 per minute). */
 function leerPausa(argv: string[]): number {
   const i = argv.indexOf('--pausa');
   if (i === -1) return 0;
@@ -129,7 +129,7 @@ async function main(): Promise<void> {
   await app.close();
 }
 
-// Solo corre como CLI; al importarlo desde un test no ejecuta nada.
+// Only runs as a CLI; importing it from a test executes nothing.
 if (require.main === module) {
   main().catch((e) => {
     console.error(e);

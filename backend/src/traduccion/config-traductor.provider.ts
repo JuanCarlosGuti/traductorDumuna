@@ -3,13 +3,13 @@ import { Logger, Provider } from '@nestjs/common';
 export const CONFIG_TRADUCTOR = 'CONFIG_TRADUCTOR';
 
 /**
- * Modelo de Claude por defecto (oct 2026). Se puede cambiar sin tocar
- * código con ANTHROPIC_MODELO (p. ej. claude-sonnet-5-5 para abaratar).
+ * Default Claude model (Oct 2026). It can be changed without touching
+ * code via ANTHROPIC_MODELO (e.g. claude-sonnet-5-5 to cut costs).
  */
 export const MODELO_CLAUDE = 'claude-opus-5-5';
 
-/** Timeout de la llamada al modelo; ampliable con TRADUCTOR_TIMEOUT_MS
- *  (útil para modelos locales tipo Ollama, más lentos que una API). */
+/** Timeout of the model call; can be extended with TRADUCTOR_TIMEOUT_MS
+ *  (useful for local models such as Ollama, slower than an API). */
 export function timeoutModeloMs(): number {
   const valor = Number(process.env.TRADUCTOR_TIMEOUT_MS);
   return Number.isFinite(valor) && valor > 0 ? valor : 60_000;
@@ -17,19 +17,19 @@ export function timeoutModeloMs(): number {
 
 export type ProveedorTraductor = 'anthropic' | 'compatible';
 
-/** Niveles de esfuerzo de razonamiento que admite la API de Anthropic. */
+/** Reasoning effort levels accepted by the Anthropic API. */
 export const ESFUERZOS_ANTHROPIC = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 export type EsfuerzoAnthropic = (typeof ESFUERZOS_ANTHROPIC)[number];
 
 /**
- * Temperatura por defecto del proveedor compatible. Baja a propósito: se
- * quiere la misma traducción para la misma frase, no variedad. Se cambia
- * con TRADUCTOR_TEMPERATURA (de 0 a 2).
+ * Default temperature of the compatible provider. Low on purpose: we
+ * want the same translation for the same sentence, not variety. It is changed
+ * with TRADUCTOR_TEMPERATURA (from 0 to 2).
  *
- * No aplica a Claude: claude-opus-5-5 (como toda la familia 4.7 en
- * adelante) rechaza temperature/top_p/top_k con un 400; el pensamiento
- * adaptativo decide solo. Ahí el único mando es ANTHROPIC_ESFUERZO
- * (output_config.effort), que si falta se deja al valor de la API.
+ * It does not apply to Claude: claude-opus-5-5 (like the whole family from 4.7
+ * onwards) rejects temperature/top_p/top_k with a 400; adaptive
+ * thinking decides by itself. There the only control is ANTHROPIC_ESFUERZO
+ * (output_config.effort), which if missing is left at the API's value.
  */
 export const TEMPERATURA_POR_DEFECTO = 0.2;
 
@@ -53,24 +53,24 @@ export function leerEsfuerzo(valor = process.env.ANTHROPIC_ESFUERZO): EsfuerzoAn
 export interface ConfigTraductor {
   proveedor: ProveedorTraductor | null;
   modelo: string;
-  /** Solo proveedor 'compatible': base de la API estilo OpenAI (sin /chat/completions). */
+  /** 'compatible' provider only: base of the OpenAI-style API (without /chat/completions). */
   baseUrl?: string;
-  /** Solo proveedor 'compatible': clave Bearer; opcional (Ollama no la necesita). */
+  /** 'compatible' provider only: Bearer key; optional (Ollama does not need it). */
   apiKey?: string;
-  /** Solo proveedor 'compatible': temperatura de muestreo (TRADUCTOR_TEMPERATURA; 0.2 si falta). */
+  /** 'compatible' provider only: sampling temperature (TRADUCTOR_TEMPERATURA; 0.2 if missing). */
   temperatura?: number;
-  /** Solo proveedor 'anthropic': output_config.effort (ANTHROPIC_ESFUERZO); si falta, el de la API. */
+  /** 'anthropic' provider only: output_config.effort (ANTHROPIC_ESFUERZO); if missing, the API's. */
   esfuerzo?: EsfuerzoAnthropic;
 }
 
 /**
- * Selección del motor de traducción por variables de entorno:
+ * Translation engine selection via environment variables:
  *
- * 1. ANTHROPIC_API_KEY [+ ANTHROPIC_MODELO] → Claude vía el SDK oficial, prioridad.
+ * 1. ANTHROPIC_API_KEY [+ ANTHROPIC_MODELO] → Claude via the official SDK, priority.
  * 2. TRADUCTOR_BASE_URL + TRADUCTOR_MODELO [+ TRADUCTOR_API_KEY]
- *    → cualquier API compatible con OpenAI: Groq (producción), Google
- *      Gemini, Ollama local, Hugging Face router, etc.
- * 3. Nada configurado             → el traductor responde 503 con ayuda.
+ *    → any OpenAI-compatible API: Groq (production), Google
+ *      Gemini, local Ollama, Hugging Face router, etc.
+ * 3. Nothing configured           → the translator answers 503 with help.
  */
 export const configTraductorProvider: Provider = {
   provide: CONFIG_TRADUCTOR,

@@ -9,9 +9,9 @@ import { tokenizarDamana } from '../comun/texto/tokenizador';
 import { alternativasEspanol } from '../consulta/diccionario';
 
 /**
- * Detectores de lo que NO está claro en los datos, para preguntárselo a
- * hablantes nativas. Son funciones puras: reciben listas y devuelven
- * grupos. Nunca corrigen nada; solo arman las preguntas.
+ * Detectors of what is NOT clear in the data, to ask native
+ * speakers about it. They are pure functions: they receive lists and return
+ * groups. They never fix anything; they only build the questions.
  */
 
 export interface OracionEjemplo {
@@ -27,25 +27,25 @@ export interface EntradaLexica {
   fuente: string | null;
 }
 
-/** Una forma damana tal como aparece en alguna fuente. */
+/** A Damana form as it appears in some source. */
 export interface FormaVista {
-  /** Normalizada (minúsculas, sin tildes; ʉ y ñ intactas). */
+  /** Normalized (lowercase, no accents; ʉ and ñ intact). */
   forma: string;
-  /** Veces que aparece en oraciones y frases. */
+  /** Times it appears in sentences and phrases. */
   frecuencia: number;
-  /** Lo que el vocabulario o las conjugaciones dicen que significa. */
+  /** What the vocabulary or the conjugations say it means. */
   significados: string[];
   ejemplo?: OracionEjemplo;
 }
 
 // ---------------------------------------------------------------------------
-// 1. Escritura: la misma palabra escrita de varias maneras
+// 1. Spelling: the same word written in several ways
 // ---------------------------------------------------------------------------
 
 export interface GrupoEscritura {
-  /** Qué alternancia las separa: «u / ʉ», «w / u», «ndzina / nyina»… */
+  /** Which alternation separates them: «u / ʉ», «w / u», «ndzina / nyina»… */
   tipo: string;
-  /** De la más usada a la menos usada. */
+  /** From most used to least used. */
   formas: FormaVista[];
   total: number;
 }
@@ -64,7 +64,7 @@ function grupo(tipo: string, formas: FormaVista[]): GrupoEscritura {
   return { tipo, formas: ordenadas, total: ordenadas.reduce((s, f) => s + f.frecuencia, 0) };
 }
 
-/** Formas que solo se diferencian por una alternancia de escritura conocida. */
+/** Forms that differ only by a known spelling alternation. */
 export function detectarVariantes(formas: FormaVista[]): GrupoEscritura[] {
   const porEsqueleto = new Map<string, Map<string, FormaVista>>();
   for (const f of formas) {
@@ -92,10 +92,10 @@ function palabrasDeContenido(texto: string): Set<string> {
 }
 
 /**
- * Pares que se diferencian en una letra Y comparten significado en el
- * vocabulario (kʉmatuna «enojó» / kumatuna «furioso»). Sin el significado
- * en común serían ruido: abisha «calentar» y abishi «hiérvalo» también se
- * parecen y son formas legítimas distintas.
+ * Pairs that differ by one letter AND share a meaning in the
+ * vocabulary (kʉmatuna «enojó» / kumatuna «furioso»). Without the shared
+ * meaning they would be noise: abisha «calentar» and abishi «hiérvalo» also look
+ * alike and are legitimately different forms.
  */
 export function detectarParecidas(formas: FormaVista[]): GrupoEscritura[] {
   const candidatas = formas
@@ -111,8 +111,8 @@ export function detectarParecidas(formas: FormaVista[]): GrupoEscritura[] {
       const a = candidatas[i];
       const b = candidatas[j];
       if (a.clave === b.clave || !aDistanciaUno(a.clave, b.clave)) continue;
-      // Si lo que cambia es la primera letra suele ser un prefijo de persona
-      // (anzhʉngʉma «su hijo» / ranzhʉngʉma «mi hijo»): eso es gramática.
+      // If what changes is the first letter it is usually a person prefix
+      // (anzhʉngʉma «su hijo» / ranzhʉngʉma «mi hijo»): that is grammar.
       if (a.clave[0] !== b.clave[0]) continue;
       if (![...a.glosa].some((palabra) => b.glosa.has(palabra))) continue;
       grupos.push(grupo(TIPO_PARECIDAS, [a.f, b.f]));
@@ -122,7 +122,7 @@ export function detectarParecidas(formas: FormaVista[]): GrupoEscritura[] {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Una palabra española con varias formas damana
+// 2. One Spanish word with several Damana forms
 // ---------------------------------------------------------------------------
 
 export interface OpcionDamana {
@@ -130,7 +130,7 @@ export interface OpcionDamana {
   categoria: string | null;
   fuente: string | null;
   notas: string | null;
-  /** Veces en el corpus si es una sola palabra; null si es una frase. */
+  /** Times in the corpus if it is a single word; null if it is a phrase. */
   frecuencia: number | null;
 }
 
@@ -140,9 +140,9 @@ export interface GrupoSinonimos {
 }
 
 /**
- * Palabras españolas para las que el vocabulario da varias formas damana
- * que NO son la misma con otra escritura (esas van en «escritura»).
- * Pueden ser sinónimos de verdad, sentidos distintos o un error.
+ * Spanish words for which the vocabulary gives several Damana forms
+ * that are NOT the same one with another spelling (those go under «escritura»).
+ * They may be real synonyms, different senses or a mistake.
  */
 export function detectarSinonimos(entradas: EntradaLexica[]): GrupoSinonimos[] {
   const porEspanol = new Map<string, { texto: string; opciones: Map<string, OpcionDamana> }>();
@@ -177,11 +177,11 @@ export function detectarSinonimos(entradas: EntradaLexica[]): GrupoSinonimos[] {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Una forma damana con varios significados en español
+// 3. One Damana form with several meanings in Spanish
 // ---------------------------------------------------------------------------
 
 export interface SentidoEspanol {
-  /** Como está escrita en la fuente, con su tilde si la tiene. */
+  /** As written in the source, with its accent if it has one. */
   damana: string;
   espanol: string;
   fuente: string | null;
@@ -190,9 +190,9 @@ export interface SentidoEspanol {
 export interface GrupoPolisemia {
   clave: string;
   /**
-   * Las formas del grupo solo se distinguen por la tilde (Ako «córtelo» /
-   * Akó «lo cortó»). La app quita las tildes al comparar, así que hoy las
-   * trata como la misma palabra: si la tilde marca algo, es una regla.
+   * The forms in the group are told apart only by the accent (Ako «córtelo» /
+   * Akó «lo cortó»). The app strips accents when comparing, so today it
+   * treats them as the same word: if the accent marks something, it is a rule.
    */
   soloTilde: boolean;
   sentidos: SentidoEspanol[];
@@ -227,7 +227,7 @@ export function detectarPolisemia(entradas: EntradaLexica[]): GrupoPolisemia[] {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Entradas que hay que aclarar una por una
+// 4. Entries that must be clarified one by one
 // ---------------------------------------------------------------------------
 
 export type MotivoDuda =
@@ -253,12 +253,12 @@ export const TEXTO_MOTIVO: Record<MotivoDuda, string> = {
 export interface EntradaDudosa {
   entrada: EntradaLexica;
   motivos: MotivoDuda[];
-  /** Ayuda concreta: p. ej. de qué fila vecina parece ser la nota. */
+  /** Concrete help: e.g. which neighbouring row the note seems to belong to. */
   pista: string;
 }
 
 const RE_SEPARADOR_DE_FORMAS = /\/|\s-\s|\p{L}-\p{L}/u;
-/** Una coma separa formas solo en casillas cortas; en una oración es puntuación. */
+/** A comma separates forms only in short cells; in a sentence it is punctuation. */
 const MAXIMO_PALABRAS_CON_COMA = 4;
 
 function tieneVariasFormas(damana: string): boolean {
@@ -268,10 +268,10 @@ function tieneVariasFormas(damana: string): boolean {
 const RE_SIN_FORMA = /no hay forma|no tiene forma|no hay palabra/i;
 const RE_ESPANOL_POCO_CLARO = /\(probable\)|^\s*(verb|afi)\s*:/i;
 const RE_FUENTE_HABLANTES = /nativ/i;
-/** Hasta cuántas filas de distancia se busca la dueña de una nota corrida. */
+/** How many rows away to look for the owner of a shifted note. */
 const VECINDAD_NOTA = 2;
 
-/** Palabras que las notas usan para explicar y que no identifican a ninguna fila. */
+/** Words the notes use to explain and that identify no row. */
 const PALABRAS_DE_EXPLICACION = new Set(
   [
     'damana', 'dumuna', 'ejemplo', 'palabra', 'palabras', 'significa', 'quiere', 'decir',
@@ -294,9 +294,9 @@ function laNotaMenciona(clavesNota: string[], entrada: EntradaLexica): boolean {
 }
 
 /**
- * Entradas del vocabulario que necesitan aclaración. El orden de la lista
- * importa: para detectar notas corridas de fila se miran las vecinas (en
- * el bloque «nativas 2026-10» la nota de «pastores» quedó en «pedazo»).
+ * Vocabulary entries that need clarification. The order of the list
+ * matters: to detect notes shifted to another row the neighbours are checked (in
+ * the «nativas 2026-10» block the note for «pastores» ended up on «pedazo»).
  */
 export function detectarEntradasDudosas(entradas: EntradaLexica[]): EntradaDudosa[] {
   const dudosas: EntradaDudosa[] = [];
@@ -337,7 +337,7 @@ export function detectarEntradasDudosas(entradas: EntradaLexica[]): EntradaDudos
 }
 
 // ---------------------------------------------------------------------------
-// 5. Terminaciones: la gramática que se ve en las palabras
+// 5. Endings: the grammar that shows in the words
 // ---------------------------------------------------------------------------
 
 export interface RaizConocida {
@@ -357,9 +357,9 @@ export interface EjemploTerminacion {
   frecuencia: number;
   ejemplo?: OracionEjemplo;
   /**
-   * La oración española menciona el significado de la palabra base: señal
-   * de que la raíz es de verdad esa palabra y no un parecido casual
-   * (anzhʉn «sueño» no es la base de anzhʉnga «importante»).
+   * The Spanish sentence mentions the meaning of the base word: a sign
+   * that the root really is that word and not a chance resemblance
+   * (anzhʉn «sueño» is not the base of anzhʉnga «importante»).
    */
   encaja: boolean;
 }
@@ -370,8 +370,8 @@ function encajaConLaOracion(significado: string, ejemplo?: OracionEjemplo): bool
     tokenizarDamana(texto)
       .map((t) => t.normalizada)
       .filter((t) => t.length >= 4);
-  // Del significado cuentan las palabras de contenido; si solo trae
-  // palabras gramaticales («Ellos»), valen esas.
+  // From the meaning, content words count; if it only carries
+  // function words («Ellos»), those are used.
   const todas = palabras(significado);
   const contenido = todas.filter((t) => !esStopwordEspanol(t));
   const enOracion = new Set(palabras(ejemplo.espanol).map((t) => t.slice(0, 4)));
@@ -380,9 +380,9 @@ function encajaConLaOracion(significado: string, ejemplo?: OracionEjemplo): bool
 
 export interface TerminacionCandidata {
   terminacion: string;
-  /** En cuántas palabras base distintas aparece. */
+  /** In how many distinct base words it appears. */
   raices: number;
-  /** Regla o entrada del diccionario que ya la explica, si existe. */
+  /** Rule or dictionary entry that already explains it, if any. */
   yaSabemos: string;
   ejemplos: EjemploTerminacion[];
 }
@@ -396,10 +396,10 @@ export interface OpcionesTerminaciones {
 export const LETRAS_TERMINACION = { minimo: 2, maximo: 7 };
 
 /**
- * Terminaciones que se repiten detrás de palabras que ya conocemos:
- * urraga «casa» aparece como urragamba, urragaka, urraganzhe… Si «-mba»
- * sale detrás de 40 palabras distintas es gramática, no casualidad, y
- * vale la pena preguntar qué agrega.
+ * Endings that repeat after words we already know:
+ * urraga «casa» appears as urragamba, urragaka, urraganzhe… If «-mba»
+ * shows up after 40 different words it is grammar, not chance, and
+ * it is worth asking what it adds.
  */
 export function detectarTerminaciones(
   raices: RaizConocida[],

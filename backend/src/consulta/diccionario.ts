@@ -5,14 +5,14 @@ import { Idioma } from './consulta.enums';
 import { VocabularioDto } from './dto/consulta.dto';
 
 /**
- * Cómo se encontró la acepción, de más a menos fiable:
- *  - exacta: la palabra tal cual (misma tilde).
- *  - sin_tildes: igual tras normalizar (mamá = mama).
- *  - sinonimo: variante coloquial del español que el vocabulario registra
- *    bajo otra palabra (mamá → madre).
- *  - singular: quitando -s / -es a la palabra de entrada.
- *  - frase: entrada de varias palabras cuyas palabras están todas en la frase.
- *  - posible: comparten las 5 primeras letras (puede ser otra palabra).
+ * How the sense was found, from most to least reliable:
+ *  - exacta: the word as is (same accent).
+ *  - sin_tildes: equal after normalizing (mamá = mama).
+ *  - sinonimo: colloquial Spanish variant that the vocabulary records
+ *    under another word (mamá → madre).
+ *  - singular: removing -s / -es from the input word.
+ *  - frase: multi-word entry whose words are all in the sentence.
+ *  - posible: they share the first 5 letters (it may be another word).
  */
 export type TipoCoincidencia =
   | 'exacta'
@@ -23,7 +23,7 @@ export type TipoCoincidencia =
   | 'posible';
 
 export interface AcepcionEncontrada {
-  /** Palabra de la frase de entrada que motivó la búsqueda. */
+  /** Word of the input sentence that triggered the lookup. */
   palabra: string;
   espanol: string;
   damana: string;
@@ -32,17 +32,17 @@ export interface AcepcionEncontrada {
   coincidencia: TipoCoincidencia;
 }
 
-/** Tope global de acepciones que viajan en el prompt. */
+/** Global cap on senses that travel in the prompt. */
 export const MAX_ACEPCIONES = 40;
-/** Tope de acepciones «posible» (por prefijo) por palabra. */
+/** Cap on «posible» senses (by prefix) per word. */
 export const MAX_POSIBLES_POR_PALABRA = 3;
 export const LETRAS_PREFIJO = 5;
 
 /**
- * Variantes coloquiales o afectivas del español (clave normalizada) que el
- * vocabulario, hecho a partir de un diccionario, registra bajo la palabra
- * formal. Es sinonimia del español, no una traducción inventada: la
- * palabra damana es la misma. Lista corta y evidente a propósito.
+ * Colloquial or affectionate Spanish variants (normalized key) that the
+ * vocabulary, built from a dictionary, records under the formal
+ * word. It is Spanish synonymy, not an invented translation: the
+ * Damana word is the same. A short and obvious list on purpose.
  */
 export const SINONIMOS_ES: Record<string, string[]> = {
   mama: ['madre'],
@@ -75,9 +75,9 @@ interface Entrada {
 }
 
 interface Frase {
-  /** Texto tal cual de la alternativa, para mostrar qué se reconoció. */
+  /** Verbatim text of the alternative, to show what was recognized. */
   texto: string;
-  /** Tokens normalizados de contenido (sin stopwords en español). */
+  /** Normalized content tokens (without Spanish stopwords). */
   tokens: string[];
   entrada: Entrada;
 }
@@ -85,11 +85,11 @@ interface Frase {
 type Emisor = (palabra: string, entradas: Entrada[], coincidencia: TipoCoincidencia) => void;
 
 /**
- * Variantes del lado español de una entrada: «Igual, lo mismo» y «Ese o
- * esa» son dos acepciones cada una; «Cocinera (ave)» se indexa como
- * «cocinera»; «Verb: Hacer» como «hacer». Los paréntesis se quitan porque
- * son aclaraciones, no parte de la palabra. Se parte por «o»/«u» pero NO
- * por «y»: «Madre del agua y peces» es una sola cosa.
+ * Variants of the Spanish side of an entry: «Igual, lo mismo» and «Ese o
+ * esa» are two senses each; «Cocinera (ave)» is indexed as
+ * «cocinera»; «Verb: Hacer» as «hacer». Parentheses are removed because
+ * they are clarifications, not part of the word. It splits on «o»/«u» but NOT
+ * on «y»: «Madre del agua y peces» is a single thing.
  */
 export function alternativasEspanol(espanol: string): string[] {
   return espanol
@@ -100,7 +100,7 @@ export function alternativasEspanol(espanol: string): string[] {
     .filter((a) => a.length > 0);
 }
 
-/** Candidatos a singular de una palabra normalizada: flores → flor, casas → casa. */
+/** Singular candidates for a normalized word: flores → flor, casas → casa. */
 export function candidatosSingular(normalizada: string): string[] {
   const candidatos: string[] = [];
   if (normalizada.length > 4 && normalizada.endsWith('es')) {
@@ -113,14 +113,14 @@ export function candidatosSingular(normalizada: string): string[] {
 }
 
 /**
- * Índice del vocabulario para resolver cada palabra de una frase. Se
- * construye una vez (≈1.500 entradas) y se consulta en cada traducción.
+ * Vocabulary index used to resolve each word of a sentence. It is
+ * built once (≈1,500 entries) and queried on every translation.
  */
 export class IndiceDiccionario {
   private readonly exactaEs = new Map<string, Entrada[]>();
   private readonly normalizadaEs = new Map<string, Entrada[]>();
   private readonly frasesEs: Frase[] = [];
-  /** Cualquier alternativa española completa (una o varias palabras), normalizada. */
+  /** Any complete Spanish alternative (one or several words), normalized. */
   private readonly alternativaEs = new Map<string, Entrada[]>();
   private readonly normalizadaDm = new Map<string, Entrada[]>();
   private readonly frasesDm: Frase[] = [];
@@ -142,10 +142,10 @@ export class IndiceDiccionario {
           agregar(this.exactaEs, tokens[0].original.toLowerCase().normalize('NFC'), entrada);
           agregar(this.normalizadaEs, tokens[0].normalizada, entrada);
         } else if (tokens.length > 1) {
-          // Las negaciones se conservan como contenido: «No quiero» solo debe
-          // entrar cuando la frase trae el «no». Si se quitaran como
-          // stopwords, la forma negativa saldría también para «quiero» y el
-          // modelo recibiría un verbo negado para una frase afirmativa.
+          // Negations are kept as content: «No quiero» must only
+          // come in when the sentence carries the «no». If they were removed as
+          // stopwords, the negative form would also show up for «quiero» and the
+          // model would receive a negated verb for an affirmative sentence.
           const contenido = tokens
             .map((t) => t.normalizada)
             .filter((t) => !esStopwordEspanol(t) || esNegacionEspanol(t));
@@ -170,11 +170,11 @@ export class IndiceDiccionario {
   }
 
   /**
-   * Acepciones para cada palabra del texto, en el orden del texto. Para
-   * cada palabra se prueba la cadena exacta → sin tildes → singular →
-   * prefijo, y se para en el primer paso que encuentra algo. Las entradas
-   * de varias palabras se incluyen cuando todas sus palabras están en el
-   * texto.
+   * Senses for each word of the text, in text order. For
+   * each word it tries the exact string → no accents → singular →
+   * prefix, and stops at the first step that finds something. Multi-word
+   * entries are included when all their words are in the
+   * text.
    */
   buscar(texto: string, idioma: Idioma): AcepcionEncontrada[] {
     const tokens = tokenizarDamana(texto);
@@ -224,8 +224,8 @@ export class IndiceDiccionario {
       if (entradas.length > 0) return emitir(original, entradas, 'sinonimo');
     }
 
-    // Las palabras gramaticales cortas no se aproximan: «las» → «la» sería
-    // ruido, y por prefijo todavía peor.
+    // Short function words are not approximated: «las» → «la» would be
+    // noise, and by prefix even worse.
     if (esStopwordEspanol(normalizada) || normalizada.length < 4) return;
 
     for (const singular of candidatosSingular(normalizada)) {
@@ -243,7 +243,7 @@ export class IndiceDiccionario {
     emitir(original, this.porPrefijo(normalizada, this.clavesDm, this.normalizadaDm), 'posible');
   }
 
-  /** Entradas cuya clave comparte las primeras LETRAS_PREFIJO letras. */
+  /** Entries whose key shares the first LETRAS_PREFIJO letters. */
   private porPrefijo(
     normalizada: string,
     claves: string[],

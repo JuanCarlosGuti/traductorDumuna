@@ -1,19 +1,19 @@
 #!/usr/bin/env node
-// Trae el corpus real desde el repositorio PRIVADO de datos y lo copia sobre
-// datos/ antes de construir (GitHub Actions, Render). El repositorio público
-// solo versiona un corpus de muestra: el corpus completo pertenece a la
-// comunidad wiwa y no se publica (ver DATA.md).
+// Fetches the real corpus from the PRIVATE data repository and copies it over
+// datos/ before building (GitHub Actions, Render). The public repository
+// only versions a sample corpus: the full corpus belongs to the
+// Wiwa community and is not published (see DATA.md).
 //
-// Variables de entorno:
-//   CORPUS_DATOS_REPO         "dueño/repo" del repositorio privado de datos.
-//   CORPUS_DATOS_TOKEN        token con permiso de lectura sobre ese repo.
-//   CORPUS_DATOS_OBLIGATORIO  "1" = fallar si no se puede traer el corpus
-//                             (en el despliegue: mejor no desplegar que
-//                             publicar la app con el corpus de muestra).
+// Environment variables:
+//   CORPUS_DATOS_REPO         "owner/repo" of the private data repository.
+//   CORPUS_DATOS_TOKEN        token with read permission on that repo.
+//   CORPUS_DATOS_OBLIGATORIO  "1" = fail if the corpus cannot be fetched
+//                             (on deployment: better not to deploy than
+//                             to publish the app with the sample corpus).
 //
-// Solo corre en CI (CI=true o RENDER=true) o con --forzar: en una copia de
-// trabajo sobreescribiría los CSV de muestra y el corpus real podría acabar en
-// un commit. En local, usar CORPUS_DATOS_DIR=/ruta/al/repo-privado/datos.
+// Only runs in CI (CI=true or RENDER=true) or with --forzar: in a working
+// copy it would overwrite the sample CSVs and the real corpus could end up in
+// a commit. Locally, use CORPUS_DATOS_DIR=/path/to/private-repo/datos.
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -53,8 +53,8 @@ if (!enCi && !forzar) {
 
 const tmp = mkdtempSync(join(tmpdir(), 'corpus-datos-'));
 try {
-  // El token viaja en una cabecera, no en la URL: así no queda en la
-  // configuración del clon ni en los mensajes de error de git.
+  // The token travels in a header, not in the URL: that way it does not stay in the
+  // clone's configuration or in git's error messages.
   const basica = Buffer.from(`x-access-token:${token}`).toString('base64');
   try {
     execFileSync(
@@ -72,7 +72,7 @@ try {
       { stdio: ['ignore', 'ignore', 'pipe'] },
     );
   } catch {
-    // Sin volcar stderr: podría repetir la cabecera.
+    // Not dumping stderr: it could repeat the header.
     console.error(
       `traer-datos: no se pudo clonar ${repo} (¿token sin permiso o repo inexistente?).`,
     );

@@ -44,20 +44,20 @@ import { TraduccionesRepository, UsoModelo } from './traducciones.repository';
 import { ValidadasRepository } from './validadas.repository';
 
 /**
- * Con pensamiento adaptativo activo, los tokens de razonamiento cuentan
- * dentro de max_tokens: se deja margen de sobra para que el JSON no se
- * corte. En los proveedores compatibles no hay razonamiento oculto.
+ * With adaptive thinking active, reasoning tokens count
+ * within max_tokens: plenty of headroom is left so that the JSON is not
+ * cut off. Compatible providers have no hidden reasoning.
  */
 const MAX_TOKENS_ANTHROPIC = 16_000;
 const MAX_TOKENS_COMPATIBLE = 4096;
-/** La frase original se guarda acortada como contexto de la pendiente. */
+/** The original sentence is stored shortened as context for the pending item. */
 const MAX_CONTEXTO_PENDIENTE = 200;
 
 /**
- * Límite de uso del proveedor compatible (429). El plan gratuito de Groq
- * admite unas cuatro traducciones por minuto con prompts de este tamaño:
- * se espera lo que pida Retry-After (acotado) y se reintenta, en vez de
- * fallar a la primera.
+ * Usage limit of the compatible provider (429). Groq's free plan
+ * allows about four translations per minute with prompts of this size:
+ * it waits for what Retry-After asks (bounded) and retries, instead of
+ * failing at the first attempt.
  */
 export const REINTENTOS_429 = 2;
 export const ESPERA_429_POR_DEFECTO_MS = 15_000;
@@ -71,7 +71,7 @@ export function esperaTrasLimite(retryAfter: string | null | undefined): number 
   return ESPERA_429_POR_DEFECTO_MS;
 }
 
-/** Separado para que los tests no esperen de verdad. */
+/** Separate so that tests do not really wait. */
 export const reloj = {
   dormir: (ms: number): Promise<void> => new Promise((resolver) => setTimeout(resolver, ms)),
 };
@@ -84,13 +84,13 @@ export const MENSAJE_SIN_PROVEEDOR =
   '(B) Claude: define ANTHROPIC_API_KEY (console.anthropic.com). ' +
   'Después reinicia el backend. Detalles en el README.';
 
-/** Lo que devuelve cada proveedor: el texto del modelo y, si lo informa, el consumo. */
+/** What each provider returns: the model's text and, if reported, the usage. */
 interface SalidaModelo {
   texto: string;
   uso: UsoModelo | null;
 }
 
-/** usage de la API de Anthropic → UsoModelo. */
+/** Anthropic API usage → UsoModelo. */
 export function usoDeAnthropic(usage: Anthropic.Usage | null | undefined): UsoModelo | null {
   if (!usage) return null;
   return {
@@ -107,7 +107,7 @@ interface UsageCompatible {
   prompt_tokens_details?: { cached_tokens?: number };
 }
 
-/** usage estilo OpenAI (Groq, Ollama, Gemini…) → UsoModelo. */
+/** OpenAI-style usage (Groq, Ollama, Gemini…) → UsoModelo. */
 export function usoDeCompatible(usage: UsageCompatible | null | undefined): UsoModelo | null {
   if (!usage) return null;
   const numero = (v: unknown): number | null => (typeof v === 'number' ? v : null);
@@ -121,16 +121,16 @@ export function usoDeCompatible(usage: UsageCompatible | null | undefined): UsoM
 
 export interface OpcionesTraduccion {
   /**
-   * false para evaluar sin dejar huella: ni fila en traducciones ni
-   * pendientes nuevas. Por defecto se registra todo.
+   * false to evaluate without leaving a trace: no row in traducciones and no
+   * new pending items. By default everything is logged.
    */
   registrar?: boolean;
 }
 
 /**
- * Extrae un objeto JSON de la respuesta del modelo con tolerancia a
- * bloques ```json ... ``` y a texto alrededor: si hay un bloque cercado se
- * usa su contenido; después se recorta del primer '{' al último '}'.
+ * Extracts a JSON object from the model's response, tolerating
+ * ```json ... ``` blocks and surrounding text: if there is a fenced block its
+ * content is used; then it is trimmed from the first '{' to the last '}'.
  */
 export function extraerJson(texto: string): Record<string, unknown> {
   const cercado = texto.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -200,7 +200,7 @@ export class TraduccionService {
     return respuesta;
   }
 
-  /** Una línea por traducción: para seguir el gasto y ver si la caché entra. */
+  /** One line per translation: to track spending and see whether the cache kicks in. */
   private resumenDeUso(direccion: DireccionTraduccion, uso: UsoModelo | null, duracionMs: number): string {
     const cabecera = `Traducción ${direccion} con ${this.config.proveedor} ${this.config.modelo} en ${duracionMs} ms`;
     if (!uso) return `${cabecera} · el proveedor no informó tokens`;
@@ -211,7 +211,7 @@ export class TraduccionService {
     );
   }
 
-  /** «Esta traducción es correcta» / «corregir»: guarda el par validado. */
+  /** «This translation is correct» / «correct it»: stores the validated pair. */
   validar(dto: ValidarTraduccionDto): ValidacionGuardadaDto {
     const haciaDamana = dto.direccion === DireccionTraduccion.espanol_a_damana;
     this.validadas.guardar({
@@ -267,8 +267,8 @@ export class TraduccionService {
   }
 
   /**
-   * Cuánto respalda el corpus a esta traducción. Los ejemplos vienen
-   * agrupados por dominio, así que el «top» es el máximo, no el primero.
+   * How much the corpus backs this translation. Examples come
+   * grouped by domain, so the «top» is the maximum, not the first.
    */
   private senalesDeApoyo(ejemplos: FragmentoRecuperado[]): SenalesApoyo {
     const top = ejemplos.reduce<FragmentoRecuperado | null>(
@@ -288,9 +288,9 @@ export class TraduccionService {
   }
 
   /**
-   * Guarda la traducción y sus señales de apoyo. Es best-effort a propósito:
-   * un fallo del registro NUNCA debe impedir que el usuario reciba su
-   * traducción, que es lo que vino a buscar.
+   * Stores the translation and its support signals. Best-effort on purpose:
+   * a logging failure must NEVER stop the user from receiving their
+   * translation, which is what they came for.
    */
   private registrarTraduccion(
     dto: TraducirDto,
@@ -323,12 +323,12 @@ export class TraduccionService {
     }
   }
 
-  /** Cierra el bucle con las hablantes: lo que faltó queda apuntado. */
+  /** Closes the loop with the speakers: what was missing gets noted down. */
   private registrarPendientes(dto: TraducirDto, palabras: string[]): void {
     const idioma = dto.direccion === DireccionTraduccion.espanol_a_damana ? 'espanol' : 'damana';
-    // Los artículos y demás palabras gramaticales del español no son
-    // vocabulario que falte: el damana no los tiene. Si el modelo los deja
-    // entre corchetes se muestran, pero no se les preguntan a las hablantes.
+    // Articles and other Spanish function words are not
+    // missing vocabulary: Damana does not have them. If the model leaves them
+    // in square brackets they are shown, but the speakers are not asked about them.
     const porRegistrar =
       idioma === 'espanol' ? palabras.filter((p) => !esStopwordEspanol(normalizar(p))) : palabras;
     if (porRegistrar.length === 0) return;
@@ -343,8 +343,8 @@ export class TraduccionService {
   }
 
   /**
-   * Claude vía el SDK oficial, con salida estructurada (output_config.format
-   * con el JSON Schema de la respuesta) para que el JSON llegue bien formado.
+   * Claude via the official SDK, with structured output (output_config.format
+   * with the response's JSON Schema) so that the JSON arrives well formed.
    */
   private async llamarAnthropic(
     sistema: string,
@@ -355,19 +355,19 @@ export class TraduccionService {
       const respuesta = await this.cliente!.messages.create({
         model: this.config.modelo,
         max_tokens: MAX_TOKENS_ANTHROPIC,
-        // El prompt de sistema es idéntico en todas las traducciones de una
-        // misma dirección: se marca para la caché de prompts de Anthropic
-        // (prefijo mínimo de 512 tokens en claude-opus-5-5; este prompt
-        // ronda los 750). La caché dura 5 min entre llamadas: entra en
-        // rachas (evaluaciones, sesiones de trabajo), no en traducciones
-        // sueltas. El mensaje de usuario cambia con cada frase (diccionario,
-        // reglas y ejemplos dependen de ella), así que no tiene prefijo
-        // estable que marcar.
+        // The system prompt is identical across all translations in the
+        // same direction: it is marked for Anthropic's prompt cache
+        // (minimum prefix of 512 tokens on claude-opus-5-5; this prompt
+        // is around 750). The cache lasts 5 min between calls: it kicks in during
+        // bursts (evaluations, work sessions), not on one-off
+        // translations. The user message changes with every sentence (dictionary,
+        // rules and examples depend on it), so it has no stable
+        // prefix to mark.
         system: [{ type: 'text', text: sistema, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: usuario }],
-        // Sin temperature: claude-opus-5-5 la rechaza con 400 (ver
-        // config-traductor.provider.ts). El esfuerzo solo se manda si se
-        // configuró; si no, vale el valor por defecto de la API.
+        // No temperature: claude-opus-5-5 rejects it with a 400 (see
+        // config-traductor.provider.ts). The effort is only sent if it was
+        // configured; otherwise the API's default value applies.
         output_config: {
           format: { type: 'json_schema', schema: esquema },
           ...(this.config.esfuerzo ? { effort: this.config.esfuerzo } : {}),
@@ -393,11 +393,11 @@ export class TraduccionService {
   }
 
   /**
-   * Llama a cualquier API compatible con OpenAI (Ollama, Gemini, Groq,
-   * Hugging Face router...) usando fetch nativo: POST {base}/chat/completions.
-   * Se pide response_format json_object; si el proveedor no lo soporta
-   * (400) se reintenta sin él y se confía en extraerJson. Un 429 se espera
-   * y se reintenta hasta REINTENTOS_429 veces antes de rendirse.
+   * Calls any OpenAI-compatible API (Ollama, Gemini, Groq,
+   * Hugging Face router...) using native fetch: POST {base}/chat/completions.
+   * response_format json_object is requested; if the provider does not support it
+   * (400) it retries without it and relies on extraerJson. On a 429 it waits
+   * and retries up to REINTENTOS_429 times before giving up.
    */
   private async llamarCompatible(
     sistema: string,
@@ -490,7 +490,7 @@ export class TraduccionService {
     return { texto, uso: usoDeCompatible(json?.usage) };
   }
 
-  /** Mapea los errores tipados del SDK de Anthropic a errores HTTP claros. */
+  /** Maps the Anthropic SDK's typed errors to clear HTTP errors. */
   private traducirErrorAnthropic(error: unknown): Error {
     if (error instanceof HttpException) return error;
     if (error instanceof Anthropic.AuthenticationError) {

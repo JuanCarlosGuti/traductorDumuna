@@ -34,7 +34,7 @@ describe('App', () => {
   });
 
   it('con sesión guardada muestra el usuario y el botón de salir', async () => {
-    // El servicio lee localStorage al construirse, igual que en una recarga.
+    // The service reads localStorage on construction, same as on a reload.
     localStorage.setItem('damana.token', 'token-de-prueba');
     localStorage.setItem('damana.usuario', 'juan');
     const fixture = TestBed.createComponent(App);

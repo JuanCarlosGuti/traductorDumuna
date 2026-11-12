@@ -32,9 +32,9 @@ export interface EstadisticasElicitacion {
   pruebas: number;
   pendientes: number;
   resueltas: number;
-  /** Filas sin llenar cuya palabra ya está en el vocabulario: no se piden. */
+  /** Unfilled rows whose word is already in the vocabulary: not requested. */
   cubiertasPorVocabulario: number;
-  /** Pendientes que ya estaban abiertas y el vocabulario cubre: se cierran. */
+  /** Pending items that were already open and the vocabulary covers: closed. */
   cerradasPorVocabulario: number;
   idsRepetidos: number;
 }
@@ -47,7 +47,7 @@ export interface EstadisticasImportacion {
   reglas: number;
   nombresPropios: number;
   elicitacion: EstadisticasElicitacion;
-  /** Filas que quedaron en pruebas_traduccion.csv tras fundir. */
+  /** Rows left in pruebas_traduccion.csv after merging. */
   pruebasEnArchivo: number;
   totalTokens: number;
   topPalabras: { palabra: string; frecuencia: number }[];
@@ -103,7 +103,7 @@ interface FilaNombrePropio {
   notas: string;
 }
 
-/** El folleto bíblico (lfb) es el único corpus «bíblico»; el resto es cotidiano. */
+/** The biblical booklet (lfb) is the only «biblical» corpus; the rest is everyday. */
 export function dominioDeOracion(fuente: string | undefined): DominioCorpus {
   return (fuente ?? '').trim().toLowerCase().startsWith('lfb')
     ? DominioCorpus.biblico
@@ -120,14 +120,14 @@ export class ImportadorService {
   ) {}
 
   /**
-   * Importa el corpus completo de forma idempotente: los 4 CSV, las reglas y
-   * nombres propios de reglas_damana.xlsx y todos los lotes de elicitación
-   * (formato_elicitacion*.xlsx). Las tablas de contenido se reconstruyen
-   * (DELETE + INSERT en una transacción); progreso_srs, traducciones,
-   * validadas y pendientes se conservan —en pendientes solo se añaden las
-   * filas de elicitación sin llenar y se cierran las que llegaron
-   * completas—. Una de cada 10 filas completas de elicitación se reserva
-   * para pruebas_traduccion.csv y no entra al retrieval.
+   * Imports the whole corpus idempotently: the 4 CSVs, the rules and
+   * proper names from reglas_damana.xlsx and all the elicitation batches
+   * (formato_elicitacion*.xlsx). Content tables are rebuilt
+   * (DELETE + INSERT in one transaction); progreso_srs, traducciones,
+   * validadas and pendientes are kept — in pendientes only the
+   * unfilled elicitation rows are added and those that arrived
+   * complete are closed —. One in every 10 complete elicitation rows is reserved
+   * for pruebas_traduccion.csv and does not go into retrieval.
    */
   async importarTodo(dirDatos: string): Promise<EstadisticasImportacion> {
     const oraciones = this.leerCsv<FilaOracion>(dirDatos, 'corpus_oraciones.csv');
@@ -138,10 +138,10 @@ export class ImportadorService {
     const elicitacion = await this.leerElicitacion(dirDatos);
     const plan = planificarElicitacion(elicitacion.filas);
     const ahora = new Date().toISOString();
-    // Lo que el vocabulario ya sabe no se les pide a las hablantes (cobran
-    // por palabra): una fila sin llenar cuya palabra ya existe no se
-    // registra como pendiente, y las pendientes abiertas que el vocabulario
-    // cubre se cierran.
+    // What the vocabulary already knows is not requested from the speakers (they
+    // charge per word): an unfilled row whose word already exists is not
+    // recorded as pending, and open pending items that the vocabulary
+    // covers are closed.
     const cobertura = new CoberturaVocabulario([...vocabulario, ...plan.vocabulario]);
     const cubiertasPorVocabulario = plan.pendientes.filter((p) => cobertura.cubreEspanol(p.palabra)).length;
     let cerradasPorVocabulario = 0;
@@ -153,8 +153,8 @@ export class ImportadorService {
           'DELETE FROM reglas; DELETE FROM nombres_propios;',
       );
 
-      // Las columnas damana pasan por corregirOrtografiaDamana (ü→ʉ, ver
-      // comun/texto/ortografia.ts); los CSV fuente quedan intactos.
+      // Damana columns go through corregirOrtografiaDamana (ü→ʉ, see
+      // comun/texto/ortografia.ts); the source CSVs are left intact.
       const insOracion = this.db.prepare(
         `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente, dominio)
          VALUES (?, ?, ?, ?, ?, ?)`,
@@ -239,8 +239,8 @@ export class ImportadorService {
         insNombre.run(n.damana, n.espanol, n.seEscribeIgual ? 1 : 0, n.otrasGrafias || null, n.notas || null);
       }
 
-      // Elicitación: vocabulario y oraciones cotidianas (las pruebas NO
-      // entran a la base: viven solo en pruebas_traduccion.csv).
+      // Elicitation: vocabulary and everyday sentences (tests do NOT
+      // go into the database: they live only in pruebas_traduccion.csv).
       for (const v of plan.vocabulario) {
         const info = insVocabulario.run(v.espanol, v.damana, v.categoria, v.notas || null, v.fuente);
         this.tokenizar(v.damana, 'vocabulario', info.lastInsertRowid as number);
@@ -288,8 +288,8 @@ export class ImportadorService {
   }
 
   /**
-   * reglas_damana.xlsx: hoja «reglas» y hoja «nombres propios». Es opcional
-   * (un corpus de prueba puede no traerlo): si falta se avisa y se sigue.
+   * reglas_damana.xlsx: «reglas» sheet and «nombres propios» sheet. It is optional
+   * (a test corpus may not include it): if missing, a warning is shown and it carries on.
    */
   private async leerReglas(
     dirDatos: string,
@@ -334,9 +334,9 @@ export class ImportadorService {
   }
 
   /**
-   * Todos los lotes formato_elicitacion*.xlsx de la carpeta, en orden de
-   * nombre. Se lee la hoja que tenga la columna palabra_es (las plantillas
-   * traen además una hoja de instrucciones).
+   * All the formato_elicitacion*.xlsx batches in the folder, in name
+   * order. The sheet that has the palabra_es column is read (templates
+   * also include an instructions sheet).
    */
   private async leerElicitacion(
     dirDatos: string,

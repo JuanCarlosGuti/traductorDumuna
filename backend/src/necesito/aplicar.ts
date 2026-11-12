@@ -22,14 +22,14 @@ export interface ResultadoAplicar {
   sinLlenar: number;
 }
 
-/** Clave de comparación: el par completo, con ʉ ≠ u y ñ ≠ n. */
+/** Comparison key: the full pair, with ʉ ≠ u and ñ ≠ n. */
 function clave(espanol: string, damana: string): string {
   return `${normalizar(espanol.trim())}|${normalizar(damana.trim())}`;
 }
 
 /**
- * Decide qué filas del Excel son nuevas para el glosario. No modifica nada:
- * devolver el plan permite testearlo y mostrarlo antes de escribir.
+ * Decides which Excel rows are new for the glossary. It modifies nothing:
+ * returning the plan lets it be tested and shown before writing.
  */
 export function planificar(
   llenadas: FilaLlenada[],
@@ -41,28 +41,28 @@ export function planificar(
 
   for (const fila of llenadas) {
     const espanol = fila.espanol.trim();
-    // Misma corrección ortográfica que aplica el importador (ü → ʉ).
+    // Same spelling fix the importer applies (ü → ʉ).
     const damana = corregirOrtografiaDamana(fila.damana.trim());
     const k = clave(espanol, damana);
     if (existentes.has(k)) {
       duplicadas.push({ espanol, damana });
       continue;
     }
-    existentes.add(k); // evita duplicados dentro del propio Excel
+    existentes.add(k); // avoids duplicates within the Excel itself
     agregadas.push({ espanol, damana });
   }
   return { agregadas, duplicadas };
 }
 
-/** Escapa un campo para CSV solo cuando hace falta. */
+/** Escapes a field for CSV only when needed. */
 function campo(valor: string): string {
   return /[",\n\r]/.test(valor) ? `"${valor.replace(/"/g, '""')}"` : valor;
 }
 
 /**
- * Texto a añadir al final del CSV. Respeta el terminador de línea del
- * archivo: los CSV del proyecto vienen con CRLF y mezclar LF deja registros
- * pegados que csv-parse ya no puede leer.
+ * Text to append to the end of the CSV. It respects the file's line
+ * terminator: the project's CSVs come with CRLF and mixing in LF leaves records
+ * stuck together that csv-parse can no longer read.
  */
 export function construirLineas(
   agregadas: FilaLlenada[],
@@ -81,9 +81,9 @@ export function construirLineas(
 }
 
 /**
- * Lee un Excel de trabajo. Las dos primeras columnas son siempre el par
- * (una la rellena el hablante); `columnaEspanol` dice cuál de ellas es el
- * español, porque el orden se invierte entre los dos archivos.
+ * Reads a working Excel file. The first two columns are always the pair
+ * (one is filled in by the speaker); `columnaEspanol` says which of them is the
+ * Spanish, because the order is reversed between the two files.
  */
 async function leerExcel(
   ruta: string,
@@ -99,7 +99,7 @@ async function leerExcel(
   const columnaDamana = columnaEspanol === 1 ? 2 : 1;
 
   hoja.eachRow((fila, numero) => {
-    if (numero === 1) return; // encabezado
+    if (numero === 1) return; // header
     const espanol = String(fila.getCell(columnaEspanol).value ?? '').trim();
     const damana = String(fila.getCell(columnaDamana).value ?? '').trim();
     if (!espanol && !damana) return;
@@ -126,7 +126,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // En el archivo español→damana el español va primero; en el otro, segundo.
+  // In the Spanish→Damana file the Spanish goes first; in the other, second.
   const desdeEspanol = await leerExcel(rutaEspanol, 1);
   const desdeDamana = await leerExcel(rutaDamana, 2);
   const llenadas = [...desdeEspanol.llenadas, ...desdeDamana.llenadas];
@@ -141,7 +141,7 @@ async function main(): Promise<void> {
   const { agregadas, duplicadas } = planificar(llenadas, vocabulario);
 
   if (agregadas.length > 0) {
-    // Se AÑADE al final; nunca se reescriben ni se borran las filas existentes.
+    // It is APPENDED at the end; existing rows are never rewritten or deleted.
     const actual = fs.readFileSync(rutaCsv, 'utf8');
     fs.appendFileSync(rutaCsv, construirLineas(agregadas, actual), 'utf8');
   }
@@ -161,7 +161,7 @@ async function main(): Promise<void> {
   }
 }
 
-// Solo corre como CLI; al importarlo desde un test no ejecuta nada.
+// Only runs as a CLI; importing it from a test executes nothing.
 if (require.main === module) {
   main().catch((e) => {
     console.error(e);

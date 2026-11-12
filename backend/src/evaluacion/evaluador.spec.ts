@@ -52,7 +52,7 @@ describe('evaluarPrueba y resumen', () => {
     const familia = informe.porAmbito.find((r) => r.ambito === 'familia')!;
     expect(familia).toMatchObject({ pruebas: 1, exactas: 1, porcentajeExactas: 100, porcentajeSinEquivalente: 0 });
     const comida = resumir(pruebas.filter((p) => p.ambito === 'comida'), 'comida');
-    expect(comida.porcentajeSinEquivalente).toBeCloseTo(75, 5); // (0,5 + 1) / 2
+    expect(comida.porcentajeSinEquivalente).toBeCloseTo(75, 5); // (0.5 + 1) / 2
   });
 
   it('renderiza el informe en Markdown con la tabla por ámbito y el detalle', () => {

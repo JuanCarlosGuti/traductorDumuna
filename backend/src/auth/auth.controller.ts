@@ -36,7 +36,7 @@ export class AuthController {
 
   @Publico()
   @Post('login')
-  // 200 en vez del 201 por defecto de POST: no se está creando un recurso.
+  // 200 instead of POST's default 201: no resource is being created.
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Entrega un token de sesión a cambio de las credenciales' })
   login(@Body() dto: LoginDto, @Req() peticion: PeticionConSesion): SesionDto {
@@ -49,8 +49,8 @@ export class AuthController {
     }
     if (!this.auth.verificar(dto.usuario, dto.password)) {
       this.auth.registrarFallo(ip);
-      // Mismo mensaje para usuario y contraseña: distinguirlos confirmaría
-      // a quien prueba cuál de los dos acertó.
+      // Same message for user and password: telling them apart would confirm
+      // to whoever is probing which of the two was right.
       throw new UnauthorizedException('Usuario o contraseña incorrectos');
     }
     this.auth.olvidarFallos(ip);

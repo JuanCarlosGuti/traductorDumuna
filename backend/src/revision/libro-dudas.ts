@@ -3,7 +3,7 @@ import { AMARILLO } from '../pendientes/pendientes.service';
 import { TEXTO_MOTIVO } from './dudas';
 import { InformeDudas } from './dudas.service';
 
-/** Nombres de las hojas, en el orden en que conviene llenarlas. */
+/** Sheet names, in the order in which they should be filled in. */
 export const HOJAS_DUDAS = {
   instrucciones: 'leer primero',
   escritura: '1 escritura',
@@ -14,13 +14,13 @@ export const HOJAS_DUDAS = {
 } as const;
 
 const AZUL_ENCABEZADO = 'FFDCE8F0';
-/** Cuántas formas distintas caben en columnas propias; el resto va en el comentario. */
+/** How many distinct forms fit in columns of their own; the rest go in the comment. */
 const FORMAS_POR_FILA = 4;
 
 interface Columna {
   titulo: string;
   ancho: number;
-  /** La llena la hablante. */
+  /** Filled in by the speaker. */
   amarilla?: boolean;
 }
 
@@ -63,10 +63,10 @@ function agregarHoja(
 }
 
 /**
- * Libro de Excel con todo lo que hay que aclarar con hablantes. Cada hoja
- * hace UN tipo de pregunta y solo se llenan las columnas amarillas. Las
- * tres últimas hojas piden criterio: son para quien tenga experiencia
- * traduciendo.
+ * Excel workbook with everything that must be clarified with speakers. Each sheet
+ * asks ONE kind of question and only the yellow columns are filled in. The
+ * last three sheets call for judgement: they are for someone with experience
+ * translating.
  */
 export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS.Workbook {
   const libro = new ExcelJS.Workbook();
@@ -99,7 +99,7 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
   });
   for (const numero of [3, 4, 5, 6]) instrucciones.mergeCells(numero, 1, numero, 4);
 
-  // 1. Escritura
+  // 1. Spelling
   const columnasFormas: Columna[] = [];
   for (let i = 0; i < FORMAS_POR_FILA; i++) {
     columnasFormas.push({ titulo: i === 0 ? 'forma más usada' : `otra forma ${i}`, ancho: 20 });
@@ -142,7 +142,7 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
     }),
   );
 
-  // 2. Una palabra española, varias en damana
+  // 2. One Spanish word, several in Damana
   agregarHoja(
     libro,
     HOJAS_DUDAS.sinonimos,
@@ -172,7 +172,7 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
     ),
   );
 
-  // 3. Una forma damana, varios significados
+  // 3. One Damana form, several meanings
   agregarHoja(
     libro,
     HOJAS_DUDAS.polisemia,
@@ -198,7 +198,7 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
     ),
   );
 
-  // 4. Entradas por aclarar
+  // 4. Entries to clarify
   agregarHoja(
     libro,
     HOJAS_DUDAS.dudosas,
@@ -222,7 +222,7 @@ export function construirLibroDudas(informe: InformeDudas, fecha: Date): ExcelJS
     ]),
   );
 
-  // 5. Terminaciones
+  // 5. Endings
   agregarHoja(
     libro,
     HOJAS_DUDAS.terminaciones,

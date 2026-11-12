@@ -18,8 +18,8 @@ export interface ParametrosBusqueda {
   limite: number;
 }
 
-/** En modo similitud se recuperan más candidatos que el límite para que
- *  el filtro por fuente no deje la respuesta corta. */
+/** In similarity mode more candidates than the limit are fetched so that
+ *  the source filter does not leave the response short. */
 const CANDIDATOS_SIMILITUD = 200;
 
 @Injectable()
@@ -30,9 +30,9 @@ export class BusquedaService {
   ) {}
 
   /**
-   * Una palabra → concordancia exacta (cada ocurrencia con su contexto).
-   * Varias palabras → búsqueda por similitud TF-IDF sobre oraciones,
-   * frases y conjugaciones, con las palabras de la consulta resaltadas.
+   * One word → exact concordance (each occurrence with its context).
+   * Several words → TF-IDF similarity search over sentences,
+   * phrases and conjugations, with the query words highlighted.
    */
   buscar(params: ParametrosBusqueda): RespuestaBusquedaDto {
     const tokens = tokenizarDamana(params.q);
@@ -115,7 +115,7 @@ export class BusquedaService {
     };
   }
 
-  /** Ocurrencias de cada palabra de la consulta dentro del texto. */
+  /** Occurrences of each query word within the text. */
   private ocurrenciasDe(texto: string, tokensConsulta: string[]): Ocurrencia[] {
     const unicas = [...new Set(tokensConsulta)];
     return unicas.flatMap((token) => buscarOcurrencias(texto, token));

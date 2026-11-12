@@ -4,9 +4,9 @@ import { tokenizarDamana } from '../comun/texto/tokenizador';
 import { Idioma } from './consulta.enums';
 
 /**
- * Rasgo de la frase de entrada que activa una regla gramatical. Se asigna
- * a cada regla al importar (según su «tipo» y su «qué hace») y se detecta
- * en la frase con heurísticas simples en el momento de traducir.
+ * Feature of the input sentence that triggers a grammar rule. It is assigned
+ * to each rule on import (based on its «tipo» and its «qué hace») and detected
+ * in the sentence with simple heuristics at translation time.
  */
 export type Disparador =
   | 'plural'
@@ -34,18 +34,18 @@ export interface ReglaGramatical {
   ejemploRegla: string | null;
   traduccionEjemplo: string | null;
   notas: string | null;
-  /** null = regla general: se incluye siempre. */
+  /** null = general rule: always included. */
   disparador: Disparador | null;
 }
 
-/** Tope de reglas que viajan en el prompt. */
+/** Cap on rules that travel in the prompt. */
 export const MAX_REGLAS = 8;
 
 /**
- * Deduce el disparador de una regla a partir de cómo la describió quien
- * llenó la hoja («pluraliza sustantivos», «posesivo / "de"», «negación»…).
- * Se mira el tipo Y el significado: en la plantilla el tipo suele ser solo
- * «sufijo», que no dice nada del rasgo.
+ * Infers a rule's trigger from how it was described by whoever
+ * filled in the sheet («pluraliza sustantivos», «posesivo / "de"», «negación»…).
+ * Both the type AND the meaning are checked: in the template the type is usually just
+ * «sufijo», which says nothing about the feature.
  */
 export function inferirDisparador(
   tipo: string | null | undefined,
@@ -102,10 +102,10 @@ const RE_FUTURO_REGULAR = /(remos|reis|aras|eras|iras|aran|eran|iran)$/;
 const RE_PERIFRASIS_FUTURO = /\b(voy|vas|va|vamos|van)\s+a\b/;
 
 /**
- * Qué rasgos gramaticales trae una frase española. Son heurísticas
- * deliberadamente simples: un falso positivo solo añade una regla de más
- * al prompt (el modelo decide si la aplica); un falso negativo deja al
- * modelo sin la pista.
+ * Which grammatical features a Spanish sentence carries. These are deliberately
+ * simple heuristics: a false positive only adds one extra rule
+ * to the prompt (the model decides whether to apply it); a false negative leaves the
+ * model without the hint.
  */
 export function detectarDisparadoresEspanol(texto: string): Disparador[] {
   const tokens = tokenizarDamana(texto);
@@ -147,14 +147,14 @@ export function detectarDisparadoresEspanol(texto: string): Disparador[] {
   return DISPARADORES.filter((d) => encontrados.has(d));
 }
 
-/** La forma de una regla («-ndzina») como sufijo comparable, sin guion. */
+/** The form of a rule («-ndzina») as a comparable suffix, without the hyphen. */
 function sufijoDe(forma: string): string {
   return normalizar(forma).replace(/^-+/, '').trim();
 }
 
 /**
- * En damana no hay que adivinar: una regla se activa cuando alguna palabra
- * de la entrada termina en su sufijo (y tiene algo delante).
+ * In Damana there is no need to guess: a rule is triggered when some word
+ * of the input ends in its suffix (and has something before it).
  */
 export function reglasPorSufijoDamana(
   texto: string,
@@ -174,9 +174,9 @@ export interface SeleccionReglas {
 }
 
 /**
- * Reglas que viajan en el prompt: las generales (sin disparador) siempre,
- * más las activadas por los rasgos de la frase. En damana se activan por
- * sufijo; en español por heurísticas. Nunca más de MAX_REGLAS.
+ * Rules that travel in the prompt: the general ones (no trigger) always,
+ * plus those triggered by the sentence's features. In Damana they are triggered by
+ * suffix; in Spanish by heuristics. Never more than MAX_REGLAS.
  */
 export function seleccionarReglas(
   texto: string,

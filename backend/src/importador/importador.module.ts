@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { PendientesModule } from '../pendientes/pendientes.module';
 import { ImportadorService } from './importador.service';
 
-// PendientesModule: las filas de elicitación sin llenar se apuntan como
-// pendientes y las que vuelven completas cierran la suya.
+// PendientesModule: unfilled elicitation rows are recorded as
+// pending and those that come back complete close theirs.
 @Module({
   imports: [PendientesModule],
   providers: [ImportadorService],

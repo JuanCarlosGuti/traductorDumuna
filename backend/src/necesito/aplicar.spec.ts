@@ -19,7 +19,7 @@ describe('planificar (comando inverso)', () => {
   });
 
   it('la comparación respeta ʉ ≠ u y ñ ≠ n', () => {
-    // 'nunka' NO es 'nʉnka', así que es una entrada nueva, no un duplicado
+    // 'nunka' is NOT 'nʉnka', so it is a new entry, not a duplicate
     const r = planificar(
       [
         { espanol: 'agua', damana: 'nunka' },
@@ -32,8 +32,8 @@ describe('planificar (comando inverso)', () => {
   });
 
   it('ignora mayúsculas, tildes y espacios al comparar', () => {
-    // Ʉ (U+0244) es la mayúscula de ʉ (U+0289); se construye numéricamente
-    // para no confundirla con Ʊ (U+028A), que es otra letra distinta.
+    // Ʉ (U+0244) is the capital of ʉ (U+0289); it is built numerically
+    // so as not to confuse it with Ʊ (U+028A), which is a different letter.
     const nunkaMayus = 'N' + String.fromCharCode(0x0244) + 'NKA';
     const r = planificar([{ espanol: '  Água ', damana: nunkaMayus }], glosario);
     expect(r.duplicadas).toHaveLength(1);
@@ -59,7 +59,7 @@ describe('planificar (comando inverso)', () => {
   });
 
   it('una misma palabra española puede tener otra traducción damana', () => {
-    // polisemia real del corpus: no debe bloquearse por el lado español
+    // real polysemy in the corpus: it must not be blocked by the Spanish side
     const r = planificar([{ espanol: 'agua', damana: 'dzira' }], glosario);
     expect(r.agregadas).toEqual([{ espanol: 'agua', damana: 'dzira' }]);
   });
@@ -78,7 +78,7 @@ describe('construirLineas', () => {
       'pueblo,gunamandzina,,,lista automatica\r\ncasa,ugunga,,,lista automatica\r\n',
     );
     expect(texto.includes('\n\n')).toBe(false);
-    // El resultado completo debe seguir teniendo una fila por línea
+    // The full result must still have one row per line
     expect((actual + texto).trim().split(/\r\n/)).toHaveLength(4);
   });
 

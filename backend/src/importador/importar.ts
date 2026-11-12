@@ -5,7 +5,7 @@ import { ImportadorModule } from './importador.module';
 import { ImportadorService } from './importador.service';
 import { resolverDirDatos, rutaDbPorDefecto } from './rutas-datos';
 
-// Módulo CLI propio: el importador no arrastra controladores HTTP.
+// Own CLI module: the importer does not drag in HTTP controllers.
 @Module({
   imports: [
     DatabaseModule.forRoot({ rutaDb: rutaDbPorDefecto() }),

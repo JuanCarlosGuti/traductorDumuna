@@ -10,7 +10,7 @@ import { ImportadorService } from './importador.service';
 import { leerPruebas } from './pruebas-csv';
 
 const BOM = String.fromCharCode(0xfeff);
-const U_DIERESIS = String.fromCharCode(0x00fc); // ü — apaño de Word para ʉ
+const U_DIERESIS = String.fromCharCode(0x00fc); // ü — Word workaround for ʉ
 
 const CSV_ORACIONES =
   BOM +
@@ -40,8 +40,8 @@ const ENCABEZADOS_ELICITACION = [
   'id', 'ambito', 'palabra_es', 'palabra_dm', 'ejemplo_es', 'ejemplo_dm', 'variante', 'notas',
 ];
 
-// Los ids se eligen con la misma función que usa el importador: así el test
-// no depende de qué ids concretos caen en el 10 % reservado para pruebas.
+// Ids are chosen with the same function the importer uses: that way the test
+// does not depend on which specific ids fall in the 10% reserved for tests.
 const IDS = Array.from({ length: 300 }, (_, i) => String(i + 1));
 const ID_PRUEBA = IDS.find(esFilaDePrueba)!;
 const [ID_AGUA, ID_VECINA, ID_PINGUINO, ID_HOLA, ID_ANOS] = IDS.filter((id) => !esFilaDePrueba(id));
@@ -52,7 +52,7 @@ const LOTE_1 = [
   [ID_PINGUINO, 'otro', 'pingüino', 'pingüino', 'El pingüino nada.', 'pingüino senu', '', ''],
   [ID_PRUEBA, 'casa', 'casa', 'Urraga', 'Mi casa es grande.', 'Ranzhe urraga aikuia', '', ''],
   [ID_HOLA, 'saludos', 'hola', 'Zungui', 'Hola, ¿cómo estás?', '', 'pregunta', ''],
-  // Sin llenar, pero el vocabulario ya tiene «año»: no debe pedirse.
+  // Unfilled, but the vocabulary already has «año»: it must not be requested.
   [ID_ANOS, 'tiempo', 'años', '', 'Pasaron dos años.', '', '', ''],
 ];
 
@@ -128,7 +128,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     db = new Database(':memory:');
     ejecutarMigraciones(db);
     servicio = new ImportadorService(db, new PendientesRepository(db));
-    // El CSV de pruebas se regenera por test: lo escribe el importador.
+    // The tests CSV is regenerated per test: the importer writes it.
     fs.rmSync(path.join(dirTmp, 'pruebas_traduccion.csv'), { force: true });
   });
 
@@ -141,7 +141,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
 
   it('importa los conteos de los CSV, las reglas, los nombres y la elicitación', async () => {
     const stats = await servicio.importarTodo(dirTmp);
-    expect(stats.oraciones).toBe(2 + 2); // CSV + elicitación (agua, pingüino); la prueba no entra
+    expect(stats.oraciones).toBe(2 + 2); // CSV + elicitation (agua, pingüino); the test does not go in
     expect(stats.frases).toBe(2);
     expect(stats.vocabulario).toBe(2 + 4); // CSV + agua, pingüino, casa, hola
     expect(stats.conjugaciones).toBe(2);
@@ -153,10 +153,10 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
       vocabulario: 4,
       oraciones: 2,
       pruebas: 1,
-      pendientes: 1, // vecina (sin nada)
+      pendientes: 1, // vecina (nothing filled in)
       resueltas: 3, // agua, pingüino, casa
-      // hola ya tiene palabra_dm en el propio lote y «años» está en el CSV
-      // como «año»: no se les piden a las hablantes.
+      // hola already has palabra_dm in the batch itself and «años» is in the CSV
+      // as «año»: the speakers are not asked for them.
       cubiertasPorVocabulario: 2,
       cerradasPorVocabulario: 0,
       idsRepetidos: 0,
@@ -215,9 +215,9 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
       { espanol: 'Mi casa es grande.', damanaEsperado: 'Ranzhe urraga aikuia', ambito: 'casa' },
     ]);
     expect(filas("SELECT 1 FROM oraciones WHERE damana = 'Ranzhe urraga aikuia'")).toHaveLength(0);
-    // la palabra sí entra al diccionario: la prueba mide la composición, no el léxico
+    // the word does go into the dictionary: the test measures composition, not lexicon
     expect(filas("SELECT damana FROM vocabulario WHERE espanol = 'casa'")).toEqual([{ damana: 'Urraga' }]);
-    // y el archivo lleva BOM y CRLF como el resto de CSV del proyecto
+    // and the file carries a BOM and CRLF like the rest of the project's CSVs
     const crudo = fs.readFileSync(path.join(dirTmp, 'pruebas_traduccion.csv'), 'utf8');
     expect(crudo.charCodeAt(0)).toBe(0xfeff);
     expect(crudo).toContain('\r\n');
@@ -226,8 +226,8 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
   it('las filas sin llenar quedan como pendientes de elicitación, sin duplicarse al reimportar', async () => {
     await servicio.importarTodo(dirTmp);
     await servicio.importarTodo(dirTmp);
-    // hola trae palabra_dm en el propio lote y «años» ya está como «año» en
-    // el vocabulario: ninguna de las dos se les pide a las hablantes.
+    // hola carries palabra_dm in the batch itself and «años» is already in the
+    // vocabulary as «año»: the speakers are asked for neither.
     expect(filas('SELECT palabra, estado, origen, contexto, veces_pedida FROM pendientes ORDER BY palabra')).toEqual([
       { palabra: 'vecina', estado: 'pendiente', origen: 'elicitacion', contexto: 'Mi vecina cocina.', veces_pedida: 1 },
     ]);
@@ -240,7 +240,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
       const stats = await servicio.importarTodo(dirTmp);
       expect(stats.elicitacion.archivos).toBe(2);
       expect(stats.elicitacion.idsRepetidos).toBe(1);
-      expect(stats.elicitacion.pendientes).toBe(0); // vecina ya llegó; hola y años están cubiertas
+      expect(stats.elicitacion.pendientes).toBe(0); // vecina has arrived; hola and años are covered
       expect(stats.elicitacion.cubiertasPorVocabulario).toBe(2);
       expect(db.prepare("SELECT estado FROM pendientes WHERE palabra = 'vecina'").get()).toEqual({ estado: 'resuelta' });
       expect(filas("SELECT damana FROM vocabulario WHERE espanol = 'vecina'")).toEqual([{ damana: 'anzhirru' }]);
@@ -319,10 +319,10 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
 
   it('cierra las pendientes abiertas que el vocabulario ya cubre (español y damana) y deja las demás', async () => {
     const repo = new PendientesRepository(db);
-    repo.registrarPedida('aguas', 'espanol', 'las aguas del río'); // plural de «agua», que está en el CSV
-    repo.registrarPedida('ñame', 'espanol', 'quiero ñame'); // no está en ningún lado
-    repo.registrarPedida('nʉnka', 'damana', 'nʉnka gontka'); // la forma damana de «agua»
-    repo.registrarPedida('nunka', 'damana', 'nunka'); // u ≠ ʉ: no es la misma palabra
+    repo.registrarPedida('aguas', 'espanol', 'las aguas del río'); // plural of «agua», which is in the CSV
+    repo.registrarPedida('ñame', 'espanol', 'quiero ñame'); // not anywhere
+    repo.registrarPedida('nʉnka', 'damana', 'nʉnka gontka'); // the Damana form of «agua»
+    repo.registrarPedida('nunka', 'damana', 'nunka'); // u ≠ ʉ: not the same word
 
     const stats = await servicio.importarTodo(dirTmp);
 
@@ -332,7 +332,7 @@ describe('ImportadorService (corpus v3 + reglas + elicitación)', () => {
     expect(estado('nʉnka')).toBe('resuelta');
     expect(estado('ñame')).toBe('pendiente');
     expect(estado('nunka')).toBe('pendiente');
-    // y la fila «años» del lote nunca llegó a registrarse
+    // and the «años» row of the batch was never recorded
     expect(db.prepare("SELECT COUNT(*) AS n FROM pendientes WHERE palabra = 'años'").get()).toEqual({ n: 0 });
   });
 });

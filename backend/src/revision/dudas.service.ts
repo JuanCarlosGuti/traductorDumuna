@@ -20,7 +20,7 @@ import {
   TokenCorpus,
 } from './dudas';
 
-/** Todo lo que conviene aclarar con hablantes, listo para pasar a Excel. */
+/** Everything worth clarifying with speakers, ready to go into Excel. */
 export interface InformeDudas {
   escritura: GrupoEscritura[];
   sinonimos: GrupoSinonimos[];
@@ -29,14 +29,14 @@ export interface InformeDudas {
   terminaciones: TerminacionCandidata[];
 }
 
-/** Las oraciones de ejemplo se eligen cortas para que quepan en una celda. */
+/** Example sentences are chosen short so they fit in a cell. */
 const LARGO_MAXIMO_EJEMPLO = 160;
 const MAXIMO_SIGNIFICADOS = 3;
 
 /**
- * Recorre el corpus importado y arma el informe de dudas. Solo lee: no
- * corrige ni borra nada. Las respuestas de las hablantes se aplican
- * después, a mano o con un paso propio, cuando vuelvan.
+ * Walks the imported corpus and builds the doubts report. Read-only: it does not
+ * fix or delete anything. The speakers' answers are applied
+ * later, by hand or with a step of their own, when they come back.
  */
 export class DudasService {
   constructor(private readonly repo: CorpusRepository) {}
@@ -74,7 +74,7 @@ export class DudasService {
     };
   }
 
-  /** Cada palabra de oraciones y frases con su frecuencia y una oración corta de ejemplo. */
+  /** Each word of sentences and phrases with its frequency and a short example sentence. */
   private tokensDelCorpus(): Map<string, TokenCorpus> {
     const tokens = new Map<string, TokenCorpus>();
     for (const fuente of [FuenteCorpus.oraciones, FuenteCorpus.frases]) {
@@ -99,7 +99,7 @@ export class DudasService {
     return tokens;
   }
 
-  /** Formas del corpus más las del vocabulario y las conjugaciones, con lo que significan. */
+  /** Corpus forms plus those from the vocabulary and the conjugations, with what they mean. */
   private formasVistas(entradas: EntradaLexica[], tokens: Map<string, TokenCorpus>): FormaVista[] {
     const formas = new Map<string, FormaVista>();
     for (const [forma, info] of tokens) {
@@ -136,7 +136,7 @@ export class DudasService {
     return raices;
   }
 
-  /** Lo que ya sabemos de una terminación: una regla, o una entrada que es esa partícula. */
+  /** What we already know about an ending: a rule, or an entry that is that particle. */
   private terminacionesConocidas(entradas: EntradaLexica[]): Map<string, string> {
     const conocidas = new Map<string, string>();
     for (const e of entradas) {

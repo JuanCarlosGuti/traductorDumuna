@@ -4,9 +4,9 @@ import { ejecutarMigraciones } from './migraciones';
 const VERSION_ACTUAL = 7;
 
 /**
- * Deja una base recién migrada como si se hubiera quedado en una versión
- * anterior: quita lo que añadieron las versiones posteriores y retrocede
- * user_version. Así se prueba que las migraciones corren sobre datos reales.
+ * Leaves a freshly migrated database as if it had stayed at an earlier
+ * version: removes what later versions added and rolls back
+ * user_version. This tests that migrations run over real data.
  */
 function retrocederA(db: Database.Database, version: 4 | 5 | 6): void {
   db.exec(`
@@ -90,7 +90,7 @@ describe('ejecutarMigraciones', () => {
     const fila = db
       .prepare('SELECT texto, ejemplos_en_contexto, confianza FROM traducciones')
       .get() as { texto: string; ejemplos_en_contexto: number | null; confianza: number | null };
-    expect(fila.texto).toBe('nʉjkasheshisha ñingui'); // ʉ y ñ intactas
+    expect(fila.texto).toBe('nʉjkasheshisha ñingui'); // ʉ and ñ intact
     expect(fila.ejemplos_en_contexto).toBeNull();
     expect(fila.confianza).toBeNull();
     db.close();
@@ -140,7 +140,7 @@ describe('ejecutarMigraciones', () => {
     const fila = db
       .prepare('SELECT texto, tokens_entrada, tokens_cache_leidos, duracion_ms FROM traducciones')
       .get() as { texto: string; tokens_entrada: number | null; tokens_cache_leidos: number | null; duracion_ms: number | null };
-    expect(fila.texto).toBe('nʉnka ñingui'); // ʉ y ñ intactas
+    expect(fila.texto).toBe('nʉnka ñingui'); // ʉ and ñ intact
     expect(fila.tokens_entrada).toBeNull();
     expect(fila.tokens_cache_leidos).toBeNull();
     expect(fila.duracion_ms).toBeNull();

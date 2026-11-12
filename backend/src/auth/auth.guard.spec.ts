@@ -14,7 +14,7 @@ const config: ConfigAuth = {
   duracionDias: 30,
 };
 
-/** Contexto mínimo: solo lo que el guard llega a mirar. */
+/** Minimal context: only what the guard actually looks at. */
 const contextoCon = (peticion: PeticionConSesion): ExecutionContext =>
   ({
     switchToHttp: () => ({ getRequest: () => peticion }),

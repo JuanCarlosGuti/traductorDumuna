@@ -16,9 +16,9 @@ export interface FilaTexto {
   referencia: string;
   textoDamana: string;
   textoEspanol: string;
-  /** Solo oraciones: 'aprobado' | 'revisar' (calidad de la alineación). */
+  /** Sentences only: 'aprobado' | 'revisar' (alignment quality). */
   estado?: string;
-  /** Registro de lengua del fragmento (bíblico, cotidiano, gramática). */
+  /** Language register of the fragment (biblical, everyday, grammar). */
   dominio: DominioCorpus;
 }
 
@@ -48,7 +48,7 @@ export class CorpusRepository {
       .all() as FraseDto[];
   }
 
-  /** Reglas gramaticales de reglas_damana.xlsx, con su disparador. */
+  /** Grammar rules from reglas_damana.xlsx, with their trigger. */
   listarReglas(): ReglaGramatical[] {
     return (
       this.db
@@ -94,7 +94,7 @@ export class CorpusRepository {
     }));
   }
 
-  /** Lemas verbales con su número de formas conjugadas. */
+  /** Verb lemmas with their number of conjugated forms. */
   listarLemas(): LemaDto[] {
     return this.db
       .prepare(
@@ -103,7 +103,7 @@ export class CorpusRepository {
       .all() as LemaDto[];
   }
 
-  /** Conjugaciones en cuya forma damana aparece la palabra (vía tokens). */
+  /** Conjugations whose Damana form contains the word (via tokens). */
   conjugacionesConPalabra(palabraNormalizada: string): ConjugacionDto[] {
     return this.db
       .prepare(
@@ -118,8 +118,8 @@ export class CorpusRepository {
   }
 
   /**
-   * Formas conjugadas agrupadas por lema, para conectar entre sí las
-   * distintas personas de un mismo verbo (nʉjkasheshisha / naijkasheshisha…).
+   * Conjugated forms grouped by lemma, to link together the
+   * different persons of the same verb (nʉjkasheshisha / naijkasheshisha…).
    */
   formasPorLema(): { lema: string; damana: string }[] {
     return this.db
@@ -145,9 +145,9 @@ export class CorpusRepository {
   }
 
   /**
-   * Filas de una fuente con su texto damana y español ya ensamblados para
-   * concordancia y retrieval. En oraciones la referencia marca las de
-   * alineación dudosa con «(revisar)».
+   * Rows from a source with their Damana and Spanish text already assembled for
+   * concordance and retrieval. In sentences the reference marks those with
+   * doubtful alignment with «(revisar)».
    */
   textosDe(fuente: FuenteCorpus): FilaTexto[] {
     switch (fuente) {
@@ -244,10 +244,10 @@ export class CorpusRepository {
   }
 
   /**
-   * Todas las palabras damana con su frecuencia total y las formas
-   * originales distintas con que aparecen (para la heurística de nombres
-   * propios). El separador ',' es seguro: el tokenizador nunca produce
-   * comas dentro de una palabra.
+   * All Damana words with their total frequency and the distinct
+   * original forms in which they appear (for the proper-name
+   * heuristic). The ',' separator is safe: the tokenizer never produces
+   * commas inside a word.
    */
   frecuenciasConOriginales(): FrecuenciaPalabra[] {
     return (

@@ -6,7 +6,7 @@ import { PruebaTraduccion } from './elicitacion';
 
 export const ARCHIVO_PRUEBAS = 'pruebas_traduccion.csv';
 const BOM = String.fromCharCode(0xfeff);
-const EOL = '\r\n'; // mismo terminador que el resto de CSV del proyecto
+const EOL = '\r\n'; // same terminator as the rest of the project's CSVs
 
 function campo(valor: string): string {
   return /[",\n\r]/.test(valor) ? `"${valor.replace(/"/g, '""')}"` : valor;
@@ -16,7 +16,7 @@ function clave(p: PruebaTraduccion): string {
   return `${normalizar(p.espanol.trim())}|${normalizar(p.damanaEsperado.trim())}`;
 }
 
-/** Lee el CSV de pruebas (espanol, damana_esperado, ambito); vacío si no existe. */
+/** Reads the tests CSV (espanol, damana_esperado, ambito); empty if it does not exist. */
 export function leerPruebas(dirDatos: string): PruebaTraduccion[] {
   const ruta = path.join(dirDatos, ARCHIVO_PRUEBAS);
   if (!fs.existsSync(ruta)) return [];
@@ -35,9 +35,9 @@ export function leerPruebas(dirDatos: string): PruebaTraduccion[] {
 }
 
 /**
- * Funde las pruebas reservadas por el importador con las que ya hubiera
- * en el archivo (p. ej. añadidas a mano) y lo reescribe. Idempotente: la
- * misma pareja español/damana no se repite. Nunca borra filas existentes.
+ * Merges the tests reserved by the importer with those already
+ * in the file (e.g. added by hand) and rewrites it. Idempotent: the
+ * same Spanish/Damana pair is not repeated. It never deletes existing rows.
  */
 export function escribirPruebas(
   dirDatos: string,

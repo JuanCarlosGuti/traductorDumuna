@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test';
 import { CREDENCIALES } from '../playwright.config';
 
 /**
- * Navegador real contra el backend sirviendo el build de Angular, con la
- * autenticación activa, el corpus de e2e/datos y SIN motor de traducción
- * (ver playwright.config.ts). Comprueba que las vistas nuevas se entienden
- * con el backend una vez iniciada la sesión; el login en sí lo cubre
+ * Real browser against the backend serving the Angular build, with
+ * authentication active, the e2e/datos corpus and NO translation engine
+ * (see playwright.config.ts). Checks that the new views talk to
+ * the backend properly once logged in; login itself is covered by
  * sesion.spec.ts.
  */
 const entrar = async (page: import('@playwright/test').Page) => {

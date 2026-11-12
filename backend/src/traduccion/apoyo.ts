@@ -3,20 +3,20 @@ import { FuenteCorpus } from '../consulta/consulta.enums';
 export type NivelApoyo = 'bueno' | 'parcial' | 'revisar';
 
 /**
- * Umbrales sobre la MEDIA de los K puntajes del retrieval. El puntaje del
- * mejor ejemplo (top) engaña —puede venir de una entrada de diccionario que
- * contiene la palabra literal— mientras que la media refleja cuánto contexto
- * real respalda la traducción.
+ * Thresholds on the MEAN of the K retrieval scores. The score of the
+ * best example (top) is misleading — it may come from a dictionary entry that
+ * contains the literal word — whereas the mean reflects how much real
+ * context backs the translation.
  *
- * Calibrados sobre 42 consultas del corpus (jul 2026):
- *   cubierto    mediana 0,280 (rango 0,247-0,387)
- *   descubierto mediana 0,187 (rango 0,099-0,302)
- * Con 0,20 se detecta el 55% de los descubiertos SIN falsos positivos; subir
- * a 0,30 detectaría el 95% pero marcaría el 70% de los buenos, y un aviso que
- * salta siempre se acaba ignorando.
+ * Calibrated on 42 corpus queries (Jul 2026):
+ *   covered    median 0.280 (range 0.247-0.387)
+ *   uncovered  median 0.187 (range 0.099-0.302)
+ * With 0.20, 55% of the uncovered ones are detected with NO false positives; raising it
+ * to 0.30 would detect 95% but flag 70% of the good ones, and a warning that
+ * always fires ends up being ignored.
  *
- * Los niveles se derivan al vuelo de lo registrado en `traducciones`, no se
- * guardan: así, recalibrar estos umbrales reinterpreta también el histórico.
+ * Levels are derived on the fly from what is logged in `traducciones`, they are not
+ * stored: that way, recalibrating these thresholds also reinterprets the history.
  */
 export const UMBRAL_REVISAR = 0.2;
 export const UMBRAL_BUENO = 0.32;
@@ -26,23 +26,23 @@ export interface SenalesApoyo {
   fuenteTop: FuenteCorpus | null;
   ejemplosRecuperados: number;
   /**
-   * Ejemplos que vienen de oraciones o frases, o sea, de la lengua en uso.
-   * `null` en las traducciones registradas antes de medirlo (v5): entonces
-   * se recae en la heurística vieja del top-1.
+   * Examples that come from sentences or phrases, i.e. from the language in use.
+   * `null` in translations logged before it was measured (v5): then
+   * it falls back to the old top-1 heuristic.
    */
   ejemplosEnContexto?: number | null;
 }
 
 export interface Apoyo {
   nivel: NivelApoyo;
-  /** Razones por las que se marcó «revisar»; vacío en los demás niveles. */
+  /** Reasons why it was flagged «revisar»; empty at the other levels. */
   motivos: string[];
 }
 
 /**
- * ¿Ningún ejemplo muestra la lengua en uso? Con la señal medida basta
- * contarla; en los registros viejos, que no la tienen, se conserva la
- * heurística original para no reinterpretar el histórico a ciegas.
+ * Does no example show the language in use? With the measured signal it is enough
+ * to count it; in old records, which lack it, the original
+ * heuristic is kept so as not to reinterpret the history blindly.
  */
 function sinContexto(senales: SenalesApoyo): boolean {
   return senales.ejemplosEnContexto == null
@@ -59,15 +59,15 @@ export function evaluarApoyo(senales: SenalesApoyo): Apoyo {
   if (senales.puntajeMedio < UMBRAL_REVISAR) {
     motivos.push('similitud_baja');
   }
-  // Todo el apoyo son entradas de la tabla de conjugaciones: confirman la
-  // forma verbal, pero ninguna muestra un uso real. (El vocabulario no
-  // participa en el retrieval; va aparte en el prompt.)
+  // All the support is entries from the conjugations table: they confirm the
+  // verb form, but none shows real usage. (The vocabulary does not
+  // take part in retrieval; it goes separately in the prompt.)
   //
-  // Se cuenta el contexto en vez de mirar solo el top-1: desde que el
-  // retrieval expande por raíz verbal, una consulta como «naijkasheshisha»
-  // encabeza con su propia conjugación (coincidencia exacta) pero trae
-  // debajo seis oraciones y frases con el verbo. Ahí el apoyo NO es solo de
-  // diccionario, y el aviso viejo mentía.
+  // The context is counted instead of looking only at the top-1: since
+  // retrieval expands by verb root, a query like «naijkasheshisha»
+  // leads with its own conjugation (exact match) but brings
+  // six sentences and phrases with the verb underneath. There the support is NOT
+  // dictionary-only, and the old warning was wrong.
   if (sinContexto(senales)) {
     motivos.push('apoyo_solo_de_diccionario');
   }

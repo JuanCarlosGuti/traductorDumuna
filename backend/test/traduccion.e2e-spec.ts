@@ -8,8 +8,8 @@ import { CLIENTE_ANTHROPIC } from '../src/traduccion/anthropic.provider';
 import { CONFIG_TRADUCTOR } from '../src/traduccion/config-traductor.provider';
 import { TraduccionModule } from '../src/traduccion/traduccion.module';
 
-// E2E sin ningún motor configurado: el traductor debe degradar con gracia
-// (503 + instrucciones), nunca romper la app. Validar sí funciona sin motor.
+// E2E with no engine configured: the translator must degrade gracefully
+// (503 + instructions), never break the app. Validating does work without an engine.
 describe('Traductor (e2e, sin motor configurado)', () => {
   let app: INestApplication;
 

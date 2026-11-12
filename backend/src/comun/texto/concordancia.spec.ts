@@ -76,7 +76,7 @@ describe('extraerFragmento', () => {
   });
 
   it('corta en límite de palabra a ±radio y marca con …', () => {
-    const relleno = 'palabra '.repeat(40); // 320 caracteres
+    const relleno = 'palabra '.repeat(40); // 320 characters
     const texto = `${relleno}nʉnka ${relleno}`.trim();
     const [oc] = buscarOcurrencias(texto, 'nʉnka');
     const frag = extraerFragmento(texto, oc, 120);
@@ -84,7 +84,7 @@ describe('extraerFragmento', () => {
     expect(frag.startsWith('…')).toBe(true);
     expect(frag.endsWith('…')).toBe(true);
     expect(frag).toContain('<mark>nʉnka</mark>');
-    // nunca corta una palabra por la mitad: solo quedan palabras enteras
+    // never cuts a word in half: only whole words remain
     const soloTexto = frag.replace(/…|<\/?mark>/g, '');
     for (const p of soloTexto.split(' ').filter(Boolean)) {
       expect(['palabra', 'nʉnka']).toContain(p);

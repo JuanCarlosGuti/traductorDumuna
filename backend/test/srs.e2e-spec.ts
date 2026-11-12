@@ -79,7 +79,7 @@ describe('SRS (e2e, corpus v3)', () => {
     expect(r1.body).toMatchObject({ palabra: 'nʉnka', repeticiones: 1, intervaloDias: 1 });
 
     const res = await request(app.getHttpServer()).get('/api/srs/siguiente').expect(200);
-    expect(res.body.tarjeta.palabra).not.toBe('nʉnka'); // programada para mañana
+    expect(res.body.tarjeta.palabra).not.toBe('nʉnka'); // scheduled for tomorrow
     expect(res.body.tarjeta.tipo).toBe('frecuencia');
     expect(res.body.tarjeta.traduccion).toContain('candidatas');
   });

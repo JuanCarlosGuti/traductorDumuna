@@ -9,10 +9,10 @@ export interface Ocurrencia {
 const RE_PALABRA = /[\p{L}ʉ']+/gu;
 
 /**
- * Encuentra todas las ocurrencias de una palabra en un texto, comparando
- * en forma normalizada (sin tildes ni mayúsculas, conservando ʉ y ñ).
- * Los índices refieren al texto original. Los apóstrofes de borde se
- * recortan igual que en tokenizarDamana.
+ * Finds every occurrence of a word in a text, comparing
+ * in normalized form (no accents or capitals, keeping ʉ and ñ).
+ * Indexes refer to the original text. Edge apostrophes are
+ * trimmed the same way as in tokenizarDamana.
  */
 export function buscarOcurrencias(texto: string, consulta: string): Ocurrencia[] {
   const objetivo = normalizar(consulta.trim());
@@ -41,10 +41,10 @@ function limpiarEspacios(s: string): string {
 }
 
 /**
- * Marca en un texto completo TODAS las ocurrencias dadas con <mark>,
- * escapando el resto como HTML y colapsando saltos de línea. Pensado
- * para textos cortos (oraciones, frases) donde no hace falta recortar
- * contexto. Las ocurrencias solapadas se ignoran.
+ * Marks ALL the given occurrences in a full text with <mark>,
+ * escaping the rest as HTML and collapsing line breaks. Meant
+ * for short texts (sentences, phrases) where there is no need to trim
+ * context. Overlapping occurrences are ignored.
  */
 export function marcarOcurrencias(texto: string, ocurrencias: Ocurrencia[]): string {
   const ordenadas = [...ocurrencias].sort((a, b) => a.inicio - b.inicio);
@@ -61,11 +61,11 @@ export function marcarOcurrencias(texto: string, ocurrencias: Ocurrencia[]): str
 }
 
 /**
- * Extrae el fragmento de contexto de una ocurrencia: ±radio caracteres a
- * cada lado, cortando en límite de palabra (nunca por la mitad), con la
- * palabra encontrada envuelta en <mark>. Los recortes se señalan con «…»
- * y los saltos de línea internos se colapsan a un espacio. El resto del
- * fragmento va escapado como HTML.
+ * Extracts the context fragment for an occurrence: ±radio characters on
+ * each side, cutting at a word boundary (never mid-word), with the
+ * matched word wrapped in <mark>. Cuts are signalled with «…»
+ * and internal line breaks are collapsed to a space. The rest of the
+ * fragment is HTML-escaped.
  */
 export function extraerFragmento(
   texto: string,

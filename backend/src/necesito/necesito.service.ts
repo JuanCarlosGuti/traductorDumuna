@@ -15,21 +15,21 @@ export type MotivoNecesito =
 
 export interface FilaNecesito {
   espanol: string;
-  /** Siempre vacío al generar: es la columna que llena el hablante. */
+  /** Always empty when generated: it is the column the speaker fills in. */
   damana: string;
   motivo: MotivoNecesito;
   prioridad: 1 | 2;
   vecesVisto: number;
   fecha: string;
-  /** Oración del corpus donde aparece la palabra, para dar contexto. */
+  /** Corpus sentence where the word appears, to give context. */
   ejemploEspanol: string;
   ejemploDamana: string;
 }
 
-/** Palabra damana frecuente que el glosario todavía no traduce. */
+/** Frequent Damana word the glossary does not translate yet. */
 export interface FilaNecesitoDamana {
   damana: string;
-  /** Siempre vacío al generar: es la columna que llena el hablante. */
+  /** Always empty when generated: it is the column the speaker fills in. */
   espanol: string;
   vecesVisto: number;
   ejemploDamana: string;
@@ -37,8 +37,8 @@ export interface FilaNecesitoDamana {
 }
 
 /**
- * Descarta ruido de teclado ("zzzz") sin ser restrictivo con el español:
- * toda palabra española tiene al menos una vocal.
+ * Discards keyboard noise ("zzzz") without being restrictive with Spanish:
+ * every Spanish word has at least one vowel.
  */
 function pareceEspanol(palabra: string): boolean {
   return palabra.length >= 3 && /[aeiouáéíóúü]/i.test(palabra);
@@ -57,13 +57,13 @@ export class NecesitoService {
   ) {}
 
   /**
-   * Palabras españolas que le faltan al traductor, ordenadas por utilidad:
-   * primero las que aparecieron en traducciones con poco apoyo (uso real),
-   * después las que salen en el corpus pero no están en el glosario.
+   * Spanish words the translator is missing, ordered by usefulness:
+   * first those that appeared in translations with little support (real use),
+   * then those that show up in the corpus but are not in the glossary.
    *
-   * Se descartan: stopwords, lo ya cubierto por el glosario, ruido de
-   * teclado, los probables nombres propios (solo aparecen con mayúscula
-   * inicial) y las palabras que se escriben igual en damana.
+   * Discarded: stopwords, what the glossary already covers, keyboard
+   * noise, probable proper names (they only appear with an initial
+   * capital) and words that are written the same in Damana.
    */
   calcular(hoy: string, limite = TOPE_FILAS): FilaNecesito[] {
     const cubiertas = this.palabrasDelGlosario();
@@ -102,7 +102,7 @@ export class NecesitoService {
         });
         return;
       }
-      // Ya estaba: gana la prioridad más alta y se acumula el uso.
+      // Already there: the highest priority wins and usage accumulates.
       previa.vecesVisto += veces;
       if (prioridad < previa.prioridad) {
         previa.prioridad = prioridad;
@@ -111,7 +111,7 @@ export class NecesitoService {
       if (fecha > previa.fecha) previa.fecha = fecha;
     };
 
-    // Prioridad 1 — lo que pediste traducir y el corpus no respaldó.
+    // Priority 1 — what you asked to translate and the corpus did not back up.
     for (const registro of this.traducciones.listar()) {
       const apoyo = evaluarApoyo({
         puntajeMedio: registro.puntajeMedio,
@@ -120,7 +120,7 @@ export class NecesitoService {
         ejemplosEnContexto: registro.ejemplosEnContexto,
       });
       if (apoyo.nivel !== 'revisar') continue;
-      // El lado español: la entrada si tradujiste desde español, la salida si no.
+      // The Spanish side: the input if you translated from Spanish, the output otherwise.
       const ladoEspanol =
         registro.direccion === 'espanol_a_damana'
           ? registro.texto
@@ -136,7 +136,7 @@ export class NecesitoService {
       }
     }
 
-    // Prioridad 2 — vocabulario del corpus que el glosario aún no cubre.
+    // Priority 2 — corpus vocabulary the glossary does not cover yet.
     for (const [palabra, veces] of this.frecuenciasEspanol()) {
       agregar(palabra, 'en_corpus_sin_glosario', 2, hoy, veces);
     }
@@ -152,9 +152,9 @@ export class NecesitoService {
   }
 
   /**
-   * Palabras damana frecuentes que el glosario todavía no traduce, con una
-   * oración real donde aparecen. Es el camino inverso al de `calcular()`:
-   * aquí el hablante aporta el significado en español.
+   * Frequent Damana words the glossary does not translate yet, with a
+   * real sentence where they appear. It is the reverse path of `calcular()`:
+   * here the speaker provides the meaning in Spanish.
    */
   calcularDamana(limite = TOPE_FILAS): FilaNecesitoDamana[] {
     const enGlosario = new Set(
@@ -162,7 +162,7 @@ export class NecesitoService {
         tokenizarDamana(e.damana).map((t) => t.normalizada),
       ),
     );
-    // Las formas conjugadas ya tienen glosa en la tabla de conjugaciones.
+    // Conjugated forms already have a gloss in the conjugations table.
     const enConjugaciones = new Set(
       this.repo.listarConjugaciones().flatMap((c) =>
         tokenizarDamana(c.damana).map((t) => t.normalizada),
@@ -176,7 +176,7 @@ export class NecesitoService {
         (f) =>
           !enGlosario.has(f.palabra) &&
           !enConjugaciones.has(f.palabra) &&
-          // Probables nombres propios: nunca aparecen en minúscula.
+          // Probable proper names: they never appear in lowercase.
           f.originales.some((o) => !empiezaEnMayuscula(o)),
       )
       .slice(0, limite)
@@ -192,12 +192,12 @@ export class NecesitoService {
       });
   }
 
-  /** Primera oración fiable donde aparece cada palabra española. */
+  /** First reliable sentence where each Spanish word appears. */
   private ejemplosPorPalabraEspanola(): Map<string, { espanol: string; damana: string }> {
     return this.primerEjemplo((fila) => fila.textoEspanol);
   }
 
-  /** Primera oración fiable donde aparece cada palabra damana. */
+  /** First reliable sentence where each Damana word appears. */
   private ejemplosPorPalabraDamana(): Map<string, { espanol: string; damana: string }> {
     return this.primerEjemplo((fila) => fila.textoDamana);
   }
@@ -231,14 +231,14 @@ export class NecesitoService {
     return cubiertas;
   }
 
-  /** Palabras que aparecen en el lado damana: se escriben igual, no hay nada que traducir. */
+  /** Words that appear on the Damana side: written the same, nothing to translate. */
   private palabrasEnDamana(): Set<string> {
     return new Set(this.repo.frecuenciasConOriginales().map((f) => f.palabra));
   }
 
   /**
-   * Frecuencia de cada palabra española del corpus, excluyendo las que solo
-   * aparecen con mayúscula inicial (probables nombres propios: Jesús, David…).
+   * Frequency of each Spanish word in the corpus, excluding those that only
+   * appear with an initial capital (probable proper names: Jesús, David…).
    */
   private frecuenciasEspanol(): [string, number][] {
     const info = new Map<
@@ -248,7 +248,7 @@ export class NecesitoService {
     const fuentes = [FuenteCorpus.oraciones, FuenteCorpus.frases];
     for (const fuente of fuentes) {
       for (const fila of this.repo.textosDe(fuente)) {
-        if (fila.estado === 'revisar') continue; // solo alineaciones fiables
+        if (fila.estado === 'revisar') continue; // reliable alignments only
         for (const token of tokenizarDamana(fila.textoEspanol)) {
           const entrada = info.get(token.normalizada) ?? {
             palabra: token.original.toLowerCase(),

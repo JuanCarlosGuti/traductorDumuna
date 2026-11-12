@@ -65,7 +65,7 @@ describe('detectarParecidas (una letra de diferencia y el mismo significado)', (
       forma('kunkujshina', 118, ['jehova', 'para dios']),
       forma('abisha', 0, ['Calentar']),
       forma('abishi', 0, ['Hiérvalo']),
-      // cambia la primera letra: prefijo de persona, no escritura
+      // the first letter changes: person prefix, not spelling
       forma('anzhʉngʉma', 0, ['su hijo']),
       forma('ranzhʉngʉma', 0, ['Mi hijo']),
     ]);
@@ -157,7 +157,7 @@ describe('detectarEntradasDudosas', () => {
   it('lo que está claro no se lista (ni las notas de categoría del diccionario)', () => {
     expect(de('Agua')).toBeUndefined();
     expect(de('año')).toBeUndefined();
-    // la coma de una oración es puntuación, no dos formas en una casilla
+    // a sentence's comma is punctuation, not two forms in one cell
     expect(de('Hoy otra vez estamos juntos qué bonito.')).toBeUndefined();
     expect(dudosas).toHaveLength(6);
   });
@@ -174,7 +174,7 @@ describe('detectarTerminaciones', () => {
     ['urraganzhe', { frecuencia: 2 }],
     ['kawanzhe', { frecuencia: 4 }],
     ['terruanzhe', { frecuencia: 1 }],
-    ['kunsinzhe', { frecuencia: 7 }], // con u: NO es la raíz kʉnsi
+    ['kunsinzhe', { frecuencia: 7 }], // with u: it is NOT the root kʉnsi
   ]);
   const terminaciones = detectarTerminaciones(
     [
@@ -182,7 +182,7 @@ describe('detectarTerminaciones', () => {
       { raiz: 'kawa', significado: 'Familia' },
       { raiz: 'terrua', significado: 'Hombre' },
       { raiz: 'kʉnsi', significado: 'Perro' },
-      { raiz: 'abu', significado: 'Madre' }, // demasiado corta para ser raíz fiable
+      { raiz: 'abu', significado: 'Madre' }, // too short to be a reliable root
     ],
     tokens,
     new Map([

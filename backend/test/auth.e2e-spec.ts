@@ -25,7 +25,7 @@ const config: ConfigAuth = {
   duracionDias: 30,
 };
 
-/** Corpus mínimo: basta con que /api/buscar tenga algo que devolver. */
+/** Minimal corpus: it is enough for /api/buscar to have something to return. */
 function escribirCorpus(dir: string): void {
   fs.writeFileSync(
     path.join(dir, 'corpus_oraciones.csv'),
@@ -169,7 +169,7 @@ describe('Autenticación (e2e)', () => {
   });
 
   it('el guard es global: cierra todos los controladores, no solo uno', async () => {
-    // Rutas de controladores distintos; ninguna está marcada como pública.
+    // Routes from different controllers; none is marked as public.
     for (const ruta of ['/api/vocabulario', '/api/frases', '/api/gramatica/lemas']) {
       await request(app.getHttpServer()).get(ruta).expect(401);
     }

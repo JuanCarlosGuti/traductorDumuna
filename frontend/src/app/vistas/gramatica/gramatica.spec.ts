@@ -45,7 +45,7 @@ describe('Gramatica', () => {
     http.expectOne('/api/gramatica/lemas/leer').flush(TABLA_LEER);
     await asentar(fixture);
 
-    expect(texto(fixture)).toContain('nʉjkasheshisha'); // ʉ intacta
+    expect(texto(fixture)).toContain('nʉjkasheshisha'); // ʉ intact
     expect(texto(fixture)).toContain('nos lee');
     expect(buscarTodos(fixture, 'tbody tr').length).toBe(2);
   });
@@ -69,7 +69,7 @@ describe('Gramatica', () => {
     await asentar(fixture);
 
     expect(texto(fixture)).toContain('No se pudo cargar la conjugación');
-    expect(buscarTodos(fixture, '.lemas button').length).toBe(2); // la lista sigue
+    expect(buscarTodos(fixture, '.lemas button').length).toBe(2); // the list is still there
   });
 
   it('sin conjugaciones sugiere ejecutar el importador', async () => {

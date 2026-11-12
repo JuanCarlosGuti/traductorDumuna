@@ -50,7 +50,7 @@ export class Traductor {
   protected readonly error = signal('');
   protected readonly cargando = signal(false);
 
-  /** Texto que se tradujo (la caja puede cambiar después). */
+  /** Text that was translated (the box may change afterwards). */
   protected readonly textoTraducido = signal('');
   protected readonly validacion = signal<EstadoValidacion>('ninguna');
   protected readonly totalValidadas = signal(0);
@@ -58,7 +58,7 @@ export class Traductor {
   protected readonly correccion = signal('');
   protected readonly errorValidacion = signal('');
 
-  /** Traducción sin corchetes, con las palabras sin equivalente marcadas. */
+  /** Translation without brackets, with the words without an equivalent marked. */
   protected readonly segmentos = computed<SegmentoTraduccion[]>(() => {
     const r = this.resultado();
     if (!r) return [];
@@ -85,8 +85,8 @@ export class Traductor {
   );
 
   /**
-   * Qué decir mientras se espera. Claude tarda bastante más que Groq (5-15 s
-   * frente a 2-3 s) y sin aviso parece que la página se colgó.
+   * What to say while waiting. Claude takes quite a bit longer than Groq (5-15 s
+   * versus 2-3 s) and without a notice it looks like the page froze.
    */
   protected readonly mensajeEspera = computed(() => {
     const e = this.estado();
@@ -135,7 +135,7 @@ export class Traductor {
     this.errorValidacion.set('');
   }
 
-  /** Botón «esta traducción es correcta». */
+  /** «esta traducción es correcta» button. */
   protected confirmar(): Promise<void> {
     const r = this.resultado();
     if (!r) return Promise.resolve();
@@ -152,7 +152,7 @@ export class Traductor {
     this.corrigiendo.set(false);
   }
 
-  /** Botón «guardar corrección»: el par corregido vale igual que uno confirmado. */
+  /** «guardar corrección» button: the corrected pair is worth the same as a confirmed one. */
   protected guardarCorreccion(): Promise<void> {
     const texto = this.correccion().trim();
     if (!texto) return Promise.resolve();
@@ -199,7 +199,7 @@ export class Traductor {
     );
   }
 
-  /** Idioma del lado damana en la glosa, para marcar lang="mbp" donde toca. */
+  /** Language of the Damana side in the gloss, to mark lang="mbp" where needed. */
   protected destinoEsDamana(): boolean {
     return this.direccion() === 'espanol_a_damana';
   }

@@ -5,8 +5,8 @@ export class LoginDto {
   @ApiProperty({ description: 'Nombre de usuario configurado en el servidor' })
   @IsString()
   @IsNotEmpty()
-  // Tope defensivo: sin él se podrían mandar megabytes para que el servidor
-  // los hashee en cada intento.
+  // Defensive cap: without it megabytes could be sent for the server
+  // to hash on every attempt.
   @MaxLength(200)
   usuario!: string;
 

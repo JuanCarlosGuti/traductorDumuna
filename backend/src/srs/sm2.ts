@@ -25,11 +25,11 @@ const CALIDAD: Record<Calificacion, number> = {
 };
 
 /**
- * SM-2 simplificado: las 4 calificaciones de la UI se mapean a la calidad
- * clásica (0/3/4/5). El factor de facilidad se ajusta siempre con la
- * fórmula original (piso 1.3); "otra vez" reinicia repeticiones e
- * intervalo (la tarjeta vence de inmediato). Intervalos: 1 día, 6 días,
- * y después intervalo × factor.
+ * Simplified SM-2: the UI's 4 grades are mapped to the classic
+ * quality (0/3/4/5). The ease factor is always adjusted with the
+ * original formula (floor 1.3); "otra vez" resets repetitions and
+ * interval (the card is due immediately). Intervals: 1 day, 6 days,
+ * and then interval × factor.
  */
 export function aplicarSm2(estado: EstadoSm2, calificacion: Calificacion): EstadoSm2 {
   const q = CALIDAD[calificacion];

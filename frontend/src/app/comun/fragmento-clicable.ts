@@ -2,9 +2,9 @@ import { Component, computed, input, output } from '@angular/core';
 import { segmentarFragmento } from './fragmento';
 
 /**
- * Renderiza un fragmento de concordancia (o texto damana plano) con cada
- * palabra clicable — navegación tipo diccionario — y la palabra
- * encontrada resaltada.
+ * Renders a concordance fragment (or plain Damana text) with each
+ * word clickable — dictionary-style navigation — and the matched
+ * word highlighted.
  */
 @Component({
   selector: 'app-fragmento-clicable',

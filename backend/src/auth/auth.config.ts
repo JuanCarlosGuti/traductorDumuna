@@ -4,11 +4,11 @@ import { randomBytes } from 'crypto';
 export const CONFIG_AUTH = Symbol('CONFIG_AUTH');
 
 export interface ConfigAuth {
-  /** false cuando no hay credenciales configuradas: la API queda abierta. */
+  /** false when no credentials are configured: the API is left open. */
   activa: boolean;
   usuario: string;
   password: string;
-  /** Clave con la que se firman los tokens de sesión. */
+  /** Key used to sign session tokens. */
   secreto: string;
   duracionDias: number;
 }
@@ -16,9 +16,9 @@ export interface ConfigAuth {
 const DIAS_POR_DEFECTO = 30;
 
 /**
- * Lee las credenciales del entorno. Si faltan, la autenticación queda
- * desactivada… salvo en producción, donde eso sería una API pública sin
- * que nadie se entere: ahí se prefiere que el arranque falle y se vea.
+ * Reads the credentials from the environment. If they are missing, authentication is
+ * disabled… except in production, where that would be a public API without
+ * anyone noticing: there we prefer startup to fail visibly.
  */
 export function leerConfigAuth(
   env: NodeJS.ProcessEnv = process.env,
@@ -26,9 +26,9 @@ export function leerConfigAuth(
   const usuario = (env.AUTH_USUARIO ?? '').trim();
   const password = env.AUTH_PASSWORD ?? '';
   const secreto = env.AUTH_JWT_SECRET ?? '';
-  // RENDER la define la plataforma sola. Se mira además de NODE_ENV porque
-  // NODE_ENV=production no se puede poner en Render: haría que `npm ci`
-  // omitiera las devDependencies y el build se quedaría sin compiladores.
+  // RENDER is set by the platform itself. It is checked in addition to NODE_ENV because
+  // NODE_ENV=production cannot be set on Render: it would make `npm ci`
+  // skip the devDependencies and the build would be left without compilers.
   const produccion = env.NODE_ENV === 'production' || env.RENDER === 'true';
   const activa = usuario.length > 0 && password.length > 0;
 
@@ -54,8 +54,8 @@ export function leerConfigAuth(
     activa,
     usuario,
     password,
-    // En local se genera al vuelo: las sesiones no sobreviven al reinicio,
-    // lo que para desarrollo da igual.
+    // Locally it is generated on the fly: sessions do not survive a restart,
+    // which does not matter for development.
     secreto: secreto || randomBytes(32).toString('hex'),
     duracionDias: Number(env.AUTH_DIAS_SESION) || DIAS_POR_DEFECTO,
   };

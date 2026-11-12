@@ -10,7 +10,7 @@ import { DudasService } from './dudas.service';
 import { construirLibroDudas } from './libro-dudas';
 import { ARCHIVO_PARADIGMAS, construirLibroParadigmas, PARADIGMAS } from './paradigmas';
 
-// Módulo CLI propio: solo lectura del corpus ya importado.
+// Own CLI module: read-only over the already imported corpus.
 @Module({
   imports: [DatabaseModule.forRoot({ rutaDb: rutaDbPorDefecto() }), ConsultaModule],
 })
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   console.log(`5 terminaciones frecuentes:                    ${informe.terminaciones.length}`);
   console.log(`\nDocumento: ${rutaDudas}`);
 
-  // El lote de gramática no se regenera si ya existe: puede estar lleno.
+  // The grammar batch is not regenerated if it already exists: it may be filled in.
   const rutaParadigmas = path.join(dirDatos, ARCHIVO_PARADIGMAS);
   if (fs.existsSync(rutaParadigmas)) {
     console.log(`Lote de gramática: ya existe y no se toca (${rutaParadigmas})`);
@@ -52,7 +52,7 @@ async function main(): Promise<void> {
   await app.close();
 }
 
-// Solo corre como CLI; al importarlo desde un test no ejecuta nada.
+// Only runs as a CLI; importing it from a test executes nothing.
 if (require.main === module) {
   main().catch((e) => {
     console.error(e);

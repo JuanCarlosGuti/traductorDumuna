@@ -19,21 +19,21 @@ export interface Pendiente {
   actualizadoEn: string;
 }
 
-/** Clave de deduplicación: minúsculas y sin tildes, con ʉ y ñ intactas. */
+/** Deduplication key: lowercase and no accents, with ʉ and ñ intact. */
 export function clavePendiente(palabra: string): string {
   return normalizar(palabra.trim());
 }
 
 /**
- * Palabras que le faltan al traductor. La tabla sobrevive a las
- * reimportaciones: es el puente entre lo que piden los usuarios y lo que
- * las hablantes nativas llenan en el formato de elicitación.
+ * Words the translator is missing. The table survives
+ * re-imports: it is the bridge between what users ask for and what
+ * the native speakers fill in on the elicitation format.
  */
 @Injectable()
 export class PendientesRepository {
   constructor(@Inject(CONEXION_DB) private readonly db: Database) {}
 
-  /** Todas, las más pedidas primero (y entre iguales, la más reciente). */
+  /** All of them, most requested first (and among equals, the most recent). */
   listar(): Pendiente[] {
     return (
       this.db
@@ -47,15 +47,15 @@ export class PendientesRepository {
     ).map(mapear);
   }
 
-  /** Las que todavía no han vuelto resueltas: lo que se exporta a las nativas. */
+  /** Those that have not come back resolved yet: what is exported to the native speakers. */
   listarAbiertas(): Pendiente[] {
     return this.listar().filter((p) => p.estado !== 'resuelta');
   }
 
   /**
-   * El traductor no encontró equivalente para esta palabra: se registra o,
-   * si ya estaba, suma una petición. Una palabra ya resuelta que vuelve a
-   * pedirse se reabre (señal de que la solución no llegó al corpus).
+   * The translator found no equivalent for this word: it is recorded or,
+   * if it was already there, one request is added. An already resolved word that is
+   * requested again is reopened (a sign that the solution did not reach the corpus).
    */
   registrarPedida(
     palabra: string,
@@ -80,8 +80,8 @@ export class PendientesRepository {
   }
 
   /**
-   * Fila de elicitación que volvió sin llenar. No suma peticiones ni pisa
-   * lo que ya hubiera: solo garantiza que la palabra figure como pendiente.
+   * Elicitation row that came back unfilled. It does not add requests or overwrite
+   * what was already there: it only guarantees the word is listed as pending.
    */
   registrarDeElicitacion(
     palabra: string,
@@ -101,7 +101,7 @@ export class PendientesRepository {
     return info.changes > 0;
   }
 
-  /** La palabra llegó traducida: se cierra si estaba abierta. */
+  /** The word arrived translated: it is closed if it was open. */
   marcarResuelta(palabra: string, ahora: string = new Date().toISOString()): boolean {
     const info = this.db
       .prepare(

@@ -7,7 +7,7 @@ describe('stopwords y negaciones del español', () => {
       expect(esNegacionEspanol(p)).toBe(true);
     }
     expect(esNegacionEspanol('nunca')).toBe(true);
-    expect(esNegacionEspanol('jamas')).toBe(true); // ya normalizada (sin tilde)
+    expect(esNegacionEspanol('jamas')).toBe(true); // already normalized (no accent)
     expect(esStopwordEspanol('nunca')).toBe(false);
   });
 

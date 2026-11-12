@@ -16,11 +16,11 @@ export class EstadoSaludDto {
 }
 
 /**
- * Endpoint de salud para kamal-proxy (y para UptimeRobot). Público a
- * propósito: el proxy no tiene sesión. Un 200 aquí es lo que hace que el
- * contenedor nuevo empiece a recibir visitas, así que responde 503 cuando
- * la base no trae corpus: esa imagen salió mal y NO debe reemplazar a la
- * anterior aunque el proceso esté vivo.
+ * Health endpoint for kamal-proxy (and for UptimeRobot). Public on
+ * purpose: the proxy has no session. A 200 here is what makes the
+ * new container start receiving traffic, so it answers 503 when
+ * the database has no corpus: that image came out wrong and must NOT replace the
+ * previous one even if the process is alive.
  */
 @ApiTags('salud')
 @Controller('salud')

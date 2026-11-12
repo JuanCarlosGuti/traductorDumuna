@@ -13,7 +13,7 @@ describe('PalabraService', () => {
   beforeEach(() => {
     db = new Database(':memory:');
     ejecutarMigraciones(db);
-    // Contenido: nʉnka aparece en las tres fuentes; ñingui solo en oraciones.
+    // Content: nʉnka appears in all three sources; ñingui only in sentences.
     db.prepare(
       `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
        VALUES ('o1', 'Ñingui nʉnka gontka nʉnka', 'Dios hizo el agua del cielo', 'aprobado', 'lfb')`,
@@ -55,7 +55,7 @@ describe('PalabraService', () => {
     const ficha = servicio.ficha('nʉnka');
     expect(ficha.palabra).toBe('nʉnka');
     expect(ficha.frecuenciaTotal).toBe(4);
-    // GROUP BY tabla_origen con ORDER BY alfabético
+    // GROUP BY tabla_origen with alphabetical ORDER BY
     expect(ficha.frecuenciaPorFuente).toEqual([
       { fuente: 'frases', frecuencia: 1 },
       { fuente: 'oraciones', frecuencia: 2 },
@@ -99,7 +99,7 @@ describe('PalabraService', () => {
   it('propone traducciones candidatas excluyendo stopwords', () => {
     const ficha = servicio.ficha('nʉnka');
     const palabras = ficha.traduccionesCandidatas.map((c) => c.palabra);
-    // 'agua' co-ocurre en oración, frase y vocabulario; 'el'/'de'/'del' son stopwords
+    // 'agua' co-occurs in sentence, phrase and vocabulary; 'el'/'de'/'del' are stopwords
     expect(ficha.traduccionesCandidatas[0]).toEqual({ palabra: 'agua', coocurrencias: 3 });
     expect(palabras).not.toContain('el');
     expect(palabras).not.toContain('de');
@@ -108,9 +108,9 @@ describe('PalabraService', () => {
 
   it('funciona con ñ y usa el español de la oración (caso con ñ)', () => {
     const ficha = servicio.ficha('ñingui');
-    expect(ficha.frecuenciaTotal).toBe(2); // oración + conjugación
+    expect(ficha.frecuenciaTotal).toBe(2); // sentence + conjugation
     const palabras = ficha.traduccionesCandidatas.map((c) => c.palabra);
-    expect(palabras).toContain('agua'); // del paralelo 'Dios hizo el agua del cielo'
+    expect(palabras).toContain('agua'); // from the parallel 'Dios hizo el agua del cielo'
   });
 
   it('lanza 404 para palabras que no están en el corpus', () => {

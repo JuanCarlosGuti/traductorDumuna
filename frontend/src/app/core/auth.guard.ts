@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 
-/** Deja pasar si hay sesión, o si este servidor no exige ninguna. */
+/** Lets through if there is a session, or if this server requires none. */
 export const sesionIniciada: CanActivateFn = async () => {
   const auth = inject(AuthService);
   const router = inject(Router);

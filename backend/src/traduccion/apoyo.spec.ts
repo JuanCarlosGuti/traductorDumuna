@@ -9,12 +9,12 @@ const senales = (puntajeMedio: number, fuenteTop: FuenteCorpus | null = FuenteCo
 
 describe('evaluarApoyo', () => {
   it('media alta sobre oraciones reales → bueno', () => {
-    // 0,551 es la media medida en "¿Ñi guashi nʉnka?", bien cubierta
+    // 0.551 is the mean measured on "¿Ñi guashi nʉnka?", well covered
     expect(evaluarApoyo(senales(0.551))).toEqual({ nivel: 'bueno', motivos: [] });
   });
 
   it('media intermedia → parcial (sin motivos de alarma)', () => {
-    // 0,252 es la media medida en "zhakujtshega dzʉwa guma sheka"
+    // 0.252 is the mean measured on "zhakujtshega dzʉwa guma sheka"
     expect(evaluarApoyo(senales(0.252))).toEqual({ nivel: 'parcial', motivos: [] });
   });
 
@@ -32,8 +32,8 @@ describe('evaluarApoyo', () => {
   });
 
   it('todo el apoyo son conjugaciones → revisar aunque la media sea alta', () => {
-    // El caso que motivó la regla: "nujkunananka" puntuó 0,899 contra su
-    // propia entrada de diccionario, sin ningún uso real que lo respalde.
+    // The case that motivated the rule: "nujkunananka" scored 0.899 against its
+    // own dictionary entry, with no real usage backing it.
     expect(
       evaluarApoyo({
         ...senales(0.5, FuenteCorpus.conjugaciones),
@@ -43,9 +43,9 @@ describe('evaluarApoyo', () => {
   });
 
   it('top de conjugaciones pero con oraciones debajo → NO es solo diccionario', () => {
-    // "naijkasheshisha" encabeza con su propia conjugación (coincidencia
-    // exacta) y trae 6 ejemplos del verbo en uso gracias al matching por
-    // raíz: el apoyo es real y el aviso viejo mentía.
+    // "naijkasheshisha" leads with its own conjugation (exact
+    // match) and brings 6 examples of the verb in use thanks to root
+    // matching: the support is real and the old warning was wrong.
     const apoyo = evaluarApoyo({
       puntajeMedio: 0.4,
       fuenteTop: FuenteCorpus.conjugaciones,
@@ -57,7 +57,7 @@ describe('evaluarApoyo', () => {
   });
 
   it('registros anteriores a la v5 (sin la señal) conservan la regla del top-1', () => {
-    // ejemplosEnContexto llega null: no se puede saber qué había debajo.
+    // ejemplosEnContexto arrives as null: there is no way to know what was underneath.
     const apoyo = evaluarApoyo({
       ...senales(0.5, FuenteCorpus.conjugaciones),
       ejemplosEnContexto: null,

@@ -41,7 +41,7 @@ describe('Flashcards', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
     await asentar(fixture);
 
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: '3' })); // Bien
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: '3' })); // Good
     await asentar(fixture);
 
     const respuesta = http.expectOne('/api/srs/respuesta');

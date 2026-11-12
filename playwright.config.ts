@@ -2,15 +2,15 @@ import { defineConfig, devices } from '@playwright/test';
 import * as path from 'path';
 
 /**
- * E2E de verdad: navegador real contra el backend sirviendo el build de
- * Angular, con la autenticación ACTIVA. Es la única capa que comprueba que
- * frontend y backend se entienden — el resto de tests prueban cada lado por
- * separado y seguirían en verde aunque el login dejara de funcionar.
+ * Real E2E: a real browser against the backend serving the Angular
+ * build, with authentication ACTIVE. It is the only layer that checks that
+ * frontend and backend understand each other — the rest of the tests exercise each side
+ * separately and would stay green even if login stopped working.
  */
 const PUERTO = 3100;
 
-// Corpus propio y pequeño: los tests no dependen de los datos reales de
-// /datos ni los tocan.
+// Small corpus of its own: the tests neither depend on the real data in
+// /datos nor touch it.
 const DIR_DATOS = path.join(__dirname, 'e2e', 'datos');
 
 export const CREDENCIALES = {
@@ -20,7 +20,7 @@ export const CREDENCIALES = {
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: false, // un solo backend con límite de intentos de login
+  fullyParallel: false, // a single backend with a login attempt limit
   workers: 1,
   reporter: process.env.CI ? 'list' : [['list']],
   use: {
@@ -29,7 +29,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    // Construye Angular, regenera la base del corpus de prueba y arranca.
+    // Builds Angular, regenerates the test corpus database and starts up.
     command: 'npm run build && npm run importar && npm run start:prod',
     url: `http://localhost:${PUERTO}`,
     reuseExistingServer: !process.env.CI,
@@ -40,8 +40,8 @@ export default defineConfig({
       AUTH_USUARIO: CREDENCIALES.usuario,
       AUTH_PASSWORD: CREDENCIALES.password,
       AUTH_JWT_SECRET: 'secreto-solo-para-los-tests-e2e',
-      // Sin motor de traducción: los tests no deben gastar llamadas reales
-      // aunque la máquina tenga TRADUCTOR_* o ANTHROPIC_API_KEY definidas.
+      // No translation engine: tests must not spend real calls
+      // even if the machine has TRADUCTOR_* or ANTHROPIC_API_KEY set.
       TRADUCTOR_BASE_URL: '',
       TRADUCTOR_MODELO: '',
       ANTHROPIC_API_KEY: '',

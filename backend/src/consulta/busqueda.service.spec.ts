@@ -41,7 +41,7 @@ describe('BusquedaService', () => {
   it('encuentra en damana en las cuatro fuentes, con <mark> y ʉ intacta', () => {
     const r = servicio.buscar({ q: 'nʉnka', idioma: Idioma.damana, limite: 100 });
     expect(r.modo).toBe('concordancia');
-    expect(r.total).toBe(3); // oración 1, frase, vocabulario (nʉnkanka NO matchea nʉnka)
+    expect(r.total).toBe(3); // sentence 1, phrase, vocabulary (nʉnkanka does NOT match nʉnka)
     expect(r.resultados.map((c) => c.fuente)).toEqual([
       FuenteCorpus.oraciones,
       FuenteCorpus.frases,
@@ -107,7 +107,7 @@ describe('BusquedaService', () => {
       const primero = r.resultados[0];
       expect(primero.referencia).toBe('oración 1');
       expect(primero.puntaje).toBeGreaterThan(0);
-      // ambas palabras de la consulta quedan resaltadas
+      // both words of the query are highlighted
       expect(primero.fragmento).toContain('<mark>nʉnka</mark>');
       expect(primero.fragmento).toContain('<mark>kʉñingui</mark>');
       expect(primero.textoParalelo).toBe('Jehová hizo el agua');

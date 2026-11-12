@@ -7,11 +7,11 @@ export interface TokenDamana {
 }
 
 /**
- * Tokeniza texto damana: separa por todo lo que no sea letra Unicode,
- * ʉ (U+0289) o apóstrofe. \p{L} ya incluye la ʉ, pero se deja explícita
- * como documentación viva de la regla de dominio. Los apóstrofes solo se
- * conservan si son internos a la palabra (se recortan en los bordes).
- * Signos (¿? , .), dígitos y saltos de línea actúan como separadores.
+ * Tokenizes Damana text: splits on anything that is not a Unicode letter,
+ * ʉ (U+0289) or an apostrophe. \p{L} already includes ʉ, but it is left explicit
+ * as living documentation of the domain rule. Apostrophes are only
+ * kept if they are internal to the word (they are trimmed at the edges).
+ * Signs (¿? , .), digits and line breaks act as separators.
  */
 export function tokenizarDamana(texto: string): TokenDamana[] {
   return texto

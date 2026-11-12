@@ -59,7 +59,7 @@ describe('exportarValidadasAPruebas', () => {
     const repo = new ValidadasRepository(db);
     repo.guardar(nueva('no tengo agua', 'Nʉjkʉnanun nʉnka'));
     repo.guardar(nueva('otra vez', 'ñingui'));
-    repo.guardar(nueva('otra vez', 'ñingui')); // el mismo par validado dos veces
+    repo.guardar(nueva('otra vez', 'ñingui')); // the same pair validated twice
 
     expect(exportarValidadasAPruebas(db, dir)).toEqual({ validadas: 3, agregadas: 2, total: 2 });
     expect(exportarValidadasAPruebas(db, dir)).toEqual({ validadas: 3, agregadas: 0, total: 2 });
@@ -76,7 +76,7 @@ describe('exportarValidadasAPruebas', () => {
       'utf8',
     );
     const repo = new ValidadasRepository(db);
-    repo.guardar(nueva('Agua', 'nʉnka')); // misma pareja que la prueba existente (mayúscula aparte)
+    repo.guardar(nueva('Agua', 'nʉnka')); // same pair as the existing test (capital aside)
     repo.guardar(nueva('año nuevo', 'kʉgui ñi'));
 
     expect(exportarValidadasAPruebas(db, dir)).toEqual({ validadas: 2, agregadas: 1, total: 2 });

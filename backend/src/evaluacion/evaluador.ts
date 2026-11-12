@@ -17,7 +17,7 @@ export interface PruebaEvaluada {
   exacta: boolean;
   chrf: number;
   sinEquivalente: string[];
-  /** Palabras sin equivalente / palabras de la frase de entrada. */
+  /** Words without an equivalent / words of the input sentence. */
   proporcionSinEquivalente: number;
   confianza: number;
   error: string | null;
@@ -43,9 +43,9 @@ export interface Informe {
 }
 
 /**
- * Texto comparable para la coincidencia exacta: minúsculas, sin tildes
- * (ʉ y ñ intactas), sin puntuación y con los espacios colapsados. Así
- * «Nʉnka shkua.» y «nʉnka shkua» cuentan como iguales, pero «nunka» no.
+ * Comparable text for the exact match: lowercase, no accents
+ * (ʉ and ñ intact), no punctuation and with spaces collapsed. So
+ * «Nʉnka shkua.» and «nʉnka shkua» count as equal, but «nunka» does not.
  */
 export function textoComparable(texto: string): string {
   return normalizar(texto)
@@ -74,7 +74,7 @@ export function evaluarPrueba(prueba: PruebaTraduccion, respuesta: RespuestaPara
   };
 }
 
-/** Una prueba que no se pudo traducir cuenta como fallida, no se omite. */
+/** A test that could not be translated counts as failed, it is not skipped. */
 export function pruebaFallida(prueba: PruebaTraduccion, error: string): PruebaEvaluada {
   return {
     espanol: prueba.espanol,

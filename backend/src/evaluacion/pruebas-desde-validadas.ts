@@ -7,14 +7,14 @@ import { ARCHIVO_PRUEBAS, escribirPruebas } from '../importador/pruebas-csv';
 import { resolverDirDatos, rutaDbPorDefecto } from '../importador/rutas-datos';
 import { Validada, ValidadasRepository } from '../traduccion/validadas.repository';
 
-/** Ámbito con el que entran al CSV, para verlas aparte en el informe. */
+/** Scope under which they enter the CSV, to see them separately in the report. */
 export const AMBITO_VALIDADAS = 'validadas';
 
 /**
- * Pares validados → filas de pruebas_traduccion.csv. El par ya viene con el
- * español y el damana en su sitio sea cual fuera la dirección en que se
- * tradujo (lo coloca TraduccionService.validar), y la evaluación siempre
- * traduce español → damana. Se descartan los pares con un lado vacío.
+ * Validated pairs → rows of pruebas_traduccion.csv. The pair already comes with the
+ * Spanish and the Damana in place whatever the direction in which it was
+ * translated (TraduccionService.validar places them), and the evaluation always
+ * translates Spanish → Damana. Pairs with an empty side are discarded.
  */
 export function pruebasDesdeValidadas(validadas: Validada[]): PruebaTraduccion[] {
   return validadas
@@ -27,18 +27,18 @@ export function pruebasDesdeValidadas(validadas: Validada[]): PruebaTraduccion[]
 }
 
 export interface ResultadoExportacion {
-  /** Pares validados que había en la base. */
+  /** Validated pairs that were in the database. */
   validadas: number;
-  /** Cuántos entraron nuevos al CSV (los repetidos no se duplican). */
+  /** How many entered the CSV as new (repeated ones are not duplicated). */
   agregadas: number;
-  /** Pruebas que quedan en el CSV. */
+  /** Tests left in the CSV. */
   total: number;
 }
 
 /**
- * Idempotente: escribirPruebas funde por pareja español/damana normalizada,
- * así que correrlo dos veces —o validar dos veces el mismo par— no repite
- * filas, y nunca borra las pruebas que ya hubiera (del importador o a mano).
+ * Idempotent: escribirPruebas merges by normalized Spanish/Damana pair,
+ * so running it twice — or validating the same pair twice — does not repeat
+ * rows, and it never deletes tests that were already there (from the importer or by hand).
  */
 export function exportarValidadasAPruebas(
   db: Database.Database,
@@ -56,8 +56,8 @@ function main(): void {
     console.error(`No existe ${rutaDb}. Ejecuta antes: npm run importar`);
     process.exit(1);
   }
-  // Misma apertura que la app (database.module.ts): las migraciones son
-  // idempotentes y garantizan que la tabla validadas exista.
+  // Same opening as the app (database.module.ts): migrations are
+  // idempotent and guarantee that the validadas table exists.
   const db = new Database(rutaDb);
   try {
     ejecutarMigraciones(db);
@@ -76,5 +76,5 @@ function main(): void {
   }
 }
 
-// Solo corre como CLI; al importarlo desde un test no ejecuta nada.
+// Only runs as a CLI; importing it from a test executes nothing.
 if (require.main === module) main();

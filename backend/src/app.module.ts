@@ -12,17 +12,17 @@ import { SaludModule } from './salud/salud.module';
 import { SrsModule } from './srs/srs.module';
 import { TraduccionModule } from './traduccion/traduccion.module';
 
-// backend/public: ahí deja su build el frontend (npm run build -w frontend).
-// En dev __dirname es backend/src y compilado es backend/dist; en ambos
-// casos ../public resuelve a backend/public. Si no existe (aún no se
-// construyó el frontend), la app arranca igual solo con la API.
+// backend/public: where the frontend leaves its build (npm run build -w frontend).
+// In dev __dirname is backend/src and compiled it is backend/dist; in both
+// cases ../public resolves to backend/public. If it does not exist (the frontend
+// has not been built yet), the app still starts with just the API.
 const RUTA_PUBLICO = path.resolve(__dirname, '..', 'public');
 
 @Module({
   imports: [
-    // Primero: registra el guard global que protege todo lo que viene
-    // después. Si faltan credenciales en producción, aquí revienta el
-    // arranque a propósito (ver leerConfigAuth).
+    // First: registers the global guard that protects everything that comes
+    // after it. If credentials are missing in production, startup blows up
+    // here on purpose (see leerConfigAuth).
     AuthModule.forRoot(),
     DatabaseModule.forRoot({ rutaDb: rutaDbPorDefecto() }),
     ImportadorModule,
@@ -37,9 +37,9 @@ const RUTA_PUBLICO = path.resolve(__dirname, '..', 'public');
             rootPath: RUTA_PUBLICO,
             exclude: ['/api/{*splat}'],
             serveStaticOptions: {
-              // Los bundles de Angular llevan hash en el nombre (inmutables),
-              // pero index.html no: sin esto el navegador se queda con la
-              // versión vieja de la app tras cada build.
+              // Angular bundles carry a hash in their name (immutable),
+              // but index.html does not: without this the browser keeps the
+              // old version of the app after every build.
               setHeaders: (res, ruta) => {
                 if (ruta.endsWith('index.html')) {
                   res.setHeader('Cache-Control', 'no-cache');

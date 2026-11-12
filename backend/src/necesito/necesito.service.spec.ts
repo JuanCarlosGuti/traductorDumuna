@@ -67,9 +67,9 @@ describe('NecesitoService', () => {
     insertarOracion('x', 'el agua de la zzzz montaña');
     const palabras = servicio.calcular(HOY).map((f) => f.espanol);
     expect(palabras).toContain('montaña');
-    expect(palabras).not.toContain('agua'); // ya en el glosario
+    expect(palabras).not.toContain('agua'); // already in the glossary
     expect(palabras).not.toContain('el'); // stopword
-    expect(palabras).not.toContain('zzzz'); // sin vocales
+    expect(palabras).not.toContain('zzzz'); // no vowels
   });
 
   it('excluye probables nombres propios (solo con mayúscula inicial)', () => {
@@ -81,14 +81,14 @@ describe('NecesitoService', () => {
   });
 
   it('excluye palabras que se escriben igual en damana (caso con ʉ)', () => {
-    // 'nʉnka' está en el glosario damana y también aparece como token damana
+    // 'nʉnka' is in the Damana glossary and also appears as a Damana token
     db.prepare(
       `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
        VALUES ('ciudad', 'ciudad', 'oraciones', 1, 0)`,
     ).run();
     insertarOracion('ciudad guma', 'ciudad grande');
     const palabras = servicio.calcular(HOY).map((f) => f.espanol);
-    expect(palabras).not.toContain('ciudad'); // se escribe igual en damana
+    expect(palabras).not.toContain('ciudad'); // written the same in Damana
     expect(palabras).toContain('grande');
   });
 
@@ -101,14 +101,14 @@ describe('NecesitoService', () => {
   });
 
   it('prioriza las palabras de traducciones con poco apoyo sobre las del corpus', () => {
-    insertarOracion('x', 'pueblo pueblo pueblo pueblo pueblo'); // muy frecuente
-    // Traducción sin ningún ejemplo → nivel revisar
+    insertarOracion('x', 'pueblo pueblo pueblo pueblo pueblo'); // very frequent
+    // Translation with no example at all → revisar level
     insertarTraduccion('quiero sanar', 'x', 'espanol_a_damana', 0, null, 0);
     const filas = servicio.calcular(HOY);
     expect(filas[0].prioridad).toBe(1);
     expect(['quiero', 'sanar']).toContain(filas[0].espanol);
     expect(filas[0].motivo).toBe('traduccion_con_poco_apoyo');
-    // 'pueblo' sigue ahí, pero después
+    // 'pueblo' is still there, but later
     expect(filas.find((f) => f.espanol === 'pueblo')?.prioridad).toBe(2);
   });
 
@@ -166,9 +166,9 @@ describe('NecesitoService.calcularDamana', () => {
        VALUES ('zhaguasheka', 'él acechó', 'acechar', 'doc', NULL)`,
     ).run();
     token('gontka', 'gontka', 3);
-    token('nʉnka', 'nʉnka', 5); // ya está en el glosario
-    token('jehovaga', 'Jehovága', 4); // siempre en mayúscula
-    token('zhaguasheka', 'zhaguasheka', 2); // ya tiene glosa en conjugaciones
+    token('nʉnka', 'nʉnka', 5); // already in the glossary
+    token('jehovaga', 'Jehovága', 4); // always capitalized
+    token('zhaguasheka', 'zhaguasheka', 2); // already has a gloss in conjugaciones
     const repo = new CorpusRepository(db);
     servicio = new NecesitoService(repo, new TraduccionesRepository(db));
   });
@@ -180,7 +180,7 @@ describe('NecesitoService.calcularDamana', () => {
     expect(filas.map((f) => f.damana)).toEqual(['gontka']);
     expect(filas[0]).toMatchObject({
       damana: 'gontka',
-      espanol: '', // la columna que llena el hablante
+      espanol: '', // the column the speaker fills in
       vecesVisto: 3,
       ejemploDamana: 'gontka nʉnka Jehovága zhaguasheka',
       ejemploEspanol: 'hizo el agua',
@@ -189,9 +189,9 @@ describe('NecesitoService.calcularDamana', () => {
 
   it('excluye lo que ya está en el glosario (caso con ʉ), las conjugaciones y los nombres propios', () => {
     const palabras = servicio.calcularDamana().map((f) => f.damana);
-    expect(palabras).not.toContain('nʉnka'); // en el glosario
-    expect(palabras).not.toContain('zhaguasheka'); // ya tiene glosa
-    expect(palabras).not.toContain('jehovaga'); // nombre propio
+    expect(palabras).not.toContain('nʉnka'); // in the glossary
+    expect(palabras).not.toContain('zhaguasheka'); // already has a gloss
+    expect(palabras).not.toContain('jehovaga'); // proper name
   });
 
   it('respeta el tope de filas', () => {
