@@ -1,5 +1,5 @@
 <h1>Traductor asistido</h1>
-<p class="suave">
+<p class="muted">
   Traducción con IA apoyada en el corpus: el modelo recibe primero el
   diccionario y las reglas gramaticales de la frase, y después ejemplos
   cotidianos, de gramática y bíblicos. Lo que no sabe lo deja entre
@@ -8,52 +8,52 @@
 </p>
 
 @if (status()?.available === false) {
-  <div class="panel aviso">
+  <div class="panel notice">
     <h2>Falta configurar un motor de traducción</h2>
     <p>Hay dos opciones; en ambos casos se definen variables de entorno y se reinicia el backend:</p>
 
     <h3>Opción A — API compatible con OpenAI (Groq, Gemini, Ollama…)</h3>
-    <pre>setx TRADUCTOR_BASE_URL "https://api.groq.com/openai/v1"
-setx TRADUCTOR_MODELO "openai/gpt-oss-120b"
-setx TRADUCTOR_API_KEY "gsk_..."</pre>
+    <pre>setx TRANSLATOR_BASE_URL "https://api.groq.com/openai/v1"
+setx TRANSLATOR_MODEL "openai/gpt-oss-120b"
+setx TRANSLATOR_API_KEY "gsk_..."</pre>
 
     <h3>Opción B — Claude (SDK oficial de Anthropic)</h3>
     <pre>setx ANTHROPIC_API_KEY "sk-ant-..."</pre>
 
     <p>Después: abre una <strong>terminal nueva</strong>, reinicia el backend (<code>npm start</code>) y recarga esta página.</p>
-    <p class="suave">El resto de la aplicación funciona normalmente sin motor.</p>
+    <p class="muted">El resto de la aplicación funciona normalmente sin motor.</p>
   </div>
 } @else {
   @if (status(); as e) {
-    <p class="suave chiquito motor">
+    <p class="muted small motor">
       Motor: <strong>{{ e.model }}</strong>
       ({{ e.provider === 'anthropic' ? 'Claude · API de Anthropic' : 'proveedor compatible OpenAI' }})
     </p>
   }
 
-  <form class="formulario" (submit)="translate($event)">
+  <form class="form" (submit)="translate($event)">
     <textarea
-      #campo
+      #field
       appUPlus
       rows="4"
       placeholder="Texto a traducir… (u+ → ʉ)"
       [value]="text()"
       [disabled]="loading()"
-      (input)="text.set(campo.value)"
+      (input)="text.set(field.value)"
     ></textarea>
-    <div class="controles">
+    <div class="controls">
       <select #selDir [value]="direction()" [disabled]="loading()" (change)="direction.set($any(selDir.value))" aria-label="Dirección">
-        <option value="espanol_a_damana">español → damana</option>
-        <option value="damana_a_espanol">damana → español</option>
+        <option value="spanish_to_damana">español → damana</option>
+        <option value="damana_to_spanish">damana → español</option>
       </select>
-      <button type="button" class="boton-suave" (click)="swapDirection()" [disabled]="loading()" title="Invertir dirección">⇄</button>
-      <button type="submit" class="boton" [disabled]="loading() || !text().trim()">
+      <button type="button" class="button-muted" (click)="swapDirection()" [disabled]="loading()" title="Invertir dirección">⇄</button>
+      <button type="submit" class="button" [disabled]="loading() || !text().trim()">
         {{ loading() ? 'Traduciendo…' : 'Traducir' }}
       </button>
     </div>
     @if (loading()) {
-      <p class="espera suave chiquito" role="status" aria-live="polite">
-        <span class="latido" aria-hidden="true"></span>
+      <p class="waiting muted small" role="status" aria-live="polite">
+        <span class="pulse" aria-hidden="true"></span>
         {{ waitMessage() }}
       </p>
     }
@@ -64,8 +64,8 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
   }
 
   @if (result(); as r) {
-    @if (r.support.level === 'revisar') {
-      <p class="panel aviso-apoyo">
+    @if (r.support.level === 'review') {
+      <p class="panel support-notice">
         ⚠ <strong>Poco apoyo del corpus.</strong>
         @if (r.support.reasons.includes('sin_ejemplos')) {
           No se encontró ningún ejemplo parecido.
@@ -78,15 +78,15 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
       </p>
     }
 
-    <section class="panel resultado">
-      <header class="cabecera-resultado">
-        <h2 class="suave chiquito">Traducción</h2>
-        <span class="confianza" [class.baja]="confidencePercent() < 50">confianza {{ confidencePercent() }} %</span>
+    <section class="panel result">
+      <header class="result-header">
+        <h2 class="muted small">Traducción</h2>
+        <span class="confidence" [class.low]="confidencePercent() < 50">confianza {{ confidencePercent() }} %</span>
       </header>
-      <p class="traduccion" [attr.lang]="targetIsDamana() ? 'mbp' : null">
+      <p class="translation" [attr.lang]="targetIsDamana() ? 'mbp' : null">
         @for (s of segments(); track $index) {
           @if (s.withoutEquivalent) {
-            <mark class="sin-equivalente" title="Sin equivalente en el corpus: anotada en Pendientes">{{ s.text }}</mark>
+            <mark class="no-equivalent" title="Sin equivalente en el corpus: anotada en Pendientes">{{ s.text }}</mark>
           } @else {
             <span>{{ s.text }}</span>
           }
@@ -94,86 +94,86 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
       </p>
 
       @if (r.gloss.length > 0) {
-        <ul class="glosa" aria-label="Glosa palabra por palabra">
-          @for (par of r.gloss; track $index) {
-            <li class="par">
-              <span class="origen" [attr.lang]="targetIsDamana() ? null : 'mbp'">{{ par.origin }}</span>
-              <span class="flecha">→</span>
-              <span class="destino" [attr.lang]="targetIsDamana() ? 'mbp' : null">{{ par.target || '—' }}</span>
+        <ul class="gloss" aria-label="Glosa palabra por palabra">
+          @for (pair of r.gloss; track $index) {
+            <li class="pair">
+              <span class="source" [attr.lang]="targetIsDamana() ? null : 'mbp'">{{ pair.origin }}</span>
+              <span class="arrow">→</span>
+              <span class="target" [attr.lang]="targetIsDamana() ? 'mbp' : null">{{ pair.target || '—' }}</span>
             </li>
           }
         </ul>
       }
 
       @if (r.wordsWithoutEquivalent.length > 0) {
-        <p class="chiquito sin-equivalente-lista">
+        <p class="small no-equivalent-list">
           ⚠ Sin equivalente en el corpus:
           @for (p of r.wordsWithoutEquivalent; track p) {
-            <mark class="sin-equivalente">{{ p }}</mark>
+            <mark class="no-equivalent">{{ p }}</mark>
           }
           — quedaron en <a routerLink="/pendientes">Pendientes</a> para las hablantes.
         </p>
       }
 
       @if (r.appliedRules.length > 0) {
-        <p class="chiquito">
+        <p class="small">
           Reglas aplicadas:
-          @for (regla of r.appliedRules; track regla) {
-            <span class="chip">{{ regla }}</span>
+          @for (rule of r.appliedRules; track rule) {
+            <span class="chip">{{ rule }}</span>
           }
         </p>
       }
       @if (r.briefExplanation) {
-        <p class="explicacion suave">{{ r.briefExplanation }}</p>
+        <p class="explanation muted">{{ r.briefExplanation }}</p>
       }
 
-      <div class="validacion">
+      <div class="validation">
         @switch (validation()) {
-          @case ('confirmada') {
-            <p class="guardada">✓ Guardada como correcta ({{ totalValidated() }} validadas).</p>
+          @case ('confirmed') {
+            <p class="saved">✓ Guardada como correcta ({{ totalValidated() }} validadas).</p>
           }
-          @case ('corregida') {
-            <p class="guardada">✓ Corrección guardada ({{ totalValidated() }} validadas).</p>
+          @case ('corrected') {
+            <p class="saved">✓ Corrección guardada ({{ totalValidated() }} validadas).</p>
           }
           @default {
             @if (correcting()) {
-              <label class="chiquito suave" for="correccion">Escribe la traducción correcta:</label>
+              <label class="small muted" for="correction">Escribe la traducción correcta:</label>
               <textarea
-                #campoCorreccion
-                id="correccion"
+                #correctionField
+                id="correction"
                 appUPlus
                 rows="2"
                 [value]="correction()"
-                (input)="correction.set(campoCorreccion.value)"
+                (input)="correction.set(correctionField.value)"
               ></textarea>
-              <div class="controles">
-                <button type="button" class="boton" (click)="saveCorrection()" [disabled]="validation() === 'guardando' || !correction().trim()">
+              <div class="controls">
+                <button type="button" class="button" (click)="saveCorrection()" [disabled]="validation() === 'saving' || !correction().trim()">
                   Guardar corrección
                 </button>
-                <button type="button" class="boton-suave" (click)="cancelCorrection()">Cancelar</button>
+                <button type="button" class="button-muted" (click)="cancelCorrection()">Cancelar</button>
               </div>
             } @else {
-              <div class="controles">
-                <button type="button" class="boton-suave" (click)="confirm()" [disabled]="validation() === 'guardando'">
+              <div class="controls">
+                <button type="button" class="button-muted" (click)="confirm()" [disabled]="validation() === 'saving'">
                   ✓ Esta traducción es correcta
                 </button>
-                <button type="button" class="boton-suave" (click)="openCorrection()" [disabled]="validation() === 'guardando'">
+                <button type="button" class="button-muted" (click)="openCorrection()" [disabled]="validation() === 'saving'">
                   Corregir
                 </button>
               </div>
             }
             @if (validationError()) {
-              <p class="error chiquito">{{ validationError() }}</p>
+              <p class="error small">{{ validationError() }}</p>
             }
           }
         }
       </div>
     </section>
 
-    <details class="apoyo">
+    <details class="support">
       <summary>Diccionario y reglas usadas ({{ r.dictionary.length }} acepciones · {{ r.rules.length }} reglas)</summary>
       @if (r.dictionary.length > 0) {
-        <table class="tabla diccionario">
+        <table class="table dictionary">
           <thead>
             <tr><th>palabra</th><th>damana</th><th>español</th><th>coincidencia</th></tr>
           </thead>
@@ -183,16 +183,16 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
                 <td>{{ a.word }}</td>
                 <td lang="mbp">{{ a.damana }}</td>
                 <td>{{ a.spanish }}</td>
-                <td class="suave chiquito" [class.posible]="a.match === 'posible'">{{ a.match }}</td>
+                <td class="muted small" [class.possible]="a.match === 'possible'">{{ label(a.match) }}</td>
               </tr>
             }
           </tbody>
         </table>
       } @else {
-        <p class="suave">Ninguna palabra de la frase está en el diccionario.</p>
+        <p class="muted">Ninguna palabra de la frase está en el diccionario.</p>
       }
       @if (r.properNames.length > 0) {
-        <p class="chiquito">
+        <p class="small">
           Nombres propios:
           @for (n of r.properNames; track n.damana) {
             <span class="chip">{{ n.inText }} → {{ n.damana }}</span>
@@ -200,37 +200,37 @@ setx TRADUCTOR_API_KEY "gsk_..."</pre>
         </p>
       }
       @if (r.rules.length > 0) {
-        <ul class="reglas">
-          @for (regla of r.rules; track regla.form) {
+        <ul class="rules">
+          @for (rule of r.rules; track rule.form) {
             <li>
-              <strong lang="mbp">{{ regla.form }}</strong>
-              — {{ regla.meaning }}
-              @if (regla.example) { <span class="suave">· {{ regla.example }}</span> }
-              @if (regla.trigger) { <span class="chip">{{ regla.trigger }}</span> }
+              <strong lang="mbp">{{ rule.form }}</strong>
+              — {{ rule.meaning }}
+              @if (rule.example) { <span class="muted">· {{ rule.example }}</span> }
+              @if (rule.trigger) { <span class="chip">{{ label(rule.trigger) }}</span> }
             </li>
           }
         </ul>
       }
       @if (r.triggers.length > 0) {
-        <p class="suave chiquito">Rasgos detectados: {{ r.triggers.join(', ') }}</p>
+        <p class="muted small">Rasgos detectados: {{ triggerLabels(r.triggers) }}</p>
       }
     </details>
 
-    @for (grupo of examplesByDomain(); track grupo.domain) {
-      <details class="ejemplos" [open]="grupo.domain === 'cotidiano'">
-        <summary>{{ grupo.title }} ({{ grupo.examples.length }})</summary>
-        @for (e of grupo.examples; track $index) {
-          <article class="panel ejemplo">
-            <header class="suave chiquito">
+    @for (group of examplesByDomain(); track group.domain) {
+      <details class="examples" [open]="group.domain === 'everyday'">
+        <summary>{{ group.title }} ({{ group.examples.length }})</summary>
+        @for (e of group.examples; track $index) {
+          <article class="panel example">
+            <header class="muted small">
               {{ e.reference }} · similitud {{ e.score.toFixed(2) }}
             </header>
             <p lang="mbp">{{ e.damana }}</p>
-            <p class="suave">{{ e.spanish }}</p>
+            <p class="muted">{{ e.spanish }}</p>
           </article>
         }
       </details>
     } @empty {
-      <p class="suave">No se encontraron ejemplos parecidos en el corpus.</p>
+      <p class="muted">No se encontraron ejemplos parecidos en el corpus.</p>
     }
   }
 }

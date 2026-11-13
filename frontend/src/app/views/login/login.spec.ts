@@ -17,8 +17,8 @@ describe('Entrar', () => {
     element().querySelector<HTMLInputElement>(`input[name="${name}"]`)!;
 
   const type = async (user: string, password: string) => {
-    field('usuario').value = user;
-    field('usuario').dispatchEvent(new Event('input'));
+    field('username').value = user;
+    field('username').dispatchEvent(new Event('input'));
     field('password').value = password;
     field('password').dispatchEvent(new Event('input'));
     await fixture.whenStable();
@@ -58,7 +58,7 @@ describe('Entrar', () => {
   });
 
   it('renders both fields, with the password one hidden', () => {
-    expect(field('usuario').type).toBe('text');
+    expect(field('username').type).toBe('text');
     expect(field('password').type).toBe('password');
   });
 
@@ -100,7 +100,7 @@ describe('Entrar', () => {
     await settle();
 
     expect(field('password').value).toBe('');
-    expect(field('usuario').value).toBe('juan');
+    expect(field('username').value).toBe('juan');
   });
 
   it('the attempt block is explained differently from a bad password', async () => {

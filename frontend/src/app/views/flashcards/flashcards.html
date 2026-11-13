@@ -1,5 +1,5 @@
 <h1>Flashcards</h1>
-<p class="suave">
+<p class="muted">
   Repaso con repetición espaciada (SM-2 simplificado) sobre el vocabulario
   y las 300 palabras damana más frecuentes.
 </p>
@@ -7,24 +7,24 @@
 @if (error()) {
   <p class="error">{{ error() }}</p>
 } @else if (status(); as e) {
-  <p class="contadores suave">
+  <p class="counters muted">
     pendientes: <strong>{{ e.pendingCards }}</strong> · nuevas:
     <strong>{{ e.newCards }}</strong>
   </p>
 
   @if (e.card; as t) {
-    <div class="tarjeta panel">
-      <span class="tipo suave">{{ t.type === 'vocabulario' ? 'vocabulario' : 'palabra frecuente' }}</span>
-      <p class="anverso" lang="mbp">{{ t.word }}</p>
+    <div class="card panel">
+      <span class="kind muted">{{ t.type === 'vocabulary' ? 'vocabulario' : 'palabra frecuente' }}</span>
+      <p class="front" lang="mbp">{{ t.word }}</p>
 
       @if (revealed()) {
-        <p class="reverso">{{ t.translation }}</p>
-        <div class="calificaciones">
+        <p class="back">{{ t.translation }}</p>
+        <div class="grades">
           @for (o of options; track o.key) {
             <button
               type="button"
-              class="boton-suave"
-              [class.peligro]="o.key === 'otra_vez'"
+              class="button-muted"
+              [class.danger]="o.key === 'again'"
               [disabled]="busy()"
               (click)="answer(o.key)"
             >
@@ -33,14 +33,14 @@
           }
         </div>
       } @else {
-        <button type="button" class="boton" (click)="reveal()">
+        <button type="button" class="button" (click)="reveal()">
           Mostrar respuesta <kbd>espacio</kbd>
         </button>
       }
     </div>
   } @else {
-    <div class="tarjeta panel">
-      <p class="anverso">🎉</p>
+    <div class="card panel">
+      <p class="front">🎉</p>
       <p>No queda nada por repasar por ahora. Vuelve más tarde.</p>
     </div>
   }

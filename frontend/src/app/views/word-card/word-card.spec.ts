@@ -13,10 +13,10 @@ const WORD_CARD: WordCard = {
   ],
   verbForms: [],
   totalFrequency: 283,
-  frequencyBySource: [{ source: 'oraciones', frequency: 280 }],
+  frequencyBySource: [{ source: 'sentences', frequency: 280 }],
   concordances: [
     {
-      source: 'oraciones',
+      source: 'sentences',
       id: 1,
       reference: 'oración 1',
       fragment: 'naka <mark>nʉnka</mark> gontka',
@@ -34,7 +34,7 @@ describe('Ficha', () => {
   let paramMap: BehaviorSubject<ParamMap>;
 
   const startWith = async (word: string) => {
-    paramMap = new BehaviorSubject(convertToParamMap({ palabra: word }));
+    paramMap = new BehaviorSubject(convertToParamMap({ word: word }));
     fixture = await mount(WordCardView, [{ provide: ActivatedRoute, useValue: { paramMap } }]);
     http = TestBed.inject(HttpTestingController);
     router = TestBed.inject(Router);
@@ -67,10 +67,10 @@ describe('Ficha', () => {
     http.expectOne('/api/word/n%CA%89nka').flush(WORD_CARD);
     await settle(fixture);
 
-    queryAll(fixture, '.candidatas button')[0].click();
+    queryAll(fixture, '.candidates button')[0].click();
     await settle(fixture);
     expect(router.navigate).toHaveBeenCalledWith(['/buscar'], {
-      queryParams: { q: 'agua', idioma: 'espanol' },
+      queryParams: { q: 'agua', language: 'spanish' },
     });
   });
 
@@ -79,7 +79,7 @@ describe('Ficha', () => {
     http.expectOne('/api/word/n%CA%89nka').flush(WORD_CARD);
     await settle(fixture);
 
-    paramMap.next(convertToParamMap({ palabra: 'ñingui' }));
+    paramMap.next(convertToParamMap({ word: 'ñingui' }));
     await settle(fixture);
     http.expectOne('/api/word/%C3%B1ingui').flush({
       ...WORD_CARD,

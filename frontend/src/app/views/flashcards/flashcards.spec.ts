@@ -5,7 +5,7 @@ import { SrsStatus } from '../../core/models';
 import { Flashcards } from './flashcards';
 
 const CARD: SrsStatus = {
-  card: { word: 'nʉnka', type: 'vocabulario', translation: 'agua', repetitions: 2 },
+  card: { word: 'nʉnka', type: 'vocabulary', translation: 'agua', repetitions: 2 },
   pendingCards: 3,
   newCards: 1,
 };
@@ -45,7 +45,7 @@ describe('Flashcards', () => {
     await settle(fixture);
 
     const response = http.expectOne('/api/srs/answer');
-    expect(response.request.body).toEqual({ word: 'nʉnka', grade: 'bien' });
+    expect(response.request.body).toEqual({ word: 'nʉnka', grade: 'good' });
     response.flush({ word: 'nʉnka', repetitions: 3, intervalDays: 6, nextReview: '' });
     await settle(fixture);
 

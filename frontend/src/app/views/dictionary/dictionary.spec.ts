@@ -61,7 +61,7 @@ describe('Diccionario', () => {
     await start([frequency('nʉnka', 283)]);
     // Careful: the Damana mode button says «damana → español», so searching
     // by the text «español» would catch the wrong one. Go by position.
-    const [, toSpanish] = queryAll(fixture, '.modos button');
+    const [, toSpanish] = queryAll(fixture, '.modes button');
     toSpanish.click();
     await settle(fixture);
 
@@ -77,7 +77,7 @@ describe('Diccionario', () => {
     await start(many);
     expect(queryAll(fixture, 'tbody tr').length).toBe(50);
 
-    const [, next] = queryAll(fixture, '.paginador button');
+    const [, next] = queryAll(fixture, '.pagination button');
     next.click();
     await settle(fixture);
     expect(text(fixture)).toContain('palabra050');
@@ -89,7 +89,7 @@ describe('Diccionario', () => {
       frequency(`palabra${String(i).padStart(3, '0')}`, 120 - i),
     );
     await start(many);
-    const [, next] = queryAll(fixture, '.paginador button');
+    const [, next] = queryAll(fixture, '.pagination button');
     next.click();
     await settle(fixture);
 

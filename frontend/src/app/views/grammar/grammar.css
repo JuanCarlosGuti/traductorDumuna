@@ -1,21 +1,21 @@
-.lemas {
+.lemmas {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1.25rem;
 }
 
-.lemas .activo {
-  border-color: var(--acento);
-  color: var(--acento);
+.lemmas .active {
+  border-color: var(--accent);
+  color: var(--accent);
   font-weight: 600;
 }
 
-.forma {
+.verb-form {
   font-weight: 600;
 }
 
-.chiquito {
+.small {
   font-size: 0.85rem;
 }
 

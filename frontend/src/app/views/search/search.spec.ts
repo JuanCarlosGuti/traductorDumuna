@@ -9,11 +9,11 @@ import { SearchView } from './search';
 const RESULTS: SearchResponse = {
   query: 'nʉnka',
   language: 'damana',
-  mode: 'concordancia',
+  mode: 'concordance',
   total: 1,
   results: [
     {
-      source: 'oraciones',
+      source: 'sentences',
       id: 1,
       reference: 'oración 1',
       fragment: 'naka <mark>nʉnka</mark> gontka',
@@ -61,11 +61,11 @@ describe('Buscar', () => {
   });
 
   it('respects the language and source given in the URL', async () => {
-    await startWith({ q: 'agua', idioma: 'espanol', fuente: 'frases' });
+    await startWith({ q: 'agua', language: 'spanish', source: 'phrases' });
     const httpRequest = http.expectOne((r) => r.url === '/api/search');
-    expect(httpRequest.request.params.get('language')).toBe('espanol');
-    expect(httpRequest.request.params.get('source')).toBe('frases');
-    httpRequest.flush({ ...RESULTS, language: 'espanol' });
+    expect(httpRequest.request.params.get('language')).toBe('spanish');
+    expect(httpRequest.request.params.get('source')).toBe('phrases');
+    httpRequest.flush({ ...RESULTS, language: 'spanish' });
     await settle(fixture);
   });
 
@@ -115,6 +115,6 @@ describe('Buscar', () => {
     });
     await settle(fixture);
     expect(text(fixture)).not.toContain('No se pudo completar');
-    expect(queryAll(fixture, '.resultado').length).toBe(0);
+    expect(queryAll(fixture, '.result').length).toBe(0);
   });
 });

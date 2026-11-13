@@ -4,24 +4,24 @@ import { replaceUPlus, UPlusDirective } from './u-plus.directive';
 
 describe('replaceUPlus', () => {
   it('replaces u+ with ʉ and adjusts the cursor', () => {
-    expect(replaceUPlus('nu+', 3)).toEqual({ valor: 'nʉ', caret: 2 });
+    expect(replaceUPlus('nu+', 3)).toEqual({ value: 'nʉ', caret: 2 });
   });
 
   it('replaces U+ with capital Ʉ', () => {
-    expect(replaceUPlus('U+nka', 2)).toEqual({ valor: 'Ʉnka', caret: 1 });
+    expect(replaceUPlus('U+nka', 2)).toEqual({ value: 'Ʉnka', caret: 1 });
   });
 
   it('replaces several occurrences in the same value', () => {
-    expect(replaceUPlus('ku+nu+nka', 9)).toEqual({ valor: 'kʉnʉnka', caret: 7 });
+    expect(replaceUPlus('ku+nu+nka', 9)).toEqual({ value: 'kʉnʉnka', caret: 7 });
   });
 
   it('only shifts the cursor for replacements before it', () => {
     // cursor at the start, the pair is after it
-    expect(replaceUPlus('abu+', 0)).toEqual({ valor: 'abʉ', caret: 0 });
+    expect(replaceUPlus('abu+', 0)).toEqual({ value: 'abʉ', caret: 0 });
   });
 
   it('does not touch text without u+ (including ñ and ʉ already typed)', () => {
-    expect(replaceUPlus('ñingui nʉnka', 5)).toEqual({ valor: 'ñingui nʉnka', caret: 5 });
+    expect(replaceUPlus('ñingui nʉnka', 5)).toEqual({ value: 'ñingui nʉnka', caret: 5 });
   });
 });
 

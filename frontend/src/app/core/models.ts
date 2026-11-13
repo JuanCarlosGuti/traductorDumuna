@@ -1,8 +1,8 @@
-// Mirror of the backend DTOs (backend/src/query, srs, traduccion and pendientes).
+// Mirror of the backend DTOs (backend/src/query, srs, translation and pending_items).
 
-export type Language = 'damana' | 'espanol';
-export type CorpusSource = 'oraciones' | 'frases' | 'vocabulario' | 'conjugaciones';
-export type CorpusDomain = 'biblico' | 'cotidiano' | 'gramatica';
+export type Language = 'damana' | 'spanish';
+export type CorpusSource = 'sentences' | 'phrases' | 'vocabulary' | 'conjugations';
+export type CorpusDomain = 'biblical' | 'everyday' | 'grammar';
 
 export interface Concordance {
   source: CorpusSource;
@@ -16,7 +16,7 @@ export interface Concordance {
 export interface SearchResponse {
   query: string;
   language: Language;
-  mode: 'concordancia' | 'similitud';
+  mode: 'concordance' | 'similarity';
   total: number;
   results: Concordance[];
 }
@@ -80,11 +80,11 @@ export interface ConjugationTable {
   conjugations: Conjugation[];
 }
 
-export type Grade = 'otra_vez' | 'dificil' | 'bien' | 'facil';
+export type Grade = 'again' | 'hard' | 'good' | 'easy';
 
 export interface SrsCard {
   word: string;
-  type: 'vocabulario' | 'frecuencia';
+  type: 'vocabulary' | 'frequency';
   translation: string;
   repetitions: number;
 }
@@ -102,7 +102,7 @@ export interface UpdatedProgress {
   nextReview: string;
 }
 
-export type TranslationDirection = 'damana_a_espanol' | 'espanol_a_damana';
+export type TranslationDirection = 'damana_to_spanish' | 'spanish_to_damana';
 
 export interface ExampleFragment {
   source: CorpusSource;
@@ -113,7 +113,7 @@ export interface ExampleFragment {
   score: number;
 }
 
-export type SupportLevel = 'bueno' | 'parcial' | 'revisar';
+export type SupportLevel = 'good' | 'partial' | 'review';
 
 export interface Support {
   level: SupportLevel;
@@ -125,7 +125,7 @@ export interface GlossPair {
   target: string;
 }
 
-export type MatchKind = 'exacta' | 'sin_tildes' | 'sinonimo' | 'singular' | 'frase' | 'posible';
+export type MatchKind = 'exact' | 'no_accents' | 'synonym' | 'singular' | 'phrase' | 'possible';
 
 export interface Sense {
   word: string;
@@ -169,7 +169,7 @@ export interface TranslatorStatus {
   model: string | null;
 }
 
-export type ValidationOrigin = 'confirmada' | 'corregida';
+export type ValidationOrigin = 'confirmed' | 'corrected';
 
 export interface ValidateTranslation {
   text: string;
@@ -190,8 +190,8 @@ export interface PendingItem {
   language: Language;
   context: string | null;
   timesRequested: number;
-  status: 'pendiente' | 'exportada' | 'resuelta';
-  origin: 'traductor' | 'elicitacion';
+  status: 'pending' | 'exported' | 'resolved';
+  origin: 'translator' | 'elicitation';
   createdAt: string;
   updatedAt: string;
 }

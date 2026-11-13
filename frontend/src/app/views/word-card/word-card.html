@@ -1,35 +1,35 @@
 <p><a routerLink="/diccionario">‹ diccionario</a></p>
 
 @if (loading()) {
-  <p class="suave">Cargando…</p>
+  <p class="muted">Cargando…</p>
 } @else if (notFound()) {
   <h1 lang="mbp">{{ notFound() }}</h1>
   <p>Esta palabra no aparece en el corpus damana.</p>
 } @else if (wordCard(); as f) {
-  <header class="encabezado">
+  <header class="heading">
     <h1 lang="mbp">{{ f.word }}</h1>
-    <p class="suave">
+    <p class="muted">
       {{ f.totalFrequency }} {{ f.totalFrequency === 1 ? 'aparición' : 'apariciones' }}:
       @for (ff of f.frequencyBySource; track ff.source) {
-        <span class="chip">{{ ff.source }} · {{ ff.frequency }}</span>
+        <span class="chip">{{ label(ff.source) }} · {{ ff.frequency }}</span>
       }
     </p>
   </header>
 
   @if (f.vocabularyEntries.length > 0 || f.verbForms.length > 0) {
-    <section class="panel traduccion-directa">
+    <section class="panel direct-translation">
       <h2>Traducción</h2>
       @for (e of f.vocabularyEntries; track $index) {
-        <p class="entrada">
+        <p class="input">
           <strong>{{ e.spanish }}</strong>
           @if (e.category) { <span class="chip">{{ e.category }}</span> }
-          @if (e.notes) { <span class="suave chiquito"> — {{ e.notes }}</span> }
+          @if (e.notes) { <span class="muted small"> — {{ e.notes }}</span> }
         </p>
       }
       @for (v of f.verbForms; track $index) {
-        <p class="entrada">
+        <p class="input">
           <strong lang="mbp">{{ v.damana }}</strong> = {{ v.spanish }}
-          <span class="suave chiquito"> — verbo</span>
+          <span class="muted small"> — verbo</span>
           <a [routerLink]="['/gramatica']">{{ v.lemma }}</a>
         </p>
       }
@@ -38,7 +38,7 @@
 
   <section>
     <h2>Traducciones candidatas</h2>
-    <p class="suave chiquito">
+    <p class="muted small">
       @if (f.vocabularyEntries.length === 0 && f.verbForms.length === 0) {
         Esta palabra no está en el vocabulario; estas son las palabras
         españolas que más co-ocurren en los textos paralelos (estimación
@@ -48,13 +48,13 @@
         para buscarlas en español.
       }
     </p>
-    <div class="candidatas">
+    <div class="candidates">
       @for (c of f.candidateTranslations; track c.word) {
-        <button type="button" class="boton-suave" (click)="searchInSpanish(c.word)">
-          {{ c.word }} <span class="suave">· {{ c.cooccurrences }}</span>
+        <button type="button" class="button-muted" (click)="searchInSpanish(c.word)">
+          {{ c.word }} <span class="muted">· {{ c.cooccurrences }}</span>
         </button>
       } @empty {
-        <p class="suave">Sin candidatas.</p>
+        <p class="muted">Sin candidatas.</p>
       }
     </div>
   </section>
@@ -62,12 +62,12 @@
   <section>
     <h2>Concordancias</h2>
     @for (c of f.concordances; track $index) {
-      <article class="panel concordancia">
-        <header class="suave chiquito">{{ c.reference }}</header>
+      <article class="panel concordance">
+        <header class="muted small">{{ c.reference }}</header>
         <p lang="mbp">
           <app-clickable-fragment [html]="c.fragment" (word)="viewWord($event)" />
         </p>
-        <p class="suave paralelo">{{ c.parallelText }}</p>
+        <p class="muted parallel">{{ c.parallelText }}</p>
       </article>
     }
   </section>

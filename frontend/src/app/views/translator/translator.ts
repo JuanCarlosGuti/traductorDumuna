@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { segmentFragment } from '../../shared/fragment';
 import { normalize } from '../../shared/normalizer';
 import { UPlusDirective } from '../../shared/u-plus.directive';
+import { label } from '../../shared/labels';
 import { ApiService } from '../../core/api.service';
 import {
   TranslationDirection,
@@ -26,13 +27,13 @@ interface ExampleGroup {
 }
 
 const DOMAIN_TITLES: Record<CorpusDomain, string> = {
-  cotidiano: 'Ejemplos cotidianos',
-  gramatica: 'Ejemplos de gramática (conjugaciones)',
-  biblico: 'Ejemplos del corpus bíblico',
+  everyday: 'Ejemplos cotidianos',
+  grammar: 'Ejemplos de gramática (conjugaciones)',
+  biblical: 'Ejemplos del corpus bíblico',
 };
-const DOMAIN_ORDER: CorpusDomain[] = ['cotidiano', 'gramatica', 'biblico'];
+const DOMAIN_ORDER: CorpusDomain[] = ['everyday', 'grammar', 'biblical'];
 
-type ValidationStatus = 'ninguna' | 'guardando' | ValidationOrigin;
+type ValidationStatus = 'none' | 'saving' | ValidationOrigin;
 
 @Component({
   selector: 'app-translator',
@@ -41,18 +42,22 @@ type ValidationStatus = 'ninguna' | 'guardando' | ValidationOrigin;
   styleUrl: './translator.css',
 })
 export class TranslatorView {
+  protected readonly label = label;
+  protected triggerLabels(triggers: string[]): string {
+    return triggers.map(label).join(', ');
+  }
   private readonly api = inject(ApiService);
 
   protected readonly status = signal<TranslatorStatus | null>(null);
   protected readonly text = signal('');
-  protected readonly direction = signal<TranslationDirection>('espanol_a_damana');
+  protected readonly direction = signal<TranslationDirection>('spanish_to_damana');
   protected readonly result = signal<TranslationResponse | null>(null);
   protected readonly error = signal('');
   protected readonly loading = signal(false);
 
   /** Text that was translated (the box may change afterwards). */
   protected readonly translatedText = signal('');
-  protected readonly validation = signal<ValidationStatus>('ninguna');
+  protected readonly validation = signal<ValidationStatus>('none');
   protected readonly totalValidated = signal(0);
   protected readonly correcting = signal(false);
   protected readonly correction = signal('');
@@ -129,7 +134,7 @@ export class TranslatorView {
   }
 
   private resetValidation(): void {
-    this.validation.set('ninguna');
+    this.validation.set('none');
     this.correcting.set(false);
     this.correction.set('');
     this.validationError.set('');
@@ -139,7 +144,7 @@ export class TranslatorView {
   protected confirm(): Promise<void> {
     const r = this.result();
     if (!r) return Promise.resolve();
-    return this.saveValidation(r.translation, 'confirmada');
+    return this.saveValidation(r.translation, 'confirmed');
   }
 
   protected openCorrection(): void {
@@ -156,13 +161,13 @@ export class TranslatorView {
   protected saveCorrection(): Promise<void> {
     const text = this.correction().trim();
     if (!text) return Promise.resolve();
-    return this.saveValidation(text, 'corregida');
+    return this.saveValidation(text, 'corrected');
   }
 
   private async saveValidation(translation: string, origin: ValidationOrigin): Promise<void> {
     const r = this.result();
-    if (!r || this.validation() === 'guardando') return;
-    this.validation.set('guardando');
+    if (!r || this.validation() === 'saving') return;
+    this.validation.set('saving');
     this.validationError.set('');
     try {
       const response = await this.api.validateTranslation({
@@ -176,7 +181,7 @@ export class TranslatorView {
       this.validation.set(origin);
       this.correcting.set(false);
     } catch (e) {
-      this.validation.set('ninguna');
+      this.validation.set('none');
       this.validationError.set(this.errorMessage(e));
     }
   }
@@ -195,12 +200,12 @@ export class TranslatorView {
 
   protected swapDirection(): void {
     this.direction.set(
-      this.direction() === 'damana_a_espanol' ? 'espanol_a_damana' : 'damana_a_espanol',
+      this.direction() === 'damana_to_spanish' ? 'spanish_to_damana' : 'damana_to_spanish',
     );
   }
 
   /** Language of the Damana side in the gloss, to mark lang="mbp" where needed. */
   protected targetIsDamana(): boolean {
-    return this.direction() === 'espanol_a_damana';
+    return this.direction() === 'spanish_to_damana';
   }
 }

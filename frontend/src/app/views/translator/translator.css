@@ -1,8 +1,8 @@
-.formulario textarea,
-.validacion textarea {
+.form textarea,
+.validation textarea {
   width: 100%;
   background: var(--panel);
-  border: 1px solid var(--borde);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.6rem 0.8rem;
   resize: vertical;
@@ -10,7 +10,7 @@
   color: inherit;
 }
 
-.controles {
+.controls {
   display: flex;
   gap: 0.5rem;
   margin-top: 0.5rem;
@@ -18,27 +18,27 @@
   flex-wrap: wrap;
 }
 
-.formulario textarea:disabled {
+.form textarea:disabled {
   opacity: 0.7;
   cursor: progress;
 }
 
-.espera {
+.waiting {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin: 0.5rem 0 0;
 }
 
-.latido {
+.pulse {
   width: 0.6rem;
   height: 0.6rem;
   border-radius: 50%;
-  background: var(--acento);
-  animation: latido 1.2s ease-in-out infinite;
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
 }
 
-@keyframes latido {
+@keyframes pulse {
   0%,
   100% {
     opacity: 0.25;
@@ -51,46 +51,46 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .latido {
+  .pulse {
     animation: none;
   }
 }
 
-.resultado {
+.result {
   margin-top: 1.25rem;
 }
 
-.cabecera-resultado {
+.result-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 1rem;
 }
 
-.cabecera-resultado h2 {
+.result-header h2 {
   margin: 0;
 }
 
-.confianza {
+.confidence {
   font-size: 0.8rem;
-  border: 1px solid var(--borde);
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0 0.6rem;
-  color: var(--suave);
+  color: var(--muted);
 }
 
-.confianza.baja {
+.confidence.low {
   border-color: #b45309;
   color: #b45309;
 }
 
-.traduccion {
+.translation {
   font-size: 1.2rem;
   margin: 0.25rem 0 0.75rem;
   white-space: pre-line;
 }
 
-mark.sin-equivalente {
+mark.no-equivalent {
   background: transparent;
   color: inherit;
   border-bottom: 2px dashed #b45309;
@@ -100,7 +100,7 @@ mark.sin-equivalente {
   cursor: help;
 }
 
-.glosa {
+.gloss {
   list-style: none;
   padding: 0;
   margin: 0 0 0.75rem;
@@ -109,8 +109,8 @@ mark.sin-equivalente {
   gap: 0.4rem;
 }
 
-.par {
-  border: 1px solid var(--borde);
+.pair {
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.15rem 0.5rem;
   font-size: 0.9rem;
@@ -119,99 +119,99 @@ mark.sin-equivalente {
   align-items: baseline;
 }
 
-.par .origen {
-  color: var(--suave);
+.pair .source {
+  color: var(--muted);
 }
 
-.par .flecha {
-  color: var(--suave);
+.pair .arrow {
+  color: var(--muted);
   font-size: 0.8rem;
 }
 
-.par .destino {
+.pair .target {
   font-weight: 600;
 }
 
-.sin-equivalente-lista mark {
+.no-equivalent-list mark {
   margin: 0 0.2rem;
 }
 
-.explicacion {
+.explanation {
   margin: 0.5rem 0;
 }
 
 .chip {
   display: inline-block;
-  border: 1px solid var(--borde);
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0 0.6rem;
   margin: 0.15rem 0.3rem 0.15rem 0;
   font-size: 0.85rem;
 }
 
-.chiquito {
+.small {
   font-size: 0.85rem;
 }
 
-.validacion {
+.validation {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--borde);
+  border-top: 1px solid var(--border);
 }
 
-.guardada {
+.saved {
   margin: 0;
   color: #15803d;
   font-weight: 600;
 }
 
-.apoyo,
-.ejemplos {
+.support,
+.examples {
   margin-top: 1rem;
 }
 
-.apoyo summary,
-.ejemplos summary {
+.support summary,
+.examples summary {
   cursor: pointer;
-  color: var(--acento);
+  color: var(--accent);
   padding: 0.5rem 0;
 }
 
-.diccionario td.posible {
+.dictionary td.possible {
   font-style: italic;
 }
 
-.reglas {
+.rules {
   padding-left: 1.2rem;
 }
 
-.ejemplo {
+.example {
   margin: 0.5rem 0;
 }
 
-.ejemplo p {
+.example p {
   margin: 0.25rem 0;
 }
 
-.aviso h2 {
+.notice h2 {
   margin-top: 0;
 }
 
-.aviso h3 {
+.notice h3 {
   margin-bottom: 0.25rem;
 }
 
-.aviso pre {
-  background: var(--fondo);
-  border: 1px solid var(--borde);
+.notice pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   overflow-x: auto;
 }
 
-.aviso code {
-  background: var(--fondo);
-  border: 1px solid var(--borde);
+.notice code {
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0 0.3rem;
 }
@@ -224,7 +224,7 @@ mark.sin-equivalente {
   color: #b91c1c;
 }
 
-.aviso-apoyo {
+.support-notice {
   margin-top: 1.25rem;
   margin-bottom: 0;
   border-left: 3px solid #b45309;

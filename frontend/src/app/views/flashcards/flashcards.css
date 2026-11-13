@@ -1,39 +1,39 @@
-.contadores {
+.counters {
   margin-bottom: 1rem;
 }
 
-.tarjeta {
+.card {
   max-width: 30rem;
   margin: 0 auto;
   text-align: center;
   padding: 2rem 1.5rem;
 }
 
-.tipo {
+.kind {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
-.anverso {
+.front {
   font-size: 2rem;
   font-weight: 700;
   margin: 0.75rem 0;
 }
 
-.reverso {
+.back {
   font-size: 1.15rem;
   margin: 0 0 1.25rem;
 }
 
-.calificaciones {
+.grades {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.peligro {
+.danger {
   border-color: #b91c1c;
 }
 

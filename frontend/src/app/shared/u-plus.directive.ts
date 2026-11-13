@@ -11,7 +11,7 @@ const UPPER_U = String.fromCharCode(0x0244); // Ʉ
 export function replaceUPlus(
   value: string,
   caret: number,
-): { valor: string; caret: number } {
+): { value: string; caret: number } {
   let result = '';
   let newCaret = caret;
   let i = 0;
@@ -26,7 +26,7 @@ export function replaceUPlus(
       i += 1;
     }
   }
-  return { valor: result, caret: newCaret };
+  return { value: result, caret: newCaret };
 }
 
 /**
@@ -40,7 +40,7 @@ export class UPlusDirective {
   @HostListener('input', ['$event'])
   onInput(event: Event): void {
     const field = event.target as HTMLInputElement | HTMLTextAreaElement;
-    const { valor: value, caret } = replaceUPlus(
+    const { value: value, caret } = replaceUPlus(
       field.value,
       field.selectionStart ?? field.value.length,
     );

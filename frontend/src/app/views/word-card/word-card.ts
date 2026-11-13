@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ClickableFragment } from '../../shared/clickable-fragment';
 import { ApiService } from '../../core/api.service';
 import { WordCard } from '../../core/models';
+import { label } from '../../shared/labels';
 
 @Component({
   selector: 'app-word-card',
@@ -12,6 +13,7 @@ import { WordCard } from '../../core/models';
   styleUrl: './word-card.css',
 })
 export class WordCardView {
+  protected readonly label = label;
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -22,7 +24,7 @@ export class WordCardView {
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const word = params.get('palabra');
+      const word = params.get('word');
       if (word) void this.load(word);
     });
   }
@@ -46,7 +48,7 @@ export class WordCardView {
 
   protected searchInSpanish(word: string): void {
     void this.router.navigate(['/buscar'], {
-      queryParams: { q: word, idioma: 'espanol' },
+      queryParams: { q: word, language: 'spanish' },
     });
   }
 }

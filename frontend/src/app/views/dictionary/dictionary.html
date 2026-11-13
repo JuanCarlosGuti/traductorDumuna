@@ -1,52 +1,52 @@
 <h1>Diccionario</h1>
 
-<div class="controles">
-  <div class="modos" role="tablist">
+<div class="controls">
+  <div class="modes" role="tablist">
     <button
       type="button"
-      class="boton-suave"
-      [class.activo]="mode() === 'damana'"
+      class="button-muted"
+      [class.active]="mode() === 'damana'"
       (click)="changeMode('damana')"
     >
       damana → español
     </button>
     <button
       type="button"
-      class="boton-suave"
-      [class.activo]="mode() === 'espanol'"
-      (click)="changeMode('espanol')"
+      class="button-muted"
+      [class.active]="mode() === 'spanish'"
+      (click)="changeMode('spanish')"
     >
       español → damana
     </button>
   </div>
   <input
-    #campoFiltro
+    #filterField
     type="search"
     appUPlus
     [placeholder]="mode() === 'damana' ? 'Filtrar palabra damana… (u+ → ʉ)' : 'Filtrar por español…'"
     [value]="filterText()"
-    (input)="applyFilter(campoFiltro.value)"
+    (input)="applyFilter(filterField.value)"
   />
 </div>
 
 @if (mode() === 'damana') {
-  <p class="suave">
+  <p class="muted">
     Todas las palabras del corpus por frecuencia (sin probables nombres
     propios). La traducción sale del vocabulario o de las conjugaciones;
     haz clic en la palabra para ver su ficha.
   </p>
 } @else {
-  <p class="suave">
+  <p class="muted">
     Las {{ vocabulary().length }} entradas del vocabulario ordenadas por
     español. Haz clic en la palabra damana para ver su ficha.
   </p>
 }
 
 @if (loading()) {
-  <p class="suave">Cargando…</p>
+  <p class="muted">Cargando…</p>
 } @else {
   @if (mode() === 'damana') {
-    <table class="tabla">
+    <table class="table">
       <thead>
         <tr>
           <th>#</th>
@@ -59,11 +59,11 @@
       <tbody>
         @for (f of visible(); track f.word) {
           <tr>
-            <td class="suave">{{ pageIndex() * perPage + $index + 1 }}</td>
+            <td class="muted">{{ pageIndex() * perPage + $index + 1 }}</td>
             <td><a [routerLink]="['/diccionario', f.word]">{{ f.word }}</a></td>
             <td>{{ f.translation ?? '' }}</td>
             <td>{{ f.frequency }}</td>
-            <td class="suave">{{ f.category ?? '' }}</td>
+            <td class="muted">{{ f.category ?? '' }}</td>
           </tr>
         } @empty {
           <tr><td colspan="5">Sin resultados para «{{ filterText() }}».</td></tr>
@@ -71,7 +71,7 @@
       </tbody>
     </table>
   } @else {
-    <table class="tabla">
+    <table class="table">
       <thead>
         <tr>
           <th>#</th>
@@ -84,13 +84,13 @@
       <tbody>
         @for (e of visibleEntries(); track e.id) {
           <tr>
-            <td class="suave">{{ pageIndex() * perPage + $index + 1 }}</td>
+            <td class="muted">{{ pageIndex() * perPage + $index + 1 }}</td>
             <td>{{ e.spanish }}</td>
             <td lang="mbp">
               <a [routerLink]="['/diccionario', e.damana]">{{ e.damana }}</a>
             </td>
-            <td class="suave">{{ e.category ?? '' }}</td>
-            <td class="suave chiquito">{{ e.notes ?? '' }}</td>
+            <td class="muted">{{ e.category ?? '' }}</td>
+            <td class="muted small">{{ e.notes ?? '' }}</td>
           </tr>
         } @empty {
           <tr><td colspan="5">Sin resultados para «{{ filterText() }}».</td></tr>
@@ -99,16 +99,16 @@
     </table>
   }
 
-  <nav class="paginador">
-    <button type="button" class="boton-suave" (click)="previousPage()" [disabled]="pageIndex() === 0">
+  <nav class="pagination">
+    <button type="button" class="button-muted" (click)="previousPage()" [disabled]="pageIndex() === 0">
       ‹ Anterior
     </button>
-    <span class="suave">
+    <span class="muted">
       página {{ pageIndex() + 1 }} de {{ totalPages() }} · {{ totalRows() }} filas
     </span>
     <button
       type="button"
-      class="boton-suave"
+      class="button-muted"
       (click)="next()"
       [disabled]="pageIndex() >= totalPages() - 1"
     >

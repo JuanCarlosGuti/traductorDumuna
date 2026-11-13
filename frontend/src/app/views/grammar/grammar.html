@@ -1,24 +1,24 @@
 <h1>Gramática — conjugaciones</h1>
-<p class="suave">
+<p class="muted">
   Formas verbales recopiladas en el corpus. Elige un lema para ver su
   tabla de conjugación.
 </p>
 
 @if (loading()) {
-  <p class="suave">Cargando…</p>
+  <p class="muted">Cargando…</p>
 } @else {
-  <div class="lemas">
+  <div class="lemmas">
     @for (l of lemmas(); track l.lemma) {
       <button
         type="button"
-        class="boton-suave"
-        [class.activo]="table()?.lemma === l.lemma"
+        class="button-muted"
+        [class.active]="table()?.lemma === l.lemma"
         (click)="choose(l.lemma)"
       >
-        {{ l.lemma }} <span class="suave">· {{ l.forms }}</span>
+        {{ l.lemma }} <span class="muted">· {{ l.forms }}</span>
       </button>
     } @empty {
-      <p class="suave">No hay conjugaciones. ¿Se ejecutó el importador?</p>
+      <p class="muted">No hay conjugaciones. ¿Se ejecutó el importador?</p>
     }
   </div>
 
@@ -27,11 +27,11 @@
   }
 
   @if (loadingTable()) {
-    <p class="suave">Cargando conjugación…</p>
+    <p class="muted">Cargando conjugación…</p>
   } @else if (table(); as t) {
     <section class="panel">
-      <h2>{{ t.lemma }} <span class="suave chiquito">({{ t.conjugations.length }} formas)</span></h2>
-      <table class="tabla">
+      <h2>{{ t.lemma }} <span class="muted small">({{ t.conjugations.length }} formas)</span></h2>
+      <table class="table">
         <thead>
           <tr>
             <th>forma damana</th>
@@ -42,9 +42,9 @@
         <tbody>
           @for (c of t.conjugations; track c.id) {
             <tr>
-              <td lang="mbp" class="forma">{{ c.damana }}</td>
+              <td lang="mbp" class="verb-form">{{ c.damana }}</td>
               <td>{{ c.spanish }}</td>
-              <td class="suave chiquito">{{ c.notes ?? '' }}</td>
+              <td class="muted small">{{ c.notes ?? '' }}</td>
             </tr>
           }
         </tbody>

@@ -21,19 +21,19 @@ const RESPONSE: TranslationResponse = {
   appliedRules: ['-nzhe (posesivo)'],
   confidence: 0.72,
   briefExplanation: 'Diccionario más regla del posesivo.',
-  support: { level: 'bueno', reasons: [] },
+  support: { level: 'good', reasons: [] },
   examples: [
-    { source: 'oraciones', domain: 'cotidiano', reference: 'oración 9', damana: 'Abu urragamba nuka', spanish: 'mamá está en la casa', score: 0.9 },
-    { source: 'conjugaciones', domain: 'gramatica', reference: 'conjugación 2 (cocinar)', damana: 'dugwa', spanish: 'cocina', score: 0.5 },
-    { source: 'oraciones', domain: 'biblico', reference: 'oración 1', damana: 'Jehová nʉnka gontka', spanish: 'Jehová hizo el agua', score: 0.3 },
+    { source: 'sentences', domain: 'everyday', reference: 'oración 9', damana: 'Abu urragamba nuka', spanish: 'mamá está en la casa', score: 0.9 },
+    { source: 'conjugations', domain: 'grammar', reference: 'conjugación 2 (cocinar)', damana: 'dugwa', spanish: 'cocina', score: 0.5 },
+    { source: 'sentences', domain: 'biblical', reference: 'oración 1', damana: 'Jehová nʉnka gontka', spanish: 'Jehová hizo el agua', score: 0.3 },
   ],
   dictionary: [
-    { word: 'mamá', spanish: 'mamá', damana: 'Abu', category: 'Personas y familia', match: 'exacta' },
-    { word: 'cocina', spanish: 'Cocinar', damana: 'Dugua', category: 'Verbos', match: 'posible' },
+    { word: 'mamá', spanish: 'mamá', damana: 'Abu', category: 'Personas y familia', match: 'exact' },
+    { word: 'cocina', spanish: 'Cocinar', damana: 'Dugua', category: 'Verbos', match: 'possible' },
   ],
   properNames: [],
-  rules: [{ form: '-nzhe', meaning: 'posesivo / "de"', example: 'Kunkujshina → Kunkujshinanzhe = de Dios', trigger: 'posesivo' }],
-  triggers: ['posesivo'],
+  rules: [{ form: '-nzhe', meaning: 'posesivo / "de"', example: 'Kunkujshina → Kunkujshinanzhe = de Dios', trigger: 'possessive' }],
+  triggers: ['possessive'],
 };
 
 describe('Traductor', () => {
@@ -81,7 +81,7 @@ describe('Traductor', () => {
     const httpRequest = http.expectOne('/api/translate');
     expect(httpRequest.request.body).toEqual({
       text: 'mi mamá cocina en la casa',
-      direction: 'espanol_a_damana',
+      direction: 'spanish_to_damana',
     });
     httpRequest.flush(RESPONSE);
     await settle(fixture);
@@ -98,7 +98,7 @@ describe('Traductor', () => {
     expect(area.disabled).toBe(true);
     expect((fixture.nativeElement as HTMLElement).querySelector('select')!.disabled).toBe(true);
     expect((button(/Traduciendo/) as HTMLButtonElement).disabled).toBe(true);
-    const notice = (fixture.nativeElement as HTMLElement).querySelector('.espera')!;
+    const notice = (fixture.nativeElement as HTMLElement).querySelector('.waiting')!;
     expect(notice.getAttribute('role')).toBe('status');
     expect(notice.textContent).toContain('Traduciendo con Claude… suele tardar entre 5 y 15 s');
 
@@ -107,7 +107,7 @@ describe('Traductor', () => {
 
     // Done: typing is possible again (with ʉ) and the notice disappears.
     expect(area.disabled).toBe(false);
-    expect(queryAll(fixture, '.espera').length).toBe(0);
+    expect(queryAll(fixture, '.waiting').length).toBe(0);
     await type('nʉnka ñingui');
     expect(area.value).toBe('nʉnka ñingui');
     expect((button(/^\s*Traducir\s*$/) as HTMLButtonElement).disabled).toBe(false);
@@ -117,7 +117,7 @@ describe('Traductor', () => {
     await start(); // AVAILABLE: compatible, gpt-oss-120b
     await type('nʉnka');
     await translate();
-    const notice = (fixture.nativeElement as HTMLElement).querySelector('.espera')!;
+    const notice = (fixture.nativeElement as HTMLElement).querySelector('.waiting')!;
     expect(notice.textContent).toContain('Traduciendo con gpt-oss-120b…');
     expect(notice.textContent).not.toContain('Claude');
     http.expectOne('/api/translate').flush(RESPONSE);
@@ -133,9 +133,9 @@ describe('Traductor', () => {
   it('shows the word-by-word gloss under the translation', async () => {
     await start();
     await translateWithResponse();
-    const pairs = queryAll(fixture, '.glosa .par').map((p) => [
-      p.querySelector('.origen')?.textContent?.trim(),
-      p.querySelector('.destino')?.textContent?.trim(),
+    const pairs = queryAll(fixture, '.gloss .pair').map((p) => [
+      p.querySelector('.source')?.textContent?.trim(),
+      p.querySelector('.target')?.textContent?.trim(),
     ]);
     expect(pairs).toEqual([
       ['mi', 'Ranzhe'],
@@ -143,15 +143,15 @@ describe('Traductor', () => {
       ['cocina', 'dugwa'],
     ]);
     // the Damana side is marked with lang="mbp" for the screen reader
-    expect(queryAll(fixture, '.glosa .destino[lang="mbp"]').length).toBe(3);
+    expect(queryAll(fixture, '.gloss .target[lang="mbp"]').length).toBe(3);
   });
 
   it('highlights the words without an equivalent, without brackets, and says they were left in Pendientes', async () => {
     await start();
     await translateWithResponse();
-    const marked = queryAll(fixture, '.traduccion .sin-equivalente').map((e) => e.textContent?.trim());
+    const marked = queryAll(fixture, '.translation .no-equivalent').map((e) => e.textContent?.trim());
     expect(marked).toEqual(['vecina']);
-    expect(queryAll(fixture, '.traduccion')[0].textContent).not.toContain('[');
+    expect(queryAll(fixture, '.translation')[0].textContent).not.toContain('[');
     expect(text(fixture)).toContain('quedaron en Pendientes');
   });
 
@@ -160,7 +160,7 @@ describe('Traductor', () => {
     await translateWithResponse();
     expect(text(fixture)).toContain('-nzhe (posesivo)');
     expect(text(fixture)).toContain('confianza 72 %');
-    expect(queryAll(fixture, '.diccionario tbody tr').length).toBe(2);
+    expect(queryAll(fixture, '.dictionary tbody tr').length).toBe(2);
     expect(text(fixture)).toContain('Abu');
     expect(text(fixture)).toContain('posible');
   });
@@ -168,7 +168,7 @@ describe('Traductor', () => {
   it('groups the examples by domain in collapsible blocks', async () => {
     await start();
     await translateWithResponse();
-    const titles = queryAll(fixture, 'details.ejemplos summary').map((s) => s.textContent?.trim());
+    const titles = queryAll(fixture, 'details.examples summary').map((s) => s.textContent?.trim());
     expect(titles).toEqual([
       'Ejemplos cotidianos (1)',
       'Ejemplos de gramática (conjugaciones) (1)',
@@ -185,9 +185,9 @@ describe('Traductor', () => {
     const httpRequest = http.expectOne('/api/translate/validate');
     expect(httpRequest.request.body).toEqual({
       text: 'mi mamá cocina en la casa',
-      direction: 'espanol_a_damana',
+      direction: 'spanish_to_damana',
       translation: 'Ranzhe abu urragamba [vecina] dugwa',
-      origin: 'confirmada',
+      origin: 'confirmed',
       modelTranslation: 'Ranzhe abu urragamba [vecina] dugwa',
     });
     httpRequest.flush({ saved: true, total: 3 });
@@ -201,7 +201,7 @@ describe('Traductor', () => {
     button(/^\s*Corregir\s*$/).click();
     await settle(fixture);
 
-    const field = (fixture.nativeElement as HTMLElement).querySelector<HTMLTextAreaElement>('#correccion')!;
+    const field = (fixture.nativeElement as HTMLElement).querySelector<HTMLTextAreaElement>('#correction')!;
     expect(field.value).toBe('Ranzhe abu urragamba vecina dugwa'); // no brackets, for editing
     field.value = 'Ranzhe abu urragamba anzhirru kʉdugwa';
     field.dispatchEvent(new Event('input'));
@@ -210,7 +210,7 @@ describe('Traductor', () => {
     await settle(fixture);
 
     const httpRequest = http.expectOne('/api/translate/validate');
-    expect(httpRequest.request.body.origin).toBe('corregida');
+    expect(httpRequest.request.body.origin).toBe('corrected');
     expect(httpRequest.request.body.translation).toBe('Ranzhe abu urragamba anzhirru kʉdugwa');
     httpRequest.flush({ saved: true, total: 1 });
     await settle(fixture);
@@ -219,7 +219,7 @@ describe('Traductor', () => {
 
   it('with «revisar» support it shows the warning; with «bueno» it does not', async () => {
     await start();
-    await translateWithResponse({ ...RESPONSE, support: { level: 'revisar', reasons: ['sin_ejemplos'] }, examples: [] });
+    await translateWithResponse({ ...RESPONSE, support: { level: 'review', reasons: ['no_examples'] }, examples: [] });
     expect(text(fixture)).toContain('Poco apoyo del corpus');
     expect(text(fixture)).toContain('No se encontraron ejemplos parecidos');
   });
@@ -231,7 +231,7 @@ describe('Traductor', () => {
     await type('nʉnka shkua');
     await translate();
     const httpRequest = http.expectOne('/api/translate');
-    expect(httpRequest.request.body.direction).toBe('damana_a_espanol');
+    expect(httpRequest.request.body.direction).toBe('damana_to_spanish');
     httpRequest.flush(RESPONSE);
     await settle(fixture);
   });
@@ -239,7 +239,7 @@ describe('Traductor', () => {
   it('if the translator is not configured it explains how to configure it', async () => {
     await start({ available: false, provider: null, model: null });
     expect(text(fixture)).toContain('Falta configurar un motor de traducción');
-    expect(queryAll(fixture, '.aviso').length).toBe(1);
+    expect(queryAll(fixture, '.notice').length).toBe(1);
   });
 
   it('a backend error is shown with its message', async () => {

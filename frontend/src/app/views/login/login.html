@@ -1,13 +1,13 @@
-<section class="entrada">
+<section class="input">
   <h1>dʉmʉna</h1>
-  <p class="suave">Corpus damana — acceso privado</p>
+  <p class="muted">Corpus damana — acceso privado</p>
 
-  <form class="panel formulario" (ngSubmit)="submit()">
+  <form class="panel form" (ngSubmit)="submit()">
     <label>
       Usuario
       <input
         type="text"
-        name="usuario"
+        name="username"
         autocomplete="username"
         autocapitalize="none"
         [ngModel]="user()"
@@ -32,7 +32,7 @@
       <p class="error" role="alert">{{ error() }}</p>
     }
 
-    <button class="boton" type="submit" [disabled]="signingIn()">
+    <button class="button" type="submit" [disabled]="signingIn()">
       {{ signingIn() ? 'Entrando…' : 'Entrar' }}
     </button>
   </form>

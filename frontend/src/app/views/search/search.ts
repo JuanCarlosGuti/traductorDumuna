@@ -32,8 +32,8 @@ export class SearchView {
       .subscribe((params) => {
         const q = params.get('q') ?? '';
         this.term.set(q);
-        this.language.set((params.get('idioma') as Language) ?? 'damana');
-        this.source.set(params.get('fuente') ?? '');
+        this.language.set((params.get('language') as Language) ?? 'damana');
+        this.source.set(params.get('source') ?? '');
         if (q.trim()) {
           void this.run(q.trim());
         } else {
@@ -67,8 +67,8 @@ export class SearchView {
       relativeTo: this.route,
       queryParams: {
         q: q.trim() || null,
-        idioma: language,
-        fuente: this.source() || null,
+        language: language,
+        source: this.source() || null,
       },
     });
   }

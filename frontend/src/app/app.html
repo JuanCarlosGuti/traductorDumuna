@@ -1,21 +1,21 @@
-<header class="cabecera">
+<header class="header">
   <span class="logo">dʉmʉna</span>
   <nav>
-    <a routerLink="/buscar" routerLinkActive="activo">Buscar</a>
-    <a routerLink="/diccionario" routerLinkActive="activo">Diccionario</a>
-    <a routerLink="/gramatica" routerLinkActive="activo">Gramática</a>
-    <a routerLink="/flashcards" routerLinkActive="activo">Flashcards</a>
-    <a routerLink="/traductor" routerLinkActive="activo">Traductor</a>
-    <a routerLink="/pendientes" routerLinkActive="activo">Pendientes</a>
+    <a routerLink="/buscar" routerLinkActive="active">Buscar</a>
+    <a routerLink="/diccionario" routerLinkActive="active">Diccionario</a>
+    <a routerLink="/gramatica" routerLinkActive="active">Gramática</a>
+    <a routerLink="/flashcards" routerLinkActive="active">Flashcards</a>
+    <a routerLink="/traductor" routerLinkActive="active">Traductor</a>
+    <a routerLink="/pendientes" routerLinkActive="active">Pendientes</a>
   </nav>
-  @if (user(); as quien) {
-    <span class="sesion">
-      <span class="suave">{{ quien }}</span>
-      <button type="button" class="boton-suave" (click)="signOut()">Salir</button>
+  @if (user(); as who) {
+    <span class="session">
+      <span class="muted">{{ who }}</span>
+      <button type="button" class="button-muted" (click)="signOut()">Salir</button>
     </span>
   }
 </header>
 
-<main class="contenido">
+<main class="content">
   <router-outlet />
 </main>

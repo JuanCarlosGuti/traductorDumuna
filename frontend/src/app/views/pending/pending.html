@@ -1,37 +1,37 @@
 <h1>Pendientes</h1>
-<p class="suave">
+<p class="muted">
   Palabras que el <a routerLink="/traductor">traductor</a> no pudo traducir con el
   corpus (y filas de elicitación que volvieron sin llenar), ordenadas por las
   veces que se pidieron. «Exportar lote» genera el Excel del formato de
   elicitación para que las hablantes nativas lo llenen.
 </p>
 
-<div class="controles">
+<div class="controls">
   <button
     type="button"
-    class="boton"
+    class="button"
     (click)="exportBatch()"
     [disabled]="exporting() || openItems().length === 0"
   >
     {{ exporting() ? 'Generando…' : 'Exportar lote (' + openItems().length + ')' }}
   </button>
-  <label class="chiquito suave">
+  <label class="small muted">
     <input type="checkbox" [checked]="showResolved()" (change)="showResolved.set(!showResolved())" />
     ver también las resueltas
   </label>
 </div>
 
 @if (message()) {
-  <p class="panel mensaje">{{ message() }}</p>
+  <p class="panel message">{{ message() }}</p>
 }
 @if (error()) {
   <p class="panel error">{{ error() }}</p>
 }
 
 @if (loading()) {
-  <p class="suave">Cargando…</p>
+  <p class="muted">Cargando…</p>
 } @else {
-  <table class="tabla">
+  <table class="table">
     <thead>
       <tr>
         <th>palabra</th>
@@ -44,16 +44,16 @@
     </thead>
     <tbody>
       @for (p of visible(); track p.id) {
-        <tr [class.resuelta]="p.status === 'resuelta'">
+        <tr [class.resolved]="p.status === 'resolved'">
           <td [attr.lang]="p.language === 'damana' ? 'mbp' : null"><strong>{{ p.word }}</strong></td>
-          <td class="suave">{{ p.language === 'damana' ? 'damana' : 'español' }}</td>
+          <td class="muted">{{ p.language === 'damana' ? 'damana' : 'español' }}</td>
           <td>{{ p.timesRequested }}</td>
-          <td class="suave chiquito">{{ p.context ?? '' }}</td>
-          <td><span class="estado" [class]="'estado ' + p.status">{{ p.status }}</span></td>
-          <td class="suave chiquito">{{ p.origin }}</td>
+          <td class="muted small">{{ p.context ?? '' }}</td>
+          <td><span class="status" [class]="'status ' + p.status">{{ label(p.status) }}</span></td>
+          <td class="muted small">{{ label(p.origin) }}</td>
         </tr>
       } @empty {
-        <tr><td colspan="6" class="suave">No hay pendientes: todo lo que se ha pedido está en el corpus.</td></tr>
+        <tr><td colspan="6" class="muted">No hay pendientes: todo lo que se ha pedido está en el corpus.</td></tr>
       }
     </tbody>
   </table>

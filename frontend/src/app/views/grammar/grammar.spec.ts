@@ -38,7 +38,7 @@ describe('Gramatica', () => {
 
   it('choosing a lemma loads its conjugation table', async () => {
     await start();
-    const [, read] = queryAll(fixture, '.lemas button');
+    const [, read] = queryAll(fixture, '.lemmas button');
     read.click();
     await settle(fixture);
 
@@ -52,7 +52,7 @@ describe('Gramatica', () => {
 
   it('Damana forms are marked with lang="mbp" for the screen reader', async () => {
     await start();
-    queryAll(fixture, '.lemas button')[1].click();
+    queryAll(fixture, '.lemmas button')[1].click();
     await settle(fixture);
     http.expectOne('/api/grammar/lemmas/leer').flush(READ_TABLE);
     await settle(fixture);
@@ -63,13 +63,13 @@ describe('Gramatica', () => {
 
   it('a lemma the backend cannot find is reported without breaking the list', async () => {
     await start();
-    queryAll(fixture, '.lemas button')[1].click();
+    queryAll(fixture, '.lemmas button')[1].click();
     await settle(fixture);
     http.expectOne('/api/grammar/lemmas/leer').flush({}, { status: 404, statusText: 'Not Found' });
     await settle(fixture);
 
     expect(text(fixture)).toContain('No se pudo cargar la conjugación');
-    expect(queryAll(fixture, '.lemas button').length).toBe(2); // the list is still there
+    expect(queryAll(fixture, '.lemmas button').length).toBe(2); // the list is still there
   });
 
   it('without conjugations it suggests running the importer', async () => {

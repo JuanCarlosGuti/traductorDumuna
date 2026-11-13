@@ -7,7 +7,7 @@ import { VocabularyEntry, Frequency } from '../../core/models';
 
 const PER_PAGE = 50;
 
-type DictionaryMode = 'damana' | 'espanol';
+type DictionaryMode = 'damana' | 'spanish';
 
 @Component({
   selector: 'app-dictionary',

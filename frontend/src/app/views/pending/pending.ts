@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { PendingItem } from '../../core/models';
+import { label } from '../../shared/labels';
 
 /** Triggers a blob download in the browser; in tests (no URL.createObjectURL) it does nothing. */
 export function downloadBlob(blob: Blob, fileName: string): boolean {
@@ -25,6 +26,7 @@ export function downloadBlob(blob: Blob, fileName: string): boolean {
   styleUrl: './pending.css',
 })
 export class PendingView {
+  protected readonly label = label;
   private readonly api = inject(ApiService);
 
   protected readonly pendingItems = signal<PendingItem[]>([]);
@@ -34,7 +36,7 @@ export class PendingView {
   protected readonly message = signal('');
   protected readonly error = signal('');
 
-  protected readonly openItems = computed(() => this.pendingItems().filter((p) => p.status !== 'resuelta'));
+  protected readonly openItems = computed(() => this.pendingItems().filter((p) => p.status !== 'resolved'));
   protected readonly visible = computed(() =>
     this.showResolved() ? this.pendingItems() : this.openItems(),
   );
@@ -65,7 +67,7 @@ export class PendingView {
       const file = await this.api.exportPending();
       downloadBlob(file.blob, file.fileName);
       this.message.set(
-        `Lote generado: ${file.fileName}. Cuando vuelva lleno, guárdalo en la carpeta datos/ y ejecuta npm run importar.`,
+        `Lote generado: ${file.fileName}. Cuando vuelva lleno, guárdalo en la carpeta data/ y ejecuta npm run import:corpus.`,
       );
       await this.load();
     } catch (e) {

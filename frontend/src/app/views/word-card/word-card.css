@@ -1,45 +1,45 @@
-.encabezado h1 {
+.heading h1 {
   margin-bottom: 0.25rem;
 }
 
-.traduccion-directa {
+.direct-translation {
   margin-bottom: 1rem;
-  border-left: 3px solid var(--acento);
+  border-left: 3px solid var(--accent);
 }
 
-.traduccion-directa h2 {
+.direct-translation h2 {
   margin-top: 0;
 }
 
-.entrada {
+.input {
   margin: 0.25rem 0;
   font-size: 1.1rem;
 }
 
 .chip {
   display: inline-block;
-  border: 1px solid var(--borde);
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0 0.6rem;
   margin-right: 0.4rem;
   font-size: 0.85rem;
 }
 
-.chiquito {
+.small {
   font-size: 0.85rem;
 }
 
-.candidatas {
+.candidates {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.concordancia {
+.concordance {
   margin-bottom: 0.75rem;
 }
 
-.paralelo {
+.parallel {
   margin: 0.35rem 0 0;
   max-height: 8rem;
   overflow-y: auto;

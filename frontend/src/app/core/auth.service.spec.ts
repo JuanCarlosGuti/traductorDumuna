@@ -43,7 +43,7 @@ describe('AuthService', () => {
 
   it('restores the stored session on reload', () => {
     localStorage.setItem('damana.token', 'abc.def.ghi');
-    localStorage.setItem('damana.usuario', 'juan');
+    localStorage.setItem('damana.username', 'juan');
     // New instance = cold start, as when reloading the page.
     const reloaded = TestBed.runInInjectionContext(() => new AuthService());
     expect(reloaded.authenticated()).toBe(true);

@@ -20,7 +20,7 @@ export const routes: Routes = [
     children: [
       { path: 'buscar', component: SearchView, title: 'Buscar — Corpus Damana' },
       { path: 'diccionario', component: DictionaryView, title: 'Diccionario — Corpus Damana' },
-      { path: 'diccionario/:palabra', component: WordCardView, title: 'Palabra — Corpus Damana' },
+      { path: 'diccionario/:word', component: WordCardView, title: 'Palabra — Corpus Damana' },
       { path: 'gramatica', component: GrammarView, title: 'Gramática — Corpus Damana' },
       { path: 'flashcards', component: Flashcards, title: 'Flashcards — Corpus Damana' },
       { path: 'traductor', component: TranslatorView, title: 'Traductor — Corpus Damana' },

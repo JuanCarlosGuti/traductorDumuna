@@ -13,12 +13,12 @@ import { segmentFragment } from './fragment';
       @if (s.isWord && clickable()) {
         <button
           type="button"
-          class="palabra"
-          [class.resaltada]="s.highlighted"
+          class="word"
+          [class.highlighted]="s.highlighted"
           (click)="word.emit(s.text)"
         >{{ s.text }}</button>
       } @else {
-        <span [class.resaltada]="s.highlighted">{{ s.text }}</span>
+        <span [class.highlighted]="s.highlighted">{{ s.text }}</span>
       }
     }
   `,

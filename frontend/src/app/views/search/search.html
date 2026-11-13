@@ -1,42 +1,42 @@
 <h1>Buscar en el corpus</h1>
 
-<form class="barra" (submit)="onSubmit($event)">
+<form class="bar" (submit)="onSubmit($event)">
   <input
-    #campo
+    #field
     type="search"
     appUPlus
     placeholder="Palabra damana o española… (u+ → ʉ)"
     [value]="term()"
-    (input)="term.set(campo.value)"
+    (input)="term.set(field.value)"
     autofocus
   />
-  <select #selIdioma [value]="language()" (change)="changeLanguage(selIdioma.value)" aria-label="Idioma">
+  <select #languageSelect [value]="language()" (change)="changeLanguage(languageSelect.value)" aria-label="Idioma">
     <option value="damana">damana</option>
-    <option value="espanol">español</option>
+    <option value="spanish">español</option>
   </select>
-  <select #selFuente [value]="source()" (change)="changeSource(selFuente.value)" aria-label="Fuente">
+  <select #sourceSelect [value]="source()" (change)="changeSource(sourceSelect.value)" aria-label="Fuente">
     <option value="">todas las fuentes</option>
-    <option value="oraciones">oraciones</option>
-    <option value="frases">frases</option>
-    <option value="vocabulario">vocabulario</option>
-    <option value="conjugaciones">conjugaciones</option>
+    <option value="sentences">oraciones</option>
+    <option value="phrases">frases</option>
+    <option value="vocabulary">vocabulario</option>
+    <option value="conjugations">conjugaciones</option>
   </select>
-  <button type="submit" class="boton">Buscar</button>
+  <button type="submit" class="button">Buscar</button>
 </form>
 
 @if (loading()) {
-  <p class="suave">Buscando…</p>
+  <p class="muted">Buscando…</p>
 } @else if (error()) {
   <p class="error">{{ error() }}</p>
 } @else if (response(); as r) {
-  @if (r.mode === 'similitud') {
-    <p class="suave">
+  @if (r.mode === 'similarity') {
+    <p class="muted">
       {{ r.total }} {{ r.total === 1 ? 'texto similar' : 'textos similares' }} a
       «{{ r.query }}» en {{ r.language === 'damana' ? 'damana' : 'español' }},
       ordenados por parecido (varias palabras → búsqueda por similitud)
     </p>
   } @else {
-    <p class="suave">
+    <p class="muted">
       {{ r.total }} {{ r.total === 1 ? 'ocurrencia' : 'ocurrencias' }} de
       «{{ r.query }}» en {{ r.language === 'damana' ? 'damana' : 'español' }}
       @if (r.total > r.results.length) {
@@ -45,20 +45,20 @@
     </p>
   }
 
-  <div class="encabezado-columnas suave" aria-hidden="true">
+  <div class="column-header muted" aria-hidden="true">
     <span>damana</span>
     <span>español</span>
   </div>
 
   @for (c of r.results; track $index) {
-    <article class="resultado panel">
-      <header class="referencia suave">
+    <article class="result panel">
+      <header class="reference muted">
         {{ c.reference }}
         @if (c.score !== null) {
           · similitud {{ c.score.toFixed(2) }}
         }
       </header>
-      <div class="columnas">
+      <div class="columns">
         <div lang="mbp">
           @if (r.language === 'damana') {
             <app-clickable-fragment [html]="c.fragment" (word)="searchWord($event)" />
@@ -66,7 +66,7 @@
             <app-clickable-fragment [html]="c.parallelText" (word)="searchWord($event)" />
           }
         </div>
-        <div class="espanol">
+        <div class="spanish">
           @if (r.language === 'damana') {
             {{ c.parallelText }}
           } @else {
@@ -79,7 +79,7 @@
     <p>Sin resultados para «{{ r.query }}».</p>
   }
 } @else {
-  <p class="suave">
+  <p class="muted">
     Escribe una palabra para ver sus concordancias. En cualquier resultado,
     haz clic sobre una palabra damana para saltar a ella.
   </p>

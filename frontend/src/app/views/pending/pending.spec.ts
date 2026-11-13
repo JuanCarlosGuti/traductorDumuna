@@ -10,11 +10,11 @@ const PENDING_ITEMS: PendingItem[] = [
   {
     id: 1,
     word: 'vecina',
-    language: 'espanol',
+    language: 'spanish',
     context: 'mi vecina cocina',
     timesRequested: 3,
-    status: 'pendiente',
-    origin: 'traductor',
+    status: 'pending',
+    origin: 'translator',
     createdAt: '2026-10-01T00:00:00.000Z',
     updatedAt: '2026-10-02T00:00:00.000Z',
   },
@@ -24,19 +24,19 @@ const PENDING_ITEMS: PendingItem[] = [
     language: 'damana',
     context: 'kʉzhigui gontka',
     timesRequested: 1,
-    status: 'pendiente',
-    origin: 'traductor',
+    status: 'pending',
+    origin: 'translator',
     createdAt: '2026-10-01T00:00:00.000Z',
     updatedAt: '2026-10-01T00:00:00.000Z',
   },
   {
     id: 3,
     word: 'ñame',
-    language: 'espanol',
+    language: 'spanish',
     context: null,
     timesRequested: 1,
-    status: 'resuelta',
-    origin: 'elicitacion',
+    status: 'resolved',
+    origin: 'elicitation',
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-02T00:00:00.000Z',
   },
@@ -87,7 +87,7 @@ describe('Pendientes', () => {
   it('without pending items it says so and disables the export', async () => {
     await start([]);
     expect(text(fixture)).toContain('No hay pendientes');
-    const button = queryAll(fixture, 'button').find((b) => /Exportar/.test(b.textContent ?? ''))!;
+    const button = queryAll(fixture, 'button').find((b) => /Export/.test(b.textContent ?? ''))!;
     expect((button as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -98,7 +98,7 @@ describe('Pendientes', () => {
     (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = revoke;
     try {
       await start();
-      queryAll(fixture, 'button').find((b) => /Exportar/.test(b.textContent ?? ''))!.click();
+      queryAll(fixture, 'button').find((b) => /Export/.test(b.textContent ?? ''))!.click();
       await settle(fixture);
 
       const httpRequest = http.expectOne('/api/pending/export');
@@ -109,14 +109,14 @@ describe('Pendientes', () => {
       });
       await settle(fixture);
 
-      http.expectOne('/api/pending').flush(PENDING_ITEMS.map((p) => ({ ...p, status: p.status === 'pendiente' ? 'exportada' : p.status })));
+      http.expectOne('/api/pending').flush(PENDING_ITEMS.map((p) => ({ ...p, status: p.status === 'pending' ? 'exported' : p.status })));
       await settle(fixture);
 
       expect(create).toHaveBeenCalledTimes(1);
       expect(revoke).toHaveBeenCalledWith('blob:falso');
       expect(text(fixture)).toContain('formato_elicitacion_pendientes_2026-10-03.xlsx');
-      expect(text(fixture)).toContain('npm run importar');
-      expect(queryAll(fixture, '.estado.exportada').length).toBe(2);
+      expect(text(fixture)).toContain('npm run import:corpus');
+      expect(queryAll(fixture, '.status.exported').length).toBe(2);
     } finally {
       delete (URL as unknown as { createObjectURL?: unknown }).createObjectURL;
       delete (URL as unknown as { revokeObjectURL?: unknown }).revokeObjectURL;

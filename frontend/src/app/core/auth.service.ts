@@ -9,7 +9,7 @@ interface LoginResponse {
 }
 
 const TOKEN_KEY = 'damana.token';
-const USER_KEY = 'damana.usuario';
+const USER_KEY = 'damana.username';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {

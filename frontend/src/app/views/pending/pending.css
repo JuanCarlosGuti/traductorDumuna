@@ -1,4 +1,4 @@
-.controles {
+.controls {
   display: flex;
   gap: 1rem;
   align-items: center;
@@ -6,11 +6,11 @@
   margin-bottom: 1rem;
 }
 
-.chiquito {
+.small {
   font-size: 0.85rem;
 }
 
-.mensaje {
+.message {
   border-left: 3px solid #15803d;
 }
 
@@ -18,23 +18,23 @@
   color: #b91c1c;
 }
 
-tr.resuelta td {
+tr.resolved td {
   opacity: 0.6;
 }
 
-.estado {
+.status {
   font-size: 0.8rem;
-  border: 1px solid var(--borde);
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0 0.5rem;
 }
 
-.estado.exportada {
+.status.exported {
   border-color: #b45309;
   color: #b45309;
 }
 
-.estado.resuelta {
+.status.resolved {
   border-color: #15803d;
   color: #15803d;
 }

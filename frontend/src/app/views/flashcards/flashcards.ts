@@ -23,10 +23,10 @@ export class Flashcards {
   protected readonly error = signal('');
 
   protected readonly options: GradeOption[] = [
-    { key: 'otra_vez', label: 'Otra vez', hotkey: '1' },
-    { key: 'dificil', label: 'Difícil', hotkey: '2' },
-    { key: 'bien', label: 'Bien', hotkey: '3' },
-    { key: 'facil', label: 'Fácil', hotkey: '4' },
+    { key: 'again', label: 'Otra vez', hotkey: '1' },
+    { key: 'hard', label: 'Difícil', hotkey: '2' },
+    { key: 'good', label: 'Bien', hotkey: '3' },
+    { key: 'easy', label: 'Fácil', hotkey: '4' },
   ];
 
   constructor() {

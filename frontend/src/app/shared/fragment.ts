@@ -4,7 +4,7 @@ export interface FragmentSegment {
   highlighted: boolean;
 }
 
-const RE_PALABRA = /[\p{L}ʉ']+/gu;
+const RE_WORD = /[\p{L}ʉ']+/gu;
 
 function unescapeHtml(s: string): string {
   return s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
@@ -31,7 +31,7 @@ export function segmentFragment(fragmentHtml: string): FragmentSegment[] {
     if (!part) continue;
     const text = unescapeHtml(part);
     let last = 0;
-    for (const m of text.matchAll(RE_PALABRA)) {
+    for (const m of text.matchAll(RE_WORD)) {
       const startIndex = m.index ?? 0;
       if (startIndex > last) {
         segments.push({ text: text.slice(last, startIndex), isWord: false, highlighted: highlighted });
