@@ -41,11 +41,11 @@ describe('Translator (e2e, no engine configured)', () => {
   it('POST /api/translate answers 503 with configuration instructions', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/translate')
-      .send({ text: 'nʉnka', direction: 'damana_a_espanol' })
+      .send({ text: 'nʉnka', direction: 'damana_to_spanish' })
       .expect(503);
     expect(res.body.message).toContain('ANTHROPIC_API_KEY');
-    expect(res.body.message).toContain('TRADUCTOR_BASE_URL');
-    expect(res.body.codigo).toBe('SIN_PROVEEDOR');
+    expect(res.body.message).toContain('TRANSLATOR_BASE_URL');
+    expect(res.body.code).toBe('NO_PROVIDER');
   });
 
   it('validates the body: invalid direction and empty text → 400', async () => {
@@ -55,7 +55,7 @@ describe('Translator (e2e, no engine configured)', () => {
       .expect(400);
     await request(app.getHttpServer())
       .post('/api/translate')
-      .send({ text: '', direction: 'damana_a_espanol' })
+      .send({ text: '', direction: 'damana_to_spanish' })
       .expect(400);
   });
 
@@ -64,9 +64,9 @@ describe('Translator (e2e, no engine configured)', () => {
       .post('/api/translate/validate')
       .send({
         text: 'mi mamá cocina',
-        direction: 'espanol_a_damana',
+        direction: 'spanish_to_damana',
         translation: 'Ranzhe abu dugwa ñingui',
-        origin: 'confirmada',
+        origin: 'confirmed',
         modelTranslation: 'Ranzhe abu dugwa ñingui',
       })
       .expect(201);
@@ -74,7 +74,7 @@ describe('Translator (e2e, no engine configured)', () => {
 
     const r2 = await request(app.getHttpServer())
       .post('/api/translate/validate')
-      .send({ text: 'kʉnʉnka nʉnka', direction: 'damana_a_espanol', translation: 'tiene agua', origin: 'corregida' })
+      .send({ text: 'kʉnʉnka nʉnka', direction: 'damana_to_spanish', translation: 'tiene agua', origin: 'corrected' })
       .expect(201);
     expect(r2.body).toEqual({ saved: true, total: 2 });
   });
@@ -82,7 +82,7 @@ describe('Translator (e2e, no engine configured)', () => {
   it('validar rejects an unknown origin', async () => {
     await request(app.getHttpServer())
       .post('/api/translate/validate')
-      .send({ text: 'x', direction: 'espanol_a_damana', translation: 'y', origin: 'dudosa' })
+      .send({ text: 'x', direction: 'spanish_to_damana', translation: 'y', origin: 'dudosa' })
       .expect(400);
   });
 });

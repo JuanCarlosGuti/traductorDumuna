@@ -5,9 +5,9 @@ import { TranslationDirection } from './dto/translation.dto';
 
 /** Names of the keys of each gloss pair depending on the direction. */
 export function glossKeys(direction: TranslationDirection): { origin: string; target: string } {
-  return direction === TranslationDirection.espanol_a_damana
-    ? { origin: 'palabra_es', target: 'segmento_dm' }
-    : { origin: 'palabra_dm', target: 'segmento_es' };
+  return direction === TranslationDirection.spanish_to_damana
+    ? { origin: 'word_es', target: 'segment_dm' }
+    : { origin: 'word_dm', target: 'segment_es' };
 }
 
 /** JSON Schema of the response: used by Anthropic's structured output. */
@@ -16,8 +16,8 @@ export function responseSchema(direction: TranslationDirection): Record<string, 
   return {
     type: 'object',
     properties: {
-      traduccion: { type: 'string' },
-      glosa: {
+      translation: { type: 'string' },
+      gloss: {
         type: 'array',
         items: {
           type: 'object',
@@ -26,18 +26,18 @@ export function responseSchema(direction: TranslationDirection): Record<string, 
           additionalProperties: false,
         },
       },
-      palabras_sin_equivalente: { type: 'array', items: { type: 'string' } },
-      reglas_aplicadas: { type: 'array', items: { type: 'string' } },
-      confianza: { type: 'number' },
-      explicacion_breve: { type: 'string' },
+      words_without_equivalent: { type: 'array', items: { type: 'string' } },
+      applied_rules: { type: 'array', items: { type: 'string' } },
+      confidence: { type: 'number' },
+      brief_explanation: { type: 'string' },
     },
     required: [
-      'traduccion',
-      'glosa',
-      'palabras_sin_equivalente',
-      'reglas_aplicadas',
-      'confianza',
-      'explicacion_breve',
+      'translation',
+      'gloss',
+      'words_without_equivalent',
+      'applied_rules',
+      'confidence',
+      'brief_explanation',
     ],
     additionalProperties: false,
   };
@@ -46,45 +46,44 @@ export function responseSchema(direction: TranslationDirection): Record<string, 
 export function buildSystemPrompt(direction: TranslationDirection): string {
   const { origin, target } = glossKeys(direction);
   return (
-    'Eres un traductor experto entre el damana (dʉmʉna), lengua del pueblo Wiwa ' +
-    'de la Sierra Nevada de Santa Marta (Colombia), y el español. En damana la ' +
-    'vocal ʉ (U+0289) es una letra plena distinta de u, y la ñ también es letra ' +
-    'plena: cópialas tal cual, nunca las sustituyas.\n\n' +
-    'Recibirás un mensaje con secciones fijas: REGLAS GRAMATICALES, DICCIONARIO DE ' +
-    'ESTA FRASE, EJEMPLOS COTIDIANOS, EJEMPLOS DE GRAMÁTICA, EJEMPLOS DEL CORPUS ' +
-    'BÍBLICO y FRASE A TRADUCIR. Cómo trabajar:\n' +
-    '1. Traduce usando PRIMERO el diccionario y las reglas gramaticales. Los ' +
-    'ejemplos sirven para el orden de las palabras y la morfología (sufijos, ' +
-    'concordancia), no para copiar vocabulario que la frase no pide.\n' +
-    '2. Prefiere el registro cotidiano, el de la conversación diaria. Evita el ' +
-    'vocabulario religioso o bíblico salvo que la frase lo pida expresamente.\n' +
-    '3. Si una palabra no tiene equivalente ni en el diccionario ni en los ' +
-    'ejemplos, NO la inventes: déjala entre corchetes en la traducción (por ' +
-    'ejemplo [vecina]) y lístala en palabras_sin_equivalente. Esto vale para ' +
-    'palabras con significado propio (sustantivos, verbos, adjetivos, ' +
-    'adverbios). Los artículos, preposiciones y demás palabras gramaticales ' +
-    'del español (el, la, los, las, un, una, de, a, que…) NO se traducen una ' +
-    'por una ni se dejan entre corchetes: el damana los expresa con sufijos o ' +
-    'no los expresa; resuélvelos con las reglas y los ejemplos. La negación ' +
-    '(«no», «nunca», «nadie»…) tampoco es una palabra suelta: en damana va en ' +
-    'la forma del verbo. Si el diccionario o los ejemplos traen la forma ' +
-    'negativa de ese verbo (entradas como «No quiero», «yo no tengo»), úsala; ' +
-    'si no la traen, no dejes «no» entre corchetes: forma la negación como en ' +
-    'el ejemplo negativo más parecido, baja la confianza y dilo en ' +
-    'explicacion_breve.\n' +
-    '4. Las acepciones marcadas «posible» son aproximaciones por prefijo: úsalas ' +
-    'solo si encajan por significado. Las marcadas «frase» traducen un grupo de ' +
-    'palabras completo y las marcadas «sinonimo» vienen de una variante ' +
-    'coloquial del español (mamá = madre): valen igual que una exacta.\n' +
-    '5. Los nombres propios se escriben con la grafía que se indica.\n\n' +
-    'Responde EXCLUSIVAMENTE con un objeto JSON válido, sin texto adicional ni ' +
-    'bloques de código, con exactamente estas claves:\n' +
-    '{"traduccion": "<la traducción>", ' +
-    `"glosa": [{"${origin}": "<palabra o grupo del original>", "${target}": "<segmento de la traducción que le corresponde>"}, ...], ` +
-    '"palabras_sin_equivalente": ["<palabra sin equivalente>", ...], ' +
-    '"reglas_aplicadas": ["<regla usada, p. ej. -ndzina (plural)>", ...], ' +
-    '"confianza": <número entre 0 y 1>, ' +
-    '"explicacion_breve": "<1-3 frases sobre cómo llegaste a la traducción>"}'
+    'You are an expert translator between Damana (dʉmʉna), the language of the Wiwa ' +
+    'people of the Sierra Nevada de Santa Marta (Colombia), and Spanish. In Damana ' +
+    'the vowel ʉ (U+0289) is a full letter distinct from u, and ñ is also a full ' +
+    'letter: copy them as they are, never replace them.\n\n' +
+    'You will receive a message with fixed sections: GRAMMAR RULES, DICTIONARY FOR ' +
+    'THIS SENTENCE, EVERYDAY EXAMPLES, GRAMMAR EXAMPLES, BIBLICAL CORPUS EXAMPLES ' +
+    'and SENTENCE TO TRANSLATE. How to work:\n' +
+    '1. Translate using the dictionary and the grammar rules FIRST. The examples ' +
+    'are for word order and morphology (suffixes, agreement), not for copying ' +
+    'vocabulary the sentence does not ask for.\n' +
+    '2. Prefer the everyday register, the one of daily conversation. Avoid ' +
+    'religious or biblical vocabulary unless the sentence explicitly asks for it.\n' +
+    '3. If a word has no equivalent in the dictionary or in the examples, do NOT ' +
+    'invent it: leave it in square brackets in the translation (for example ' +
+    '[vecina]) and list it in words_without_equivalent. This applies to words with ' +
+    'their own meaning (nouns, verbs, adjectives, adverbs). Spanish articles, ' +
+    'prepositions and other grammatical words (el, la, los, las, un, una, de, a, ' +
+    'que…) are NOT translated one by one nor left in square brackets: Damana ' +
+    'expresses them with suffixes or does not express them; resolve them with the ' +
+    'rules and the examples. Negation («no», «nunca», «nadie»…) is not a separate ' +
+    'word either: in Damana it goes in the form of the verb. If the dictionary or ' +
+    'the examples include the negative form of that verb (entries such as «No ' +
+    'quiero», «yo no tengo»), use it; if they do not, do not leave «no» in square ' +
+    'brackets: form the negation as in the most similar negative example, lower ' +
+    'the confidence and say so in brief_explanation.\n' +
+    '4. Senses marked «possible» are approximations by prefix: use them only if ' +
+    'they fit by meaning. Those marked «phrase» translate a whole group of words ' +
+    'and those marked «synonym» come from a colloquial Spanish variant (mamá = ' +
+    'madre): they are worth the same as an exact one.\n' +
+    '5. Proper names are written with the spelling given.\n\n' +
+    'Answer ONLY with a valid JSON object, with no extra text or code blocks, with ' +
+    'exactly these keys:\n' +
+    '{"translation": "<the translation>", ' +
+    `"gloss": [{"${origin}": "<word or group from the original>", "${target}": "<segment of the translation that corresponds to it>"}, ...], ` +
+    '"words_without_equivalent": ["<word without an equivalent>", ...], ' +
+    '"applied_rules": ["<rule used, e.g. -ndzina (plural)>", ...], ' +
+    '"confidence": <number between 0 and 1>, ' +
+    '"brief_explanation": "<1-3 sentences on how you arrived at the translation>"}'
   );
 }
 
@@ -94,14 +93,14 @@ export function buildSystemPrompt(direction: TranslationDirection): string {
  * will confirm it — instead of letting the model guess whether it exists or not.
  */
 const NO_RULE_HINT: Record<Trigger, string> = {
-  negacion:
-    'Guíate por las formas negativas del diccionario y de los ejemplos ' +
-    '(entradas como «No quiero → Nandunun»); «no» no se traduce aparte ni va entre corchetes.',
-  plural: 'Guíate por los ejemplos.',
-  posesivo: 'Guíate por los ejemplos.',
-  pregunta: 'Guíate por los ejemplos que son preguntas.',
-  pasado: 'Guíate por las formas de pasado que aparezcan en los ejemplos.',
-  futuro: 'Guíate por las formas de futuro que aparezcan en los ejemplos.',
+  negation:
+    'Follow the negative forms in the dictionary and in the examples ' +
+    '(entries such as «No quiero → Nandunun»); «no» is not translated separately nor put in square brackets.',
+  plural: 'Follow the examples.',
+  possessive: 'Follow the examples.',
+  question: 'Follow the examples that are questions.',
+  past: 'Follow the past forms that appear in the examples.',
+  future: 'Follow the future forms that appear in the examples.',
 };
 
 /** Features detected in the sentence with no corpus rule covering them. */
@@ -119,8 +118,8 @@ function listExamples(examples: RetrievedFragment[], empty: string): string {
     .map((e, i) => {
       // A warning is added when the example arrived through verbal kinship: it serves as
       // a sample of the verb in use, but it is in another grammatical person.
-      const noteText = e.byLemma ? ` — usa otra conjugación del verbo «${e.byLemma}»` : '';
-      return `${i + 1}. [${e.reference}${noteText}]\n   español: ${e.spanish}\n   damana: ${e.damana}`;
+      const noteText = e.byLemma ? ` — uses another conjugation of the verb «${e.byLemma}»` : '';
+      return `${i + 1}. [${e.reference}${noteText}]\n   Spanish: ${e.spanish}\n   Damana: ${e.damana}`;
     })
     .join('\n');
 }
@@ -133,56 +132,56 @@ export function buildUserPrompt(
   const ruleLines = context.rules.map((r) => {
     const example =
       r.baseExample && r.ruleExample
-        ? ` Ej.: ${r.baseExample} → ${r.ruleExample}${r.exampleTranslation ? ` = ${r.exampleTranslation}` : ''}.`
+        ? ` E.g.: ${r.baseExample} → ${r.ruleExample}${r.exampleTranslation ? ` = ${r.exampleTranslation}` : ''}.`
         : '';
     const mark = r.trigger ? ` [${r.trigger}]` : '';
     return `- ${r.form} — ${r.meaning ?? ''}${example}${mark}`;
   });
   const features =
     context.triggers.length > 0
-      ? `Rasgos detectados en la frase: ${context.triggers.join(', ')}.`
-      : 'Rasgos detectados en la frase: ninguno.';
+      ? `Features detected in the sentence: ${context.triggers.join(', ')}.`
+      : 'Features detected in the sentence: none.';
   const withoutRule = triggersWithoutRule(context).map(
     (d) =>
-      `- ${d}: rasgo detectado, pero el corpus no tiene regla registrada ` +
-      `(pendiente de confirmar con las hablantes). ${NO_RULE_HINT[d]}`,
+      `- ${d}: feature detected, but the corpus has no rule recorded for it ` +
+      `(pending confirmation with the native speakers). ${NO_RULE_HINT[d]}`,
   );
   const rulesBody =
-    ruleLines.length || withoutRule.length ? [...ruleLines, ...withoutRule] : ['(ninguna regla aplicable)'];
+    ruleLines.length || withoutRule.length ? [...ruleLines, ...withoutRule] : ['(no applicable rule)'];
   const rules = [features, ...rulesBody].join('\n');
 
   const dictionaryLines = context.dictionary.map((a) => {
     const category = a.category ? `; ${a.category}` : '';
-    return direction === TranslationDirection.espanol_a_damana
+    return direction === TranslationDirection.spanish_to_damana
       ? `- ${a.word} → ${a.damana} (${a.spanish}) [${a.match}${category}]`
       : `- ${a.word} → ${a.spanish} (${a.damana}) [${a.match}${category}]`;
   });
   const names = context.properNames.map((n) =>
-    direction === TranslationDirection.espanol_a_damana
-      ? `- ${n.inText} → ${n.damana} (nombre propio)`
-      : `- ${n.inText} → ${n.spanish} (nombre propio)`,
+    direction === TranslationDirection.spanish_to_damana
+      ? `- ${n.inText} → ${n.damana} (proper name)`
+      : `- ${n.inText} → ${n.spanish} (proper name)`,
   );
   const dictionary = [
-    ...(dictionaryLines.length ? dictionaryLines : ['(ninguna palabra de la frase está en el diccionario)']),
-    ...(names.length ? ['Nombres propios:', ...names] : []),
+    ...(dictionaryLines.length ? dictionaryLines : ['(no word of the sentence is in the dictionary)']),
+    ...(names.length ? ['Proper names:', ...names] : []),
   ].join('\n');
 
   const byDomain = (d: CorpusDomain) => context.examples.filter((e) => e.domain === d);
   const sense =
-    direction === TranslationDirection.espanol_a_damana ? 'del español al damana' : 'del damana al español';
+    direction === TranslationDirection.spanish_to_damana ? 'from Spanish to Damana' : 'from Damana to Spanish';
 
   return (
-    section('REGLAS GRAMATICALES', rules) +
+    section('GRAMMAR RULES', rules) +
     '\n' +
-    section('DICCIONARIO DE ESTA FRASE', dictionary) +
+    section('DICTIONARY FOR THIS SENTENCE', dictionary) +
     '\n' +
-    section('EJEMPLOS COTIDIANOS', listExamples(byDomain(CorpusDomain.cotidiano), 'sin ejemplos cotidianos parecidos')) +
+    section('EVERYDAY EXAMPLES', listExamples(byDomain(CorpusDomain.everyday), 'no similar everyday examples')) +
     '\n' +
-    section('EJEMPLOS DE GRAMÁTICA', listExamples(byDomain(CorpusDomain.gramatica), 'sin formas conjugadas parecidas')) +
+    section('GRAMMAR EXAMPLES', listExamples(byDomain(CorpusDomain.grammar), 'no similar conjugated forms')) +
     '\n' +
-    section('EJEMPLOS DEL CORPUS BÍBLICO', listExamples(byDomain(CorpusDomain.biblico), 'sin ejemplos bíblicos parecidos')) +
+    section('BIBLICAL CORPUS EXAMPLES', listExamples(byDomain(CorpusDomain.biblical), 'no similar biblical examples')) +
     '\n' +
-    section('FRASE A TRADUCIR', `Dirección: ${sense}.\n${text}`)
+    section('SENTENCE TO TRANSLATE', `Direction: ${sense}.\n${text}`)
   );
 }
 
@@ -211,28 +210,28 @@ export function bracketedWords(translation: string): string[] {
  * words without an equivalent even if the model forgot to list them.
  */
 export function normalizeModelResponse(json: Record<string, unknown>): ModelResponse {
-  const translation = text(json.traduccion);
-  const gloss = Array.isArray(json.glosa)
-    ? json.glosa
+  const translation = text(json.translation);
+  const gloss = Array.isArray(json.gloss)
+    ? json.gloss
         .filter((p): p is Record<string, unknown> => typeof p === 'object' && p !== null)
         .map((p) => ({
-          origin: text(p.palabra_es ?? p.palabra_dm ?? p.origen ?? p.palabra),
-          target: text(p.segmento_dm ?? p.segmento_es ?? p.destino ?? p.segmento),
+          origin: text(p.word_es ?? p.word_dm ?? p.origin ?? p.word),
+          target: text(p.segment_dm ?? p.segment_es ?? p.target ?? p.segment),
         }))
         .filter((p) => p.origin || p.target)
     : [];
-  const withoutEquivalent = new Set(list(json.palabras_sin_equivalente).map((p) => p.replace(/^\[|\]$/g, '')));
+  const withoutEquivalent = new Set(list(json.words_without_equivalent).map((p) => p.replace(/^\[|\]$/g, '')));
   for (const p of bracketedWords(translation)) withoutEquivalent.add(p);
 
-  const rawConfidence = Number(json.confianza);
+  const rawConfidence = Number(json.confidence);
   const confidence = Number.isFinite(rawConfidence) ? Math.min(1, Math.max(0, rawConfidence)) : 0;
 
   return {
     translation: translation,
     gloss: gloss,
     wordsWithoutEquivalent: [...withoutEquivalent],
-    appliedRules: list(json.reglas_aplicadas),
+    appliedRules: list(json.applied_rules),
     confidence: confidence,
-    briefExplanation: text(json.explicacion_breve),
+    briefExplanation: text(json.brief_explanation),
   };
 }

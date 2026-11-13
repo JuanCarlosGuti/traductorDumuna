@@ -3,7 +3,7 @@ import type { Database } from 'better-sqlite3';
 import { DB_CONNECTION } from '../database/database.constants';
 import { TranslationDirection } from './dto/translation.dto';
 
-export type ValidationOrigin = 'confirmada' | 'corregida';
+export type ValidationOrigin = 'confirmed' | 'corrected';
 
 export interface ValidatedPair {
   id: number;
@@ -36,7 +36,7 @@ export class ValidatedRepository {
   save(newItem: NewValidated, now: Date = new Date()): void {
     this.db
       .prepare(
-        `INSERT INTO validadas (creado_en, espanol, damana, direccion, origen, traduccion_modelo)
+        `INSERT INTO validated_pairs (created_at, spanish, damana, direction, origin, model_translation)
          VALUES (?, ?, ?, ?, ?, ?)`,
       )
       .run(
@@ -50,25 +50,25 @@ export class ValidatedRepository {
   }
 
   count(): number {
-    return (this.db.prepare('SELECT COUNT(*) AS n FROM validadas').get() as { n: number }).n;
+    return (this.db.prepare('SELECT COUNT(*) AS n FROM validated_pairs').get() as { n: number }).n;
   }
 
   listAll(): ValidatedPair[] {
     return (
       this.db
         .prepare(
-          `SELECT rowid AS id, creado_en, espanol, damana, direccion, origen, traduccion_modelo
-           FROM validadas ORDER BY rowid`,
+          `SELECT rowid AS id, created_at, spanish, damana, direction, origin, model_translation
+           FROM validated_pairs ORDER BY rowid`,
         )
         .all() as any[]
     ).map((f) => ({
       id: f.id,
-      createdAt: f.creado_en,
-      spanish: f.espanol,
+      createdAt: f.created_at,
+      spanish: f.spanish,
       damana: f.damana,
-      direction: f.direccion,
-      origin: f.origen,
-      modelTranslation: f.traduccion_modelo,
+      direction: f.direction,
+      origin: f.origin,
+      modelTranslation: f.model_translation,
     }));
   }
 }

@@ -102,19 +102,19 @@ export function detectLookalikes(forms: SeenForm[]): SpellingGroup[] {
     .filter((f) => f.meanings.length > 0 && f.form.length >= 6)
     .map((f) => ({
       f,
-      clave: spellingSkeleton(f.form),
-      glosa: contentWords(f.meanings.join(' ')),
+      lookup_key: spellingSkeleton(f.form),
+      gloss: contentWords(f.meanings.join(' ')),
     }));
   const groups: SpellingGroup[] = [];
   for (let i = 0; i < candidateWords.length; i++) {
     for (let j = i + 1; j < candidateWords.length; j++) {
       const a = candidateWords[i];
       const b = candidateWords[j];
-      if (a.clave === b.clave || !atDistanceOne(a.clave, b.clave)) continue;
+      if (a.lookup_key === b.lookup_key || !atDistanceOne(a.lookup_key, b.lookup_key)) continue;
       // If what changes is the first letter it is usually a person prefix
       // (anzhʉngʉma «su hijo» / ranzhʉngʉma «mi hijo»): that is grammar.
-      if (a.clave[0] !== b.clave[0]) continue;
-      if (![...a.glosa].some((word) => b.glosa.has(word))) continue;
+      if (a.lookup_key[0] !== b.lookup_key[0]) continue;
+      if (![...a.gloss].some((word) => b.gloss.has(word))) continue;
       groups.push(group(LOOKALIKE_KIND, [a.f, b.f]));
     }
   }
@@ -145,7 +145,7 @@ export interface SynonymGroup {
  * They may be real synonyms, different senses or a mistake.
  */
 export function detectSynonyms(entries: LexicalEntry[]): SynonymGroup[] {
-  const bySpanish = new Map<string, { texto: string; opciones: Map<string, DamanaOption> }>();
+  const bySpanish = new Map<string, { text: string; options: Map<string, DamanaOption> }>();
   for (const e of entries) {
     for (const alternative of spanishAlternatives(e.spanish)) {
       const key = tokenizeDamana(alternative)
@@ -153,12 +153,12 @@ export function detectSynonyms(entries: LexicalEntry[]): SynonymGroup[] {
         .join(' ');
       if (!key) continue;
       const groupEs = bySpanish.get(key) ?? {
-        texto: alternative.trim(),
-        opciones: new Map<string, DamanaOption>(),
+        text: alternative.trim(),
+        options: new Map<string, DamanaOption>(),
       };
       const damanaKey = normalize(e.damana.trim());
-      if (!groupEs.opciones.has(damanaKey)) {
-        groupEs.opciones.set(damanaKey, {
+      if (!groupEs.options.has(damanaKey)) {
+        groupEs.options.set(damanaKey, {
           damana: e.damana.trim(),
           category: e.category,
           source: e.source,
@@ -170,9 +170,9 @@ export function detectSynonyms(entries: LexicalEntry[]): SynonymGroup[] {
     }
   }
   return [...bySpanish.values()]
-    .filter((g) => g.opciones.size > 1)
-    .filter((g) => new Set([...g.opciones.keys()].map(spellingSkeleton)).size > 1)
-    .map((g) => ({ spanish: g.texto, options: [...g.opciones.values()] }))
+    .filter((g) => g.options.size > 1)
+    .filter((g) => new Set([...g.options.keys()].map(spellingSkeleton)).size > 1)
+    .map((g) => ({ spanish: g.text, options: [...g.options.values()] }))
     .sort((a, b) => a.spanish.localeCompare(b.spanish, 'es'));
 }
 
@@ -231,22 +231,22 @@ export function detectPolysemy(entries: LexicalEntry[]): PolysemyGroup[] {
 // ---------------------------------------------------------------------------
 
 export type DoubtReason =
-  | 'igual_que_espanol'
-  | 'sin_forma'
-  | 'varias_formas'
-  | 'nota_de_otra_palabra'
-  | 'espanol_poco_claro'
-  | 'nota_por_confirmar';
+  | 'same_as_spanish'
+  | 'no_form'
+  | 'multiple_forms'
+  | 'note_from_other_word'
+  | 'unclear_spanish'
+  | 'note_to_confirm';
 
 export const REASON_TEXT: Record<DoubtReason, string> = {
-  igual_que_espanol:
+  same_as_spanish:
     'Está escrita igual que en español. ¿Se dice así en damana o hay una palabra propia?',
-  sin_forma: 'La nota dice que no hay forma de traducirla. ¿Cómo se diría esa idea?',
-  varias_formas:
+  no_form: 'La nota dice que no hay forma de traducirla. ¿Cómo se diría esa idea?',
+  multiple_forms:
     'Hay varias formas en la misma casilla. ¿Cuál va con este significado y qué significa cada una?',
-  nota_de_otra_palabra: 'La nota parece hablar de otra palabra. ¿Corresponde a esta fila?',
-  espanol_poco_claro: 'El significado en español no está claro. ¿Qué quiere decir exactamente?',
-  nota_por_confirmar:
+  note_from_other_word: 'La nota parece hablar de otra palabra. ¿Corresponde a esta fila?',
+  unclear_spanish: 'El significado en español no está claro. ¿Qué quiere decir exactamente?',
+  note_to_confirm:
     'Tiene una explicación de la hablante. Confirmar que la palabra y la explicación están bien.',
 };
 
@@ -306,11 +306,11 @@ export function detectDoubtfulEntries(entries: LexicalEntry[]): DoubtfulEntry[] 
     const noteText = (entry.notes ?? '').trim();
 
     if (normalize(entry.damana.trim()) === normalize(entry.spanish.trim())) {
-      reasons.push('igual_que_espanol');
+      reasons.push('same_as_spanish');
     }
-    if (RE_NO_FORM.test(noteText)) reasons.push('sin_forma');
-    if (hasSeveralForms(entry.damana)) reasons.push('varias_formas');
-    if (RE_UNCLEAR_SPANISH.test(entry.spanish)) reasons.push('espanol_poco_claro');
+    if (RE_NO_FORM.test(noteText)) reasons.push('no_form');
+    if (hasSeveralForms(entry.damana)) reasons.push('multiple_forms');
+    if (RE_UNCLEAR_SPANISH.test(entry.spanish)) reasons.push('unclear_spanish');
 
     const isFromSpeakers = RE_SPEAKERS_SOURCE.test(entry.source ?? '');
     if (isFromSpeakers && noteText) {
@@ -324,10 +324,10 @@ export function detectDoubtfulEntries(entries: LexicalEntry[]): DoubtfulEntry[] 
             }
           }
         }
-        if (hint) reasons.push('nota_de_otra_palabra');
+        if (hint) reasons.push('note_from_other_word');
       }
-      if (!reasons.includes('nota_de_otra_palabra') && !reasons.includes('sin_forma')) {
-        reasons.push('nota_por_confirmar');
+      if (!reasons.includes('note_from_other_word') && !reasons.includes('no_form')) {
+        reasons.push('note_to_confirm');
       }
     }
 
@@ -393,7 +393,7 @@ export interface EndingsOptions {
   examplesPerEnding?: number;
 }
 
-export const ENDING_LETTERS = { minimo: 2, maximo: 7 };
+export const ENDING_LETTERS = { minimum: 2, maximum: 7 };
 
 /**
  * Endings that repeat after words we already know:
@@ -415,7 +415,7 @@ export function detectEndings(
   for (const [form, info] of tokens) {
     for (const r of uniqueWords.values()) {
       const extra = form.length - r.root.length;
-      if (extra < ENDING_LETTERS.minimo || extra > ENDING_LETTERS.maximo) continue;
+      if (extra < ENDING_LETTERS.minimum || extra > ENDING_LETTERS.maximum) continue;
       if (!form.startsWith(r.root)) continue;
       const ending = form.slice(r.root.length);
       const byRoot = byEnding.get(ending) ?? new Map<string, EndingExample>();

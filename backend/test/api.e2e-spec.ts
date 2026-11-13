@@ -79,13 +79,13 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
         .expect(200);
       expect(res.body.total).toBe(4); // 2 sentences, 1 phrase, 1 vocabulary
       const sentence = res.body.results[0];
-      expect(sentence.source).toBe('oraciones');
+      expect(sentence.source).toBe('sentences');
       expect(sentence.reference).toBe('oración 1');
       expect(sentence.fragment).toContain('<mark>nʉnka</mark>');
       expect(sentence.parallelText).toContain('Jehová hizo el agua');
       const sources = res.body.results.map((r: any) => r.source);
-      expect(sources).toContain('frases');
-      expect(sources).toContain('vocabulario');
+      expect(sources).toContain('phrases');
+      expect(sources).toContain('vocabulary');
       // the sentence with doubtful alignment is flagged
       const references = res.body.results.map((r: any) => r.reference);
       expect(references).toContain('oración 2 (revisar)');
@@ -102,7 +102,7 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
     it('searches in Spanish (accent-insensitive) with the Damana as parallel', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/search')
-        .query({ q: 'jehova', language: 'espanol' })
+        .query({ q: 'jehova', language: 'spanish' })
         .expect(200);
       expect(res.body.total).toBe(1);
       expect(res.body.results[0].fragment).toContain('<mark>Jehová</mark>');
@@ -112,14 +112,14 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
     it('filters by source, conjugations included', async () => {
       const phrases = await request(app.getHttpServer())
         .get('/api/search')
-        .query({ q: 'nʉnka', source: 'frases' })
+        .query({ q: 'nʉnka', source: 'phrases' })
         .expect(200);
       expect(phrases.body.total).toBe(1);
       expect(phrases.body.results[0].reference).toBe('frase 1 (Prueba)');
 
       const conjugations = await request(app.getHttpServer())
         .get('/api/search')
-        .query({ q: 'nujkunʉnanka', source: 'conjugaciones' })
+        .query({ q: 'nujkunʉnanka', source: 'conjugations' })
         .expect(200);
       expect(conjugations.body.total).toBe(1);
       expect(conjugations.body.results[0].reference).toBe('conjugación 1 (tener)');
@@ -129,9 +129,9 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
     it('a multi-word phrase searches by similarity with score and highlighting', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/search')
-        .query({ q: 'jehova hizo el agua', language: 'espanol' })
+        .query({ q: 'jehova hizo el agua', language: 'spanish' })
         .expect(200);
-      expect(res.body.mode).toBe('similitud');
+      expect(res.body.mode).toBe('similarity');
       expect(res.body.total).toBeGreaterThan(0);
       const firstItem = res.body.results[0];
       expect(firstItem.reference).toBe('oración 1');
@@ -148,7 +148,7 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
         .expect(400);
       await request(app.getHttpServer())
         .get('/api/search')
-        .query({ q: 'nʉnka', source: 'capitulos' })
+        .query({ q: 'nʉnka', source: 'chapters' })
         .expect(400);
       await request(app.getHttpServer()).get('/api/search').expect(400);
     });
@@ -165,9 +165,9 @@ describe('REST API (e2e, in-memory SQLite with mini-corpus v3)', () => {
       ]);
       expect(res.body.totalFrequency).toBe(4);
       expect(res.body.frequencyBySource).toEqual([
-        { source: 'frases', frequency: 1 },
-        { source: 'oraciones', frequency: 2 },
-        { source: 'vocabulario', frequency: 1 },
+        { source: 'phrases', frequency: 1 },
+        { source: 'sentences', frequency: 2 },
+        { source: 'vocabulary', frequency: 1 },
       ]);
       expect(res.body.concordances.length).toBeLessThanOrEqual(10);
       expect(res.body.concordances[0].fragment).toContain('<mark>nʉnka</mark>');

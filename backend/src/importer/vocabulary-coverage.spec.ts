@@ -47,6 +47,6 @@ describe('VocabularyCoverage', () => {
     expect(coverage.coversDamana('nunka')).toBe(false);
     expect(coverage.coversDamana('kʉgui')).toBe(true);
     expect(coverage.covers('Nʉngu', 'damana')).toBe(true);
-    expect(coverage.covers('sal', 'espanol')).toBe(true);
+    expect(coverage.covers('sal', 'spanish')).toBe(true);
   });
 });

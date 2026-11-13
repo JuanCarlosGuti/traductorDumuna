@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { Provider } from '@nestjs/common';
 import { modelTimeoutMs } from './translator-config.provider';
 
-export const ANTHROPIC_CLIENT = 'CLIENTE_ANTHROPIC';
+export const ANTHROPIC_CLIENT = 'ANTHROPIC_CLIENT';
 
 /**
  * Official @anthropic-ai/sdk client, or null if there is no ANTHROPIC_API_KEY.

@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class LoginDto {
-  @ApiProperty({ description: 'Nombre de usuario configurado en el servidor' })
+  @ApiProperty({ description: 'Username configured on the server' })
   @IsString()
   @IsNotEmpty()
   // Defensive cap: without it megabytes could be sent for the server
@@ -10,7 +10,7 @@ export class LoginDto {
   @MaxLength(200)
   user!: string;
 
-  @ApiProperty({ description: 'Contraseña configurada en el servidor' })
+  @ApiProperty({ description: 'Password configured on the server' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
@@ -18,20 +18,20 @@ export class LoginDto {
 }
 
 export class SessionDto {
-  @ApiProperty({ description: 'Token de sesión; va en la cabecera Authorization: Bearer' })
+  @ApiProperty({ description: 'Session token; it goes in the Authorization: Bearer header' })
   token!: string;
 
   @ApiProperty()
   user!: string;
 
-  @ApiProperty({ description: 'Días que dura la sesión antes de caducar' })
+  @ApiProperty({ description: 'Days the session lasts before it expires' })
   durationDays!: number;
 }
 
 export class AuthStatusDto {
   @ApiProperty({
     description:
-      'false cuando el servidor no tiene credenciales configuradas y la API está abierta (solo desarrollo local)',
+      'false when the server has no credentials configured and the API is open (local development only)',
   })
   active!: boolean;
 }

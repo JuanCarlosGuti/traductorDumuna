@@ -2,7 +2,7 @@ import { readAuthConfig } from './auth.config';
 
 describe('readAuthConfig', () => {
   const credentials = {
-    AUTH_USUARIO: 'juan',
+    AUTH_USERNAME: 'juan',
     AUTH_PASSWORD: 'contraseña con ʉ y ñ',
     AUTH_JWT_SECRET: 'secreto-largo-de-prueba',
   };
@@ -21,14 +21,14 @@ describe('readAuthConfig', () => {
   it('in production without credentials it does NOT start: the API cannot be left open', () => {
     expect(() =>
       readAuthConfig({ NODE_ENV: 'production' } as NodeJS.ProcessEnv),
-    ).toThrow(/AUTH_USUARIO/);
+    ).toThrow(/AUTH_USERNAME/);
   });
 
   it('in production without a signing secret it does not start either', () => {
     expect(() =>
       readAuthConfig({
         NODE_ENV: 'production',
-        AUTH_USUARIO: 'juan',
+        AUTH_USERNAME: 'juan',
         AUTH_PASSWORD: 'x',
       } as NodeJS.ProcessEnv),
     ).toThrow(/AUTH_JWT_SECRET/);
@@ -36,7 +36,7 @@ describe('readAuthConfig', () => {
 
   it('a blank user does not count as a credential', () => {
     const config = readAuthConfig({
-      AUTH_USUARIO: '   ',
+      AUTH_USERNAME: '   ',
       AUTH_PASSWORD: 'x',
     } as NodeJS.ProcessEnv);
     expect(config.active).toBe(false);
@@ -44,15 +44,15 @@ describe('readAuthConfig', () => {
 
   it('locally it makes up a secret so it can still sign', () => {
     const config = readAuthConfig(
-      { AUTH_USUARIO: 'juan', AUTH_PASSWORD: 'x' } as NodeJS.ProcessEnv,
+      { AUTH_USERNAME: 'juan', AUTH_PASSWORD: 'x' } as NodeJS.ProcessEnv,
     );
     expect(config.secret.length).toBeGreaterThanOrEqual(32);
   });
 
-  it('honours AUTH_DIAS_SESION', () => {
+  it('honours AUTH_SESSION_DAYS', () => {
     const config = readAuthConfig({
       ...credentials,
-      AUTH_DIAS_SESION: '7',
+      AUTH_SESSION_DAYS: '7',
     } as NodeJS.ProcessEnv);
     expect(config.durationDays).toBe(7);
   });
@@ -64,13 +64,13 @@ describe('readAuthConfig on Render', () => {
   it('treats RENDER=true as production and requires credentials', () => {
     expect(() =>
       readAuthConfig({ RENDER: 'true' } as NodeJS.ProcessEnv),
-    ).toThrow(/AUTH_USUARIO/);
+    ).toThrow(/AUTH_USERNAME/);
   });
 
   it('with credentials on Render it starts and is active', () => {
     const config = readAuthConfig({
       RENDER: 'true',
-      AUTH_USUARIO: 'juan',
+      AUTH_USERNAME: 'juan',
       AUTH_PASSWORD: 'x',
       AUTH_JWT_SECRET: 'secreto',
     } as NodeJS.ProcessEnv);

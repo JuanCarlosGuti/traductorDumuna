@@ -65,7 +65,7 @@ describe('SRS (e2e, corpus v3)', () => {
     const res = await request(app.getHttpServer()).get('/api/srs/next').expect(200);
     expect(res.body.card).toMatchObject({
       word: 'nʉnka',
-      type: 'vocabulario',
+      type: 'vocabulary',
       translation: 'agua',
     });
     expect(res.body.newCards).toBeGreaterThan(0);
@@ -74,13 +74,13 @@ describe('SRS (e2e, corpus v3)', () => {
   it('POST /api/srs/answer updates the progress and advances the deck', async () => {
     const r1 = await request(app.getHttpServer())
       .post('/api/srs/answer')
-      .send({ word: 'nʉnka', grade: 'bien' })
+      .send({ word: 'nʉnka', grade: 'good' })
       .expect(201);
     expect(r1.body).toMatchObject({ word: 'nʉnka', repetitions: 1, intervalDays: 1 });
 
     const res = await request(app.getHttpServer()).get('/api/srs/next').expect(200);
     expect(res.body.card.word).not.toBe('nʉnka'); // scheduled for tomorrow
-    expect(res.body.card.type).toBe('frecuencia');
+    expect(res.body.card.type).toBe('frequency');
     expect(res.body.card.translation).toContain('candidatas');
   });
 
@@ -91,7 +91,7 @@ describe('SRS (e2e, corpus v3)', () => {
       .expect(400);
     await request(app.getHttpServer())
       .post('/api/srs/answer')
-      .send({ word: 'inexistente', grade: 'bien' })
+      .send({ word: 'inexistente', grade: 'good' })
       .expect(404);
   });
 });

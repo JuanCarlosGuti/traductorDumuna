@@ -16,7 +16,7 @@ export interface TextRow {
   reference: string;
   damanaText: string;
   spanishText: string;
-  /** Sentences only: 'aprobado' | 'revisar' (alignment quality). */
+  /** Sentences only: 'approved' | 'review' (alignment quality). */
   status?: string;
   /** Language register of the fragment (biblical, everyday, grammar). */
   domain: CorpusDomain;
@@ -35,7 +35,7 @@ export class CorpusRepository {
   listVocabulary(): VocabularyDto[] {
     return this.db
       .prepare(
-        'SELECT rowid AS id, espanol AS spanish, damana, categoria AS category, notas AS notes, fuente AS source FROM vocabulario ORDER BY rowid',
+        'SELECT rowid AS id, spanish AS spanish, damana, category AS category, notes AS notes, source AS source FROM vocabulary ORDER BY rowid',
       )
       .all() as VocabularyDto[];
   }
@@ -43,7 +43,7 @@ export class CorpusRepository {
   listPhrases(): PhraseDto[] {
     return this.db
       .prepare(
-        'SELECT rowid AS id, fuente AS source, damana, espanol AS spanish, notas AS notes, dominio AS domain FROM frases ORDER BY rowid',
+        'SELECT rowid AS id, source AS source, damana, spanish AS spanish, notes AS notes, domain AS domain FROM phrases ORDER BY rowid',
       )
       .all() as PhraseDto[];
   }
@@ -53,21 +53,21 @@ export class CorpusRepository {
     return (
       this.db
         .prepare(
-          `SELECT rowid AS id, tipo, forma, significado, ejemplo_base, ejemplo_regla,
-                  traduccion_ejemplo, notas, disparador
-           FROM reglas ORDER BY rowid`,
+          `SELECT rowid AS id, kind, form, meaning, base_example, rule_example,
+                  example_translation, notes, trigger_feature
+           FROM rules ORDER BY rowid`,
         )
         .all() as any[]
     ).map((f) => ({
       id: f.id,
-      type: f.tipo,
-      form: f.forma,
-      meaning: f.significado,
-      baseExample: f.ejemplo_base,
-      ruleExample: f.ejemplo_regla,
-      exampleTranslation: f.traduccion_ejemplo,
-      notes: f.notas,
-      trigger: (f.disparador as Trigger | null) ?? null,
+      type: f.kind,
+      form: f.form,
+      meaning: f.meaning,
+      baseExample: f.base_example,
+      ruleExample: f.rule_example,
+      exampleTranslation: f.example_translation,
+      notes: f.notes,
+      trigger: (f.trigger_feature as Trigger | null) ?? null,
     }));
   }
 
@@ -75,22 +75,22 @@ export class CorpusRepository {
     return (
       this.db
         .prepare(
-          `SELECT rowid AS id, damana, espanol, se_escribe_igual, otras_grafias, notas
-           FROM nombres_propios ORDER BY rowid`,
+          `SELECT rowid AS id, damana, spanish, same_spelling, other_spellings, notes
+           FROM proper_names ORDER BY rowid`,
         )
         .all() as any[]
     ).map((f) => ({
       id: f.id,
       damana: f.damana,
-      spanish: f.espanol,
-      sameSpelling: f.se_escribe_igual === 1,
-      otherSpellings: f.otras_grafias
-        ? String(f.otras_grafias)
+      spanish: f.spanish,
+      sameSpelling: f.same_spelling === 1,
+      otherSpellings: f.other_spellings
+        ? String(f.other_spellings)
             .split(/[,;]/)
             .map((g: string) => g.trim())
             .filter(Boolean)
         : [],
-      notes: f.notas,
+      notes: f.notes,
     }));
   }
 
@@ -98,7 +98,7 @@ export class CorpusRepository {
   listLemmas(): LemmaDto[] {
     return this.db
       .prepare(
-        'SELECT lema AS lemma, COUNT(*) AS forms FROM conjugaciones GROUP BY lema ORDER BY lema',
+        'SELECT lemma AS lemma, COUNT(*) AS forms FROM conjugations GROUP BY lemma ORDER BY lemma',
       )
       .all() as LemmaDto[];
   }
@@ -107,12 +107,12 @@ export class CorpusRepository {
   conjugationsWithWord(normalizedWord: string): ConjugationDto[] {
     return this.db
       .prepare(
-        `SELECT DISTINCT c.rowid AS id, c.damana, c.espanol AS spanish, c.lema AS lemma, c.fuente AS source, c.notas AS notes
-         FROM conjugaciones c
-         JOIN tokens_damana t
-           ON t.tabla_origen = 'conjugaciones' AND t.id_origen = c.rowid
-         WHERE t.palabra_normalizada = ?
-         ORDER BY c.lema, c.rowid`,
+        `SELECT DISTINCT c.rowid AS id, c.damana, c.spanish AS spanish, c.lemma AS lemma, c.source AS source, c.notes AS notes
+         FROM conjugations c
+         JOIN damana_tokens t
+           ON t.source_table = 'conjugations' AND t.source_id = c.rowid
+         WHERE t.normalized_word = ?
+         ORDER BY c.lemma, c.rowid`,
       )
       .all(normalizedWord) as ConjugationDto[];
   }
@@ -121,16 +121,16 @@ export class CorpusRepository {
    * Conjugated forms grouped by lemma, to link together the
    * different persons of the same verb (nʉjkasheshisha / naijkasheshisha…).
    */
-  formsByLemma(): { lema: string; damana: string }[] {
+  formsByLemma(): { lemma: string; damana: string }[] {
     return this.db
-      .prepare('SELECT lema, damana FROM conjugaciones ORDER BY lema, rowid')
-      .all() as { lema: string; damana: string }[];
+      .prepare('SELECT lemma, damana FROM conjugations ORDER BY lemma, rowid')
+      .all() as { lemma: string; damana: string }[];
   }
 
   listConjugations(): ConjugationDto[] {
     return this.db
       .prepare(
-        'SELECT rowid AS id, damana, espanol AS spanish, lema AS lemma, fuente AS source, notas AS notes FROM conjugaciones ORDER BY rowid',
+        'SELECT rowid AS id, damana, spanish AS spanish, lemma AS lemma, source AS source, notes AS notes FROM conjugations ORDER BY rowid',
       )
       .all() as ConjugationDto[];
   }
@@ -138,8 +138,8 @@ export class CorpusRepository {
   conjugationsOf(lemma: string): ConjugationDto[] {
     return this.db
       .prepare(
-        `SELECT rowid AS id, damana, espanol AS spanish, lema AS lemma, fuente AS source, notas AS notes
-         FROM conjugaciones WHERE lema = ? ORDER BY rowid`,
+        `SELECT rowid AS id, damana, spanish AS spanish, lemma AS lemma, source AS source, notes AS notes
+         FROM conjugations WHERE lemma = ? ORDER BY rowid`,
       )
       .all(lemma) as ConjugationDto[];
   }
@@ -151,58 +151,58 @@ export class CorpusRepository {
    */
   textsOf(source: CorpusSource): TextRow[] {
     switch (source) {
-      case CorpusSource.oraciones:
+      case CorpusSource.sentences:
         return (
           this.db
             .prepare(
-              'SELECT rowid AS id, damana, espanol, estado, dominio FROM oraciones ORDER BY rowid',
+              'SELECT rowid AS id, damana, spanish, status, domain FROM sentences ORDER BY rowid',
             )
             .all() as any[]
         ).map((f) => ({
           id: f.id,
-          reference: f.estado === 'revisar' ? `oración ${f.id} (revisar)` : `oración ${f.id}`,
+          reference: f.status === 'review' ? `oración ${f.id} (revisar)` : `oración ${f.id}`,
           damanaText: f.damana,
-          spanishText: f.espanol ?? '',
-          status: f.estado,
-          domain: f.dominio as CorpusDomain,
+          spanishText: f.spanish ?? '',
+          status: f.status,
+          domain: f.domain as CorpusDomain,
         }));
-      case CorpusSource.frases:
+      case CorpusSource.phrases:
         return (
           this.db
             .prepare(
-              'SELECT rowid AS id, fuente, damana, espanol, dominio FROM frases ORDER BY rowid',
+              'SELECT rowid AS id, source, damana, spanish, domain FROM phrases ORDER BY rowid',
             )
             .all() as any[]
         ).map((f) => ({
           id: f.id,
-          reference: f.fuente ? `frase ${f.id} (${f.fuente})` : `frase ${f.id}`,
+          reference: f.source ? `frase ${f.id} (${f.source})` : `frase ${f.id}`,
           damanaText: f.damana,
-          spanishText: f.espanol ?? '',
-          domain: f.dominio as CorpusDomain,
+          spanishText: f.spanish ?? '',
+          domain: f.domain as CorpusDomain,
         }));
-      case CorpusSource.vocabulario:
+      case CorpusSource.vocabulary:
         return (
           this.db
-            .prepare('SELECT rowid AS id, espanol, damana FROM vocabulario ORDER BY rowid')
+            .prepare('SELECT rowid AS id, spanish, damana FROM vocabulary ORDER BY rowid')
             .all() as any[]
         ).map((f) => ({
           id: f.id,
           reference: `vocabulario ${f.id}`,
           damanaText: f.damana,
-          spanishText: f.espanol,
-          domain: CorpusDomain.cotidiano,
+          spanishText: f.spanish,
+          domain: CorpusDomain.everyday,
         }));
-      case CorpusSource.conjugaciones:
+      case CorpusSource.conjugations:
         return (
           this.db
-            .prepare('SELECT rowid AS id, damana, espanol, lema FROM conjugaciones ORDER BY rowid')
+            .prepare('SELECT rowid AS id, damana, spanish, lemma FROM conjugations ORDER BY rowid')
             .all() as any[]
         ).map((f) => ({
           id: f.id,
-          reference: `conjugación ${f.id} (${f.lema})`,
+          reference: `conjugación ${f.id} (${f.lemma})`,
           damanaText: f.damana,
-          spanishText: f.espanol,
-          domain: CorpusDomain.gramatica,
+          spanishText: f.spanish,
+          domain: CorpusDomain.grammar,
         }));
     }
   }
@@ -212,35 +212,35 @@ export class CorpusRepository {
   ): { source: CorpusSource; frequency: number }[] {
     return this.db
       .prepare(
-        `SELECT tabla_origen AS source, COUNT(*) AS frequency
-         FROM tokens_damana WHERE palabra_normalizada = ?
-         GROUP BY tabla_origen ORDER BY tabla_origen`,
+        `SELECT source_table AS source, COUNT(*) AS frequency
+         FROM damana_tokens WHERE normalized_word = ?
+         GROUP BY source_table ORDER BY source_table`,
       )
       .all(normalizedWord) as { source: CorpusSource; frequency: number }[];
   }
 
   originsOf(
     normalizedWord: string,
-  ): { fuente: CorpusSource; id: number }[] {
+  ): { source: CorpusSource; id: number }[] {
     return this.db
       .prepare(
-        `SELECT DISTINCT tabla_origen AS fuente, id_origen AS id
-         FROM tokens_damana WHERE palabra_normalizada = ?`,
+        `SELECT DISTINCT source_table AS source, source_id AS id
+         FROM damana_tokens WHERE normalized_word = ?`,
       )
-      .all(normalizedWord) as { fuente: CorpusSource; id: number }[];
+      .all(normalizedWord) as { source: CorpusSource; id: number }[];
   }
 
   spanishTextOf(source: CorpusSource, id: number): string {
     const column: Record<CorpusSource, string> = {
-      [CorpusSource.oraciones]: 'oraciones',
-      [CorpusSource.frases]: 'frases',
-      [CorpusSource.vocabulario]: 'vocabulario',
-      [CorpusSource.conjugaciones]: 'conjugaciones',
+      [CorpusSource.sentences]: 'sentences',
+      [CorpusSource.phrases]: 'phrases',
+      [CorpusSource.vocabulary]: 'vocabulary',
+      [CorpusSource.conjugations]: 'conjugations',
     };
     const row = this.db
-      .prepare(`SELECT espanol FROM ${column[source]} WHERE rowid = ?`)
-      .get(id) as { espanol: string | null } | undefined;
-    return row?.espanol ?? '';
+      .prepare(`SELECT spanish FROM ${column[source]} WHERE rowid = ?`)
+      .get(id) as { spanish: string | null } | undefined;
+    return row?.spanish ?? '';
   }
 
   /**
@@ -253,17 +253,17 @@ export class CorpusRepository {
     return (
       this.db
         .prepare(
-          `SELECT palabra_normalizada AS palabra, COUNT(*) AS frecuencia,
-                  GROUP_CONCAT(DISTINCT palabra_original) AS originales
-           FROM tokens_damana
-           GROUP BY palabra_normalizada
-           ORDER BY frecuencia DESC, palabra`,
+          `SELECT normalized_word AS word, COUNT(*) AS frequency,
+                  GROUP_CONCAT(DISTINCT original_word) AS originals
+           FROM damana_tokens
+           GROUP BY normalized_word
+           ORDER BY frequency DESC, word`,
         )
         .all() as any[]
     ).map((f) => ({
-      word: f.palabra,
-      frequency: f.frecuencia,
-      originals: (f.originales as string).split(','),
+      word: f.word,
+      frequency: f.frequency,
+      originals: (f.originals as string).split(','),
     }));
   }
 }

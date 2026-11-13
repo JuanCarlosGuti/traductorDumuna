@@ -12,12 +12,12 @@ describe('FrequenciesService', () => {
     runMigrations(db);
     // Vocabulary entry with a category for kʉnʉnka
     db.prepare(
-      `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+      `INSERT INTO vocabulary (spanish, damana, category, notes, source)
        VALUES ('tiene', 'kʉnʉnka', 'Verbos', NULL, 'diccionario wiwa')`,
     ).run();
     const ins = db.prepare(
-      `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
-       VALUES (?, ?, 'frases', 1, ?)`,
+      `INSERT INTO damana_tokens (normalized_word, original_word, source_table, source_id, position)
+       VALUES (?, ?, 'phrases', 1, ?)`,
     );
     // jehova: ONLY with an initial capital → probably a proper name
     ins.run('jehova', 'Jehová', 0);
@@ -74,12 +74,12 @@ describe('FrequenciesService', () => {
 
   it('uses the conjugation gloss as translation when there is no vocabulary (case with ñ)', () => {
     db.prepare(
-      `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+      `INSERT INTO conjugations (damana, spanish, lemma, source, notes)
        VALUES ('ñingunka', 'él volvió', 'volver', 'doc', NULL)`,
     ).run();
     db.prepare(
-      `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
-       VALUES ('ñingunka', 'ñingunka', 'conjugaciones', 1, 0)`,
+      `INSERT INTO damana_tokens (normalized_word, original_word, source_table, source_id, position)
+       VALUES ('ñingunka', 'ñingunka', 'conjugations', 1, 0)`,
     ).run();
     const row = service.listAll(500).find((f) => f.word === 'ñingunka');
     expect(row).toMatchObject({ translation: 'él volvió', category: null });

@@ -69,7 +69,7 @@ describe('Importer (e2e, full Nest module with in-memory SQLite)', () => {
 
   it('tokens keep ʉ and ñ (never degraded to u/n)', async () => {
     const stats = await service.importAll(dirTmp);
-    const words = stats.topWords.map((p) => p.palabra);
+    const words = stats.topWords.map((p) => p.word);
     expect(words).toContain('nʉnka');
     expect(words).toContain('ñingui');
     expect(words).not.toContain('nunka');

@@ -83,7 +83,7 @@ export class WordService {
   ): CandidateTranslationDto[] {
     const tally = new Map<string, number>();
     for (const origin of this.repo.originsOf(normalizedWord)) {
-      const spanish = this.repo.spanishTextOf(origin.fuente, origin.id);
+      const spanish = this.repo.spanishTextOf(origin.source, origin.id);
       for (const token of tokenizeDamana(spanish)) {
         if (token.normalized.length < 2) continue;
         if (isSpanishStopword(token.normalized)) continue;

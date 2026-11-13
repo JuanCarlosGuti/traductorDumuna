@@ -8,6 +8,12 @@ export const YELLOW = 'FFFFF2CC';
 /** The elicitation example must be short: the user's sentence is shortened. */
 export const MAX_EXAMPLE_CHARS = 120;
 
+/**
+ * Columns of the elicitation workbook. It is filled in by Spanish-speaking
+ * native speakers, so its headers stay in Spanish (ambito = scope,
+ * palabra_es/palabra_dm = Spanish/Damana word, ejemplo_es/ejemplo_dm =
+ * Spanish/Damana example, variante = variant, notas = notes).
+ */
 export const ELICITATION_COLUMNS = [
   'id',
   'ambito',
@@ -35,10 +41,10 @@ export function shorten(text: string, maximum = MAX_EXAMPLE_CHARS): string {
 
 /** A pending item as a row of the elicitation format (the native speaker fills in the blanks). */
 export function elicitationRow(p: PendingItem): Record<(typeof ELICITATION_COLUMNS)[number], string> {
-  const isSpanish = p.language === 'espanol';
+  const isSpanish = p.language === 'spanish';
   const context = shorten(p.context ?? '');
   const notes =
-    p.origin === 'traductor'
+    p.origin === 'translator'
       ? `pedida ${p.timesRequested} ${p.timesRequested === 1 ? 'vez' : 'veces'} en el traductor`
       : 'quedó sin llenar en un lote anterior';
   return {
@@ -103,7 +109,7 @@ export class PendingService {
     for (const p of pendingItems) {
       const row = sheet.addRow(elicitationRow(p));
       row.alignment = { vertical: 'top', wrapText: true };
-      const toFill = p.language === 'espanol' ? ['palabra_dm', 'ejemplo_dm'] : ['palabra_es', 'ejemplo_es'];
+      const toFill = p.language === 'spanish' ? ['palabra_dm', 'ejemplo_dm'] : ['palabra_es', 'ejemplo_es'];
       for (const key of toFill) {
         row.getCell(key).fill = {
           type: 'pattern',

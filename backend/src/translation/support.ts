@@ -1,6 +1,6 @@
 import { CorpusSource } from '../query/query.enums';
 
-export type SupportLevel = 'bueno' | 'parcial' | 'revisar';
+export type SupportLevel = 'good' | 'partial' | 'review';
 
 /**
  * Thresholds on the MEAN of the K retrieval scores. The score of the
@@ -15,7 +15,7 @@ export type SupportLevel = 'bueno' | 'parcial' | 'revisar';
  * to 0.30 would detect 95% but flag 70% of the good ones, and a warning that
  * always fires ends up being ignored.
  *
- * Levels are derived on the fly from what is logged in `traducciones`, they are not
+ * Levels are derived on the fly from what is logged in `translations`, they are not
  * stored: that way, recalibrating these thresholds also reinterprets the history.
  */
 export const REVIEW_THRESHOLD = 0.2;
@@ -35,7 +35,7 @@ export interface SupportSignals {
 
 export interface Support {
   level: SupportLevel;
-  /** Reasons why it was flagged «revisar»; empty at the other levels. */
+  /** Reasons why it was flagged «review»; empty at the other levels. */
   reasons: string[];
 }
 
@@ -46,7 +46,7 @@ export interface Support {
  */
 function withoutContext(signals: SupportSignals): boolean {
   return signals.examplesInContext == null
-    ? signals.topSource === CorpusSource.conjugaciones
+    ? signals.topSource === CorpusSource.conjugations
     : signals.examplesInContext === 0 && signals.retrievedExamples > 0;
 }
 
@@ -54,10 +54,10 @@ export function evaluateSupport(signals: SupportSignals): Support {
   const reasons: string[] = [];
 
   if (signals.retrievedExamples === 0) {
-    reasons.push('sin_ejemplos');
+    reasons.push('no_examples');
   }
   if (signals.meanScore < REVIEW_THRESHOLD) {
-    reasons.push('similitud_baja');
+    reasons.push('low_similarity');
   }
   // All the support is entries from the conjugations table: they confirm the
   // verb form, but none shows real usage. (The vocabulary does not
@@ -69,10 +69,10 @@ export function evaluateSupport(signals: SupportSignals): Support {
   // six sentences and phrases with the verb underneath. There the support is NOT
   // dictionary-only, and the old warning was wrong.
   if (withoutContext(signals)) {
-    reasons.push('apoyo_solo_de_diccionario');
+    reasons.push('dictionary_only_support');
   }
 
-  if (reasons.length > 0) return { level: 'revisar', reasons: reasons };
-  if (signals.meanScore < GOOD_THRESHOLD) return { level: 'parcial', reasons: [] };
-  return { level: 'bueno', reasons: [] };
+  if (reasons.length > 0) return { level: 'review', reasons: reasons };
+  if (signals.meanScore < GOOD_THRESHOLD) return { level: 'partial', reasons: [] };
+  return { level: 'good', reasons: [] };
 }

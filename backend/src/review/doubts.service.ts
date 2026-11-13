@@ -77,10 +77,10 @@ export class DoubtsService {
   /** Each word of sentences and phrases with its frequency and a short example sentence. */
   private corpusTokens(): Map<string, TokenCorpus> {
     const tokens = new Map<string, TokenCorpus>();
-    for (const source of [CorpusSource.oraciones, CorpusSource.frases]) {
+    for (const source of [CorpusSource.sentences, CorpusSource.phrases]) {
       for (const row of this.repo.textsOf(source)) {
         const worksAsExample =
-          row.status !== 'revisar' &&
+          row.status !== 'review' &&
           row.spanishText.trim().length > 0 &&
           row.damanaText.length <= MAX_EXAMPLE_LENGTH;
         for (const t of tokenizeDamana(row.damanaText)) {

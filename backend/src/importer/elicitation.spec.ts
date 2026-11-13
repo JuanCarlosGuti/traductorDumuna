@@ -76,9 +76,9 @@ describe('mergeById', () => {
       row({ id: '5', wordEs: 'vecina', wordDm: 'anzhirru', file: 'lote2.xlsx' }),
       row({ id: '6', wordEs: 'agua' }),
     ]);
-    expect(r.repetidos).toBe(1);
-    expect(r.filas).toHaveLength(2);
-    expect(r.filas[0].wordDm).toBe('anzhirru');
+    expect(r.repeated).toBe(1);
+    expect(r.rows).toHaveLength(2);
+    expect(r.rows[0].wordDm).toBe('anzhirru');
   });
 });
 
@@ -91,10 +91,10 @@ describe('planElicitation', () => {
       row({ id: idNormal, scope: 'comida', wordEs: 'yuca', wordDm: 'Irrugwa', exampleEs: 'Como yuca.', exampleDm: 'irrugwa zhant', variant: 'pasado', notes: 'ok' }),
     ]);
     expect(plan.vocabulary).toEqual([
-      { spanish: 'yuca', damana: 'Irrugwa', category: 'comida', notes: 'variante: pasado · ok', source: 'elicitacion' },
+      { spanish: 'yuca', damana: 'Irrugwa', category: 'comida', notes: 'variante: pasado · ok', source: 'elicitation' },
     ]);
     expect(plan.sentences).toEqual([
-      { externalId: `elic_${idNormal}`, damana: 'irrugwa zhant', spanish: 'Como yuca.', source: 'elicitacion' },
+      { externalId: `elic_${idNormal}`, damana: 'irrugwa zhant', spanish: 'Como yuca.', source: 'elicitation' },
     ]);
     expect(plan.tests).toEqual([]);
     expect(plan.pending).toEqual([]);

@@ -15,17 +15,17 @@ export class GrammarController {
   constructor(private readonly grammar: GrammarService) {}
 
   @Get('lemmas')
-  @ApiOperation({ summary: 'Lemas verbales con conjugaciones en el corpus' })
+  @ApiOperation({ summary: 'Verb lemmas with conjugations in the corpus' })
   @ApiOkResponse({ type: [LemmaDto] })
   lemmas(): LemmaDto[] {
     return this.grammar.lemmas();
   }
 
   @Get('lemmas/:lemma')
-  @ApiOperation({ summary: 'Tabla de conjugación de un lema (forma damana, glosa, notas)' })
-  @ApiParam({ name: 'lema', example: 'tener' })
+  @ApiOperation({ summary: 'Conjugation table of a lemma (Damana form, gloss, notes)' })
+  @ApiParam({ name: 'lemma', example: 'tener' })
   @ApiOkResponse({ type: ConjugationTableDto })
-  @ApiNotFoundResponse({ description: 'Lema sin conjugaciones en el corpus' })
+  @ApiNotFoundResponse({ description: 'Lemma without conjugations in the corpus' })
   table(@Param('lemma') lemma: string): ConjugationTableDto {
     return this.grammar.tableOf(lemma);
   }

@@ -45,10 +45,10 @@ export class SearchService {
     const sources = params.source
       ? [params.source]
       : [
-          CorpusSource.oraciones,
-          CorpusSource.frases,
-          CorpusSource.vocabulario,
-          CorpusSource.conjugaciones,
+          CorpusSource.sentences,
+          CorpusSource.phrases,
+          CorpusSource.vocabulary,
+          CorpusSource.conjugations,
         ];
 
     let total = 0;
@@ -79,7 +79,7 @@ export class SearchService {
     return {
       query: params.q,
       language: params.language,
-      mode: 'concordancia',
+      mode: 'concordance',
       total,
       results: results,
     };
@@ -109,7 +109,7 @@ export class SearchService {
     return {
       query: params.q,
       language: params.language,
-      mode: 'similitud',
+      mode: 'similarity',
       total: results.length,
       results: results,
     };

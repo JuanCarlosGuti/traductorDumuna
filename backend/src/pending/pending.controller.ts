@@ -13,9 +13,9 @@ export class PendingController {
 
   @Get()
   @ApiOperation({
-    summary: 'Palabras sin equivalente, las más pedidas primero',
+    summary: 'Words without an equivalent, most requested first',
     description:
-      'Cada palabra que el traductor devolvió en palabras_sin_equivalente, más las filas de elicitación que volvieron sin llenar. Sobrevive a las reimportaciones.',
+      'Every word the translator returned in words_without_equivalent, plus the elicitation rows that came back unfilled. It survives re-imports.',
   })
   @ApiOkResponse({ type: [PendingItemDto] })
   listAll(): PendingItemDto[] {
@@ -24,9 +24,9 @@ export class PendingController {
 
   @Post('export')
   @ApiOperation({
-    summary: 'Exportar lote para las hablantes nativas',
+    summary: 'Export a batch for the native speakers',
     description:
-      'Genera formato_elicitacion_pendientes_<fecha>.xlsx con las columnas del formato de elicitación (palabra_es y ejemplo_es llenas, el resto vacío en amarillo) y marca las pendientes como exportadas. Al volver lleno, se deja en /datos y npm run importar lo absorbe.',
+      'Generates formato_elicitacion_pendientes_<date>.xlsx with the elicitation format columns (palabra_es and ejemplo_es filled in, the rest empty in yellow) and marks the pending items as exported. When it comes back filled in, it is dropped into /data and npm run import:corpus absorbs it.',
   })
   @ApiProduces(XLSX_TYPE)
   async exportBatchFile(@Res({ passthrough: true }) res: Response): Promise<StreamableFile> {
@@ -34,7 +34,7 @@ export class PendingController {
     res.set({
       'Content-Type': XLSX_TYPE,
       'Content-Disposition': `attachment; filename="${batch.fileName}"`,
-      'X-Filas-Exportadas': String(batch.rows),
+      'X-Exported-Rows': String(batch.rows),
     });
     return new StreamableFile(batch.content);
   }

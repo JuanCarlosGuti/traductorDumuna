@@ -3,12 +3,12 @@ import { IsEnum, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class
 import { CorpusDomain, CorpusSource } from '../../query/query.enums';
 
 export enum TranslationDirection {
-  damana_a_espanol = 'damana_a_espanol',
-  espanol_a_damana = 'espanol_a_damana',
+  damana_to_spanish = 'damana_to_spanish',
+  spanish_to_damana = 'spanish_to_damana',
 }
 
 export class TranslateDto {
-  @ApiProperty({ description: 'Texto a traducir', example: 'mi mamá cocina en la casa' })
+  @ApiProperty({ description: 'Text to translate', example: 'mi mamá cocina en la casa' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(2000)
@@ -20,15 +20,15 @@ export class TranslateDto {
 }
 
 export class GlossPairDto {
-  @ApiProperty({ description: 'Palabra o grupo de palabras del texto original' })
+  @ApiProperty({ description: 'Word or group of words from the original text' })
   origin!: string;
 
-  @ApiProperty({ description: 'Segmento de la traducción que le corresponde' })
+  @ApiProperty({ description: 'Segment of the translation that corresponds to it' })
   target!: string;
 }
 
 export class SenseDto {
-  @ApiProperty({ description: 'Palabra del texto de entrada que motivó la búsqueda' })
+  @ApiProperty({ description: 'Word of the input text that triggered the lookup' })
   word!: string;
 
   @ApiProperty()
@@ -41,21 +41,21 @@ export class SenseDto {
   category!: string | null;
 
   @ApiProperty({
-    enum: ['exacta', 'sin_tildes', 'sinonimo', 'singular', 'frase', 'posible'],
+    enum: ['exact', 'no_accents', 'synonym', 'singular', 'phrase', 'possible'],
     description:
-      'Cómo se encontró: exacta, sin tildes, por sinónimo coloquial del español (mamá → madre), por singular, por frase completa o por prefijo (posible)',
+      'How it was found: exact, without accents, by a colloquial Spanish synonym (mamá → madre), by singular, by a whole phrase or by prefix (possible)',
   })
-  match!: 'exacta' | 'sin_tildes' | 'sinonimo' | 'singular' | 'frase' | 'posible';
+  match!: 'exact' | 'no_accents' | 'synonym' | 'singular' | 'phrase' | 'possible';
 }
 
 export class UsedProperNameDto {
-  @ApiProperty({ description: 'Cómo venía escrito en el texto' })
+  @ApiProperty({ description: 'How it was written in the text' })
   inText!: string;
 
   @ApiProperty()
   spanish!: string;
 
-  @ApiProperty({ description: 'Grafía que se usa en damana' })
+  @ApiProperty({ description: 'Spelling used in Damana' })
   damana!: string;
 }
 
@@ -69,7 +69,7 @@ export class UsedRuleDto {
   @ApiProperty({ nullable: true, example: 'terrua (hombre) → terruandzina = hombres' })
   example!: string | null;
 
-  @ApiProperty({ nullable: true, description: 'plural, posesivo, negacion, pregunta, pasado, futuro o null (general)' })
+  @ApiProperty({ nullable: true, description: 'plural, possessive, negation, question, past, future or null (general)' })
   trigger!: string | null;
 }
 
@@ -77,7 +77,7 @@ export class ExampleFragmentDto {
   @ApiProperty({ enum: CorpusSource })
   source!: CorpusSource;
 
-  @ApiProperty({ enum: CorpusDomain, description: 'biblico, cotidiano o gramatica' })
+  @ApiProperty({ enum: CorpusDomain, description: 'biblical, everyday or grammar' })
   domain!: CorpusDomain;
 
   @ApiProperty({ example: 'frase 12 (Preguntas para conversar)' })
@@ -89,39 +89,39 @@ export class ExampleFragmentDto {
   @ApiProperty()
   spanish!: string;
 
-  @ApiProperty({ description: 'Similitud coseno TF-IDF con el texto de entrada' })
+  @ApiProperty({ description: 'TF-IDF cosine similarity with the input text' })
   score!: number;
 }
 
 export class SupportDto {
   @ApiProperty({
-    enum: ['bueno', 'parcial', 'revisar'],
+    enum: ['good', 'partial', 'review'],
     description:
-      'Cuánto respalda el corpus a esta traducción. Se deriva de la media de los puntajes del retrieval y de cuántos ejemplos muestran la lengua en uso; no se almacena, se recalcula.',
+      'How much the corpus supports this translation. It is derived from the mean of the retrieval scores and from how many examples show the language in use; it is not stored, it is recalculated.',
   })
-  level!: 'bueno' | 'parcial' | 'revisar';
+  level!: 'good' | 'partial' | 'review';
 
   @ApiProperty({
     type: [String],
-    description: 'Motivos cuando el nivel es «revisar»: sin_ejemplos, similitud_baja, apoyo_solo_de_diccionario',
+    description: 'Reasons when the level is «review»: no_examples, low_similarity, dictionary_only_support',
   })
   reasons!: string[];
 }
 
 export class TranslationResponseDto {
-  @ApiProperty({ description: 'Las palabras sin equivalente van entre corchetes: [vecina]' })
+  @ApiProperty({ description: 'Words without an equivalent go in square brackets: [vecina]' })
   translation!: string;
 
-  @ApiProperty({ type: [GlossPairDto], description: 'Glosa palabra por palabra' })
+  @ApiProperty({ type: [GlossPairDto], description: 'Word-by-word gloss' })
   gloss!: GlossPairDto[];
 
-  @ApiProperty({ type: [String], description: 'Palabras que el modelo no pudo traducir con el corpus; se registran en pendientes' })
+  @ApiProperty({ type: [String], description: 'Words the model could not translate with the corpus; they are recorded as pending items' })
   wordsWithoutEquivalent!: string[];
 
-  @ApiProperty({ type: [String], description: 'Reglas gramaticales que el modelo dice haber aplicado' })
+  @ApiProperty({ type: [String], description: 'Grammar rules the model says it applied' })
   appliedRules!: string[];
 
-  @ApiProperty({ minimum: 0, maximum: 1, description: 'Confianza declarada por el modelo' })
+  @ApiProperty({ minimum: 0, maximum: 1, description: 'Confidence declared by the model' })
   confidence!: number;
 
   @ApiProperty()
@@ -130,39 +130,39 @@ export class TranslationResponseDto {
   @ApiProperty({ type: SupportDto })
   support!: SupportDto;
 
-  @ApiProperty({ type: [ExampleFragmentDto], description: 'Ejemplos usados en el prompt, agrupables por dominio' })
+  @ApiProperty({ type: [ExampleFragmentDto], description: 'Examples used in the prompt, groupable by domain' })
   examples!: ExampleFragmentDto[];
 
-  @ApiProperty({ type: [SenseDto], description: 'Acepciones del diccionario para las palabras de la frase' })
+  @ApiProperty({ type: [SenseDto], description: 'Dictionary senses for the words of the sentence' })
   dictionary!: SenseDto[];
 
   @ApiProperty({ type: [UsedProperNameDto] })
   properNames!: UsedProperNameDto[];
 
-  @ApiProperty({ type: [UsedRuleDto], description: 'Reglas que viajaron en el prompt' })
+  @ApiProperty({ type: [UsedRuleDto], description: 'Rules that went into the prompt' })
   rules!: UsedRuleDto[];
 
-  @ApiProperty({ type: [String], description: 'Rasgos detectados en la frase: plural, posesivo, negacion, pregunta, pasado, futuro' })
+  @ApiProperty({ type: [String], description: 'Features detected in the sentence: plural, possessive, negation, question, past, future' })
   triggers!: string[];
 }
 
 export class TranslatorStatusDto {
-  @ApiProperty({ description: 'false si no hay ningún motor de traducción configurado' })
+  @ApiProperty({ description: 'false if no translation engine is configured' })
   available!: boolean;
 
   @ApiProperty({
     enum: ['anthropic', 'compatible'],
     nullable: true,
-    description: 'anthropic = Claude vía ANTHROPIC_API_KEY; compatible = API estilo OpenAI vía TRADUCTOR_BASE_URL (Ollama, Gemini, Groq...)',
+    description: 'anthropic = Claude via ANTHROPIC_API_KEY; compatible = OpenAI-style API via TRANSLATOR_BASE_URL (Ollama, Gemini, Groq...)',
   })
   provider!: 'anthropic' | 'compatible' | null;
 
-  @ApiProperty({ nullable: true, description: 'Modelo en uso' })
+  @ApiProperty({ nullable: true, description: 'Model in use' })
   model!: string | null;
 }
 
 export class ValidateTranslationDto {
-  @ApiProperty({ description: 'Texto original que se tradujo' })
+  @ApiProperty({ description: 'Original text that was translated' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(2000)
@@ -172,17 +172,17 @@ export class ValidateTranslationDto {
   @IsEnum(TranslationDirection)
   direction!: TranslationDirection;
 
-  @ApiProperty({ description: 'La traducción correcta (la del modelo si se confirma, la escrita a mano si se corrige)' })
+  @ApiProperty({ description: 'The correct translation (the model one if confirmed, the hand-written one if corrected)' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(4000)
   translation!: string;
 
-  @ApiProperty({ enum: ['confirmada', 'corregida'] })
-  @IsIn(['confirmada', 'corregida'])
-  origin!: 'confirmada' | 'corregida';
+  @ApiProperty({ enum: ['confirmed', 'corrected'] })
+  @IsIn(['confirmed', 'corrected'])
+  origin!: 'confirmed' | 'corrected';
 
-  @ApiPropertyOptional({ description: 'Lo que había propuesto el modelo (solo informativo)' })
+  @ApiPropertyOptional({ description: 'What the model had proposed (informational only)' })
   @IsOptional()
   @IsString()
   @MaxLength(4000)
@@ -193,6 +193,6 @@ export class SavedValidationDto {
   @ApiProperty()
   saved!: boolean;
 
-  @ApiProperty({ description: 'Total de pares validados acumulados' })
+  @ApiProperty({ description: 'Total accumulated validated pairs' })
   total!: number;
 }

@@ -6,21 +6,21 @@ import { VocabularyDto } from './dto/query.dto';
 
 /**
  * How the sense was found, from most to least reliable:
- *  - exacta: the word as is (same accent).
- *  - sin_tildes: equal after normalizing (mamá = mama).
- *  - sinonimo: colloquial Spanish variant that the vocabulary records
+ *  - exact: the word as is (same accent).
+ *  - no_accents: equal after normalizing (mamá = mama).
+ *  - synonym: colloquial Spanish variant that the vocabulary records
  *    under another word (mamá → madre).
  *  - singular: removing -s / -es from the input word.
- *  - frase: multi-word entry whose words are all in the sentence.
- *  - posible: they share the first 5 letters (it may be another word).
+ *  - phrase: multi-word entry whose words are all in the sentence.
+ *  - possible: they share the first 5 letters (it may be another word).
  */
 export type MatchKind =
-  | 'exacta'
-  | 'sin_tildes'
-  | 'sinonimo'
+  | 'exact'
+  | 'no_accents'
+  | 'synonym'
   | 'singular'
-  | 'frase'
-  | 'posible';
+  | 'phrase'
+  | 'possible';
 
 export interface FoundSense {
   /** Word of the input sentence that triggered the lookup. */
@@ -192,17 +192,17 @@ export class DictionaryIndex {
     };
 
     for (const token of tokens) {
-      if (language === Language.espanol) {
+      if (language === Language.spanish) {
         this.searchSpanishWord(token.original, token.normalized, emit);
       } else {
         this.searchDamanaWord(token.original, token.normalized, emit);
       }
     }
 
-    const phrases = language === Language.espanol ? this.phrasesEs : this.phrasesDm;
+    const phrases = language === Language.spanish ? this.phrasesEs : this.phrasesDm;
     for (const phrase of phrases) {
       if (phrase.tokens.every((t) => present.has(t))) {
-        emit(phrase.text, [phrase.entry], 'frase');
+        emit(phrase.text, [phrase.entry], 'phrase');
       }
     }
 
@@ -211,17 +211,17 @@ export class DictionaryIndex {
 
   private searchSpanishWord(original: string, normalized: string, emit: Emitter): void {
     const exact = this.exactEs.get(original.toLowerCase().normalize('NFC'));
-    if (exact) return emit(original, exact, 'exacta');
+    if (exact) return emit(original, exact, 'exact');
 
     const withoutAccents = this.normalizedEs.get(normalized);
-    if (withoutAccents) return emit(original, withoutAccents, 'sin_tildes');
+    if (withoutAccents) return emit(original, withoutAccents, 'no_accents');
 
     const synonyms = SYNONYMS_ES[normalized];
     if (synonyms) {
       const entries = synonyms.flatMap(
         (s) => this.alternativeEs.get(tokenizeDamana(s).map((t) => t.normalized).join(' ')) ?? [],
       );
-      if (entries.length > 0) return emit(original, entries, 'sinonimo');
+      if (entries.length > 0) return emit(original, entries, 'synonym');
     }
 
     // Short function words are not approximated: «las» → «la» would be
@@ -233,14 +233,14 @@ export class DictionaryIndex {
       if (entries) return emit(original, entries, 'singular');
     }
 
-    emit(original, this.byPrefix(normalized, this.keysEs, this.normalizedEs), 'posible');
+    emit(original, this.byPrefix(normalized, this.keysEs, this.normalizedEs), 'possible');
   }
 
   private searchDamanaWord(original: string, normalized: string, emit: Emitter): void {
     const exact = this.normalizedDm.get(normalized);
-    if (exact) return emit(original, exact, 'exacta');
+    if (exact) return emit(original, exact, 'exact');
     if (normalized.length < 4) return;
-    emit(original, this.byPrefix(normalized, this.keysDm, this.normalizedDm), 'posible');
+    emit(original, this.byPrefix(normalized, this.keysDm, this.normalizedDm), 'possible');
   }
 
   /** Entries whose key shares the first PREFIX_LETTERS letters. */

@@ -22,7 +22,7 @@ describe('DoubtsService + doubts workbook', () => {
     db = new Database(':memory:');
     runMigrations(db);
     const vocab = db.prepare(
-      'INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO vocabulary (spanish, damana, category, notes, source) VALUES (?, ?, ?, ?, ?)',
     );
     vocab.run('Casa', 'Urraga', 'Casa', null, 'diccionario wiwa');
     vocab.run('Día', 'Dzuia', 'Tiempo', null, 'diccionario wiwa');
@@ -33,14 +33,14 @@ describe('DoubtsService + doubts workbook', () => {
     vocab.run('lo cortó', 'Akó', 'Verbos', null, 'diccionario wiwa');
     vocab.run('tan', 'tan', 'Palabra frecuente', 'no hay forma para traducirlo', 'nativas 2026-10');
     const sentence = db.prepare(
-      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente, dominio)
-       VALUES (?, ?, ?, ?, 'lfb', 'biblico')`,
+      `INSERT INTO sentences (external_id, damana, spanish, status, source, domain)
+       VALUES (?, ?, ?, ?, 'lfb', 'biblical')`,
     );
-    sentence.run('o1', 'Urragamba nʉnka ingui', 'Está en la casa otra vez', 'aprobado');
-    sentence.run('o2', 'nʉnka aikuia', 'es grande', 'aprobado');
-    sentence.run('o3', 'nunka ingui urragamba ñingui', 'no es otra vez en la casa algo', 'revisar');
+    sentence.run('o1', 'Urragamba nʉnka ingui', 'Está en la casa otra vez', 'approved');
+    sentence.run('o2', 'nʉnka aikuia', 'es grande', 'approved');
+    sentence.run('o3', 'nunka ingui urragamba ñingui', 'no es otra vez en la casa algo', 'review');
     db.prepare(
-      `INSERT INTO reglas (tipo, forma, significado, disparador) VALUES ('sufijo', '-nzhe', 'posesivo', 'posesivo')`,
+      `INSERT INTO rules (kind, form, meaning, trigger_feature) VALUES ('sufijo', '-nzhe', 'posesivo', 'possessive')`,
     ).run();
     service = new DoubtsService(new CorpusRepository(db));
   });
@@ -72,17 +72,17 @@ describe('DoubtsService + doubts workbook', () => {
   });
 
   it('does not modify any corpus data', () => {
-    const before = db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get();
+    const before = db.prepare('SELECT COUNT(*) AS n FROM vocabulary').get();
     service.generate();
-    expect(db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get()).toEqual(before);
-    expect(db.prepare("SELECT damana FROM vocabulario WHERE espanol = 'tan'").get()).toEqual({ damana: 'tan' });
+    expect(db.prepare('SELECT COUNT(*) AS n FROM vocabulary').get()).toEqual(before);
+    expect(db.prepare("SELECT damana FROM vocabulary WHERE spanish = 'tan'").get()).toEqual({ damana: 'tan' });
   });
 
   it('the workbook has one sheet per kind of doubt, with the answer cells in yellow', async () => {
     const workbook = buildDoubtsWorkbook(service.generate(), new Date('2026-10-05T12:00:00.000Z'));
     expect(workbook.worksheets.map((h) => h.name)).toEqual(Object.values(DOUBT_SHEETS));
 
-    const spelling = workbook.getWorksheet(DOUBT_SHEETS.escritura)!;
+    const spelling = workbook.getWorksheet(DOUBT_SHEETS.spelling)!;
     const nunkaRow = spelling
       .getRows(2, spelling.rowCount - 1)!
       .find((f) => f.getCell(3).value === 'nʉnka')!;
@@ -91,14 +91,14 @@ describe('DoubtsService + doubts workbook', () => {
     expect(argb(nunkaRow.getCell(14))).toBe(YELLOW); // which is the correct form?
     expect(argb(nunkaRow.getCell(3))).toBeUndefined();
 
-    const polysemy = workbook.getWorksheet(DOUBT_SHEETS.polisemia)!;
+    const polysemy = workbook.getWorksheet(DOUBT_SHEETS.polysemy)!;
     expect(polysemy.getRow(2).getCell(5).value).toBe('solo cambia la tilde');
 
     // survives being saved and reopened
     const copy = new ExcelJS.Workbook();
     await copy.xlsx.load((await workbook.xlsx.writeBuffer()) as ExcelJS.Buffer);
     expect(copy.worksheets).toHaveLength(6);
-    expect(copy.getWorksheet(DOUBT_SHEETS.instrucciones)!.getRow(1).getCell(1).value).toContain('2026-10-05');
+    expect(copy.getWorksheet(DOUBT_SHEETS.instructions)!.getRow(1).getCell(1).value).toContain('2026-10-05');
   });
 });
 
@@ -122,8 +122,8 @@ describe('grammar batch (paradigms)', () => {
       const workbook = buildParadigmsWorkbook();
       const sheet = workbook.getWorksheet('elicitacion')!;
       expect((sheet.getRow(1).values as string[]).slice(1)).toEqual([...ELICITATION_COLUMNS]);
-      expect(argb(sheet.getRow(2).getCell(6))).toBe(YELLOW); // ejemplo_dm
-      expect(argb(sheet.getRow(2).getCell(4))).toBeUndefined(); // palabra_dm is not requested
+      expect(argb(sheet.getRow(2).getCell(6))).toBe(YELLOW); // example_dm
+      expect(argb(sheet.getRow(2).getCell(4))).toBeUndefined(); // word_dm is not requested
       await workbook.xlsx.writeFile(filePath);
 
       const parsed = (await readWorkbook(filePath)).find((h) => h.name === 'elicitacion')!;
@@ -142,7 +142,7 @@ describe('grammar batch (paradigms)', () => {
     )!;
     const plan = planElicitation([row]);
     expect(plan.sentences).toEqual([
-      { externalId: `elic_${normal.id}`, damana: 'ra irrugwa zhʉnka', spanish: normal.exampleEs, source: 'elicitacion' },
+      { externalId: `elic_${normal.id}`, damana: 'ra irrugwa zhʉnka', spanish: normal.exampleEs, source: 'elicitation' },
     ]);
     expect(plan.vocabulary).toEqual([]);
     expect(plan.pending).toEqual([]);
@@ -150,7 +150,7 @@ describe('grammar batch (paradigms)', () => {
 
   it('unfilled it leaves nothing: neither sentences nor pending items', () => {
     const rows = PARADIGMS.map(
-      (p) => parseRow({ id: p.id, ambito: 'gramatica', palabra_es: '', ejemplo_es: p.exampleEs }, 'x')!,
+      (p) => parseRow({ id: p.id, scope: 'grammar', word_es: '', example_es: p.exampleEs }, 'x')!,
     );
     const plan = planElicitation(rows);
     expect(plan.sentences).toEqual([]);

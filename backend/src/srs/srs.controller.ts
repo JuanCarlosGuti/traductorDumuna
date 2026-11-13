@@ -19,9 +19,9 @@ export class SrsController {
 
   @Get('next')
   @ApiOperation({
-    summary: 'Próxima tarjeta de repaso',
+    summary: 'Next review card',
     description:
-      'Mazo = vocabulario completo + las 300 palabras damana más frecuentes. Devuelve primero las tarjetas vencidas, luego las nuevas; tarjeta null si no queda nada.',
+      'Deck = full vocabulary + the 300 most frequent Damana words. Returns due cards first, then new ones; card is null if nothing is left.',
   })
   @ApiOkResponse({ type: SrsStatusDto })
   nextCard(): SrsStatusDto {
@@ -30,12 +30,12 @@ export class SrsController {
 
   @Post('answer')
   @ApiOperation({
-    summary: 'Registrar la respuesta de una tarjeta',
+    summary: 'Record the answer to a card',
     description:
-      'Actualiza el progreso con SM-2 simplificado: otra_vez reinicia (vence ya), dificil/bien/facil programan la próxima revisión.',
+      'Updates progress with simplified SM-2: again resets the card (due now), hard/good/easy schedule the next review.',
   })
   @ApiOkResponse({ type: UpdatedProgressDto })
-  @ApiNotFoundResponse({ description: 'La palabra no está en el mazo' })
+  @ApiNotFoundResponse({ description: 'The word is not in the deck' })
   answer(@Body() dto: SrsAnswerDto): UpdatedProgressDto {
     return this.srs.answer(dto.word, dto.grade);
   }

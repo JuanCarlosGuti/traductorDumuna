@@ -32,9 +32,9 @@ export interface TranslationLog {
   retrievedExamples: number;
   /** How many examples came from sentences or phrases (the language in use). */
   examplesInContext: number;
-  /** Words without an equivalent (historical column palabras_dudosas). */
+  /** Words without an equivalent (historical column doubtful_words). */
   doubtfulWords: string[];
-  usedVocabulary: { espanol: string; damana: string }[];
+  usedVocabulary: { spanish: string; damana: string }[];
   model: string;
   confidence?: number;
   appliedRules?: string[];
@@ -68,22 +68,22 @@ export class TranslationsRepository {
     return (
       this.db
         .prepare(
-          `SELECT creado_en, texto, traduccion, direccion, puntaje_medio,
-                  fuente_top, ejemplos_recuperados, ejemplos_en_contexto,
-                  palabras_dudosas
-           FROM traducciones ORDER BY rowid`,
+          `SELECT created_at, text, translation, direction, mean_score,
+                  top_source, retrieved_examples, examples_in_context,
+                  doubtful_words
+           FROM translations ORDER BY rowid`,
         )
         .all() as any[]
     ).map((f) => ({
-      createdAt: f.creado_en,
-      text: f.texto,
-      translation: f.traduccion,
-      direction: f.direccion,
-      meanScore: f.puntaje_medio,
-      topSource: f.fuente_top,
-      retrievedExamples: f.ejemplos_recuperados,
-      examplesInContext: f.ejemplos_en_contexto,
-      doubtfulWords: JSON.parse(f.palabras_dudosas) as string[],
+      createdAt: f.created_at,
+      text: f.text,
+      translation: f.translation,
+      direction: f.direction,
+      meanScore: f.mean_score,
+      topSource: f.top_source,
+      retrievedExamples: f.retrieved_examples,
+      examplesInContext: f.examples_in_context,
+      doubtfulWords: JSON.parse(f.doubtful_words) as string[],
     }));
   }
 
@@ -95,11 +95,11 @@ export class TranslationsRepository {
   record(logEntry: TranslationLog, now: Date = new Date()): void {
     this.db
       .prepare(
-        `INSERT INTO traducciones
-           (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
-            fuente_top, ejemplos_recuperados, ejemplos_en_contexto,
-            palabras_dudosas, vocabulario_usado, modelo, confianza, reglas_aplicadas, glosa,
-            tokens_entrada, tokens_salida, tokens_cache_leidos, tokens_cache_creados, duracion_ms)
+        `INSERT INTO translations
+           (created_at, text, translation, direction, top_score, mean_score,
+            top_source, retrieved_examples, examples_in_context,
+            doubtful_words, vocabulary_used, model, confidence, applied_rules, gloss,
+            input_tokens, output_tokens, cache_read_tokens, cache_creation_tokens, duration_ms)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
@@ -119,7 +119,7 @@ export class TranslationsRepository {
         logEntry.appliedRules ? JSON.stringify(logEntry.appliedRules) : null,
         // Stored JSON keeps the Spanish keys of the existing rows (data format).
         logEntry.gloss
-          ? JSON.stringify(logEntry.gloss.map((g) => ({ origen: g.origin, destino: g.target })))
+          ? JSON.stringify(logEntry.gloss.map((g) => ({ origin: g.origin, target: g.target })))
           : null,
         logEntry.usage?.inputTokens ?? null,
         logEntry.usage?.outputTokens ?? null,

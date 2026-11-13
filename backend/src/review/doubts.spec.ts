@@ -138,20 +138,20 @@ describe('detectDoubtfulEntries', () => {
   const de = (spanish: string) => doubtful.find((d) => d.entry.spanish === spanish);
 
   it('detects the note shifted to another row and says which neighbour it seems to belong to', () => {
-    expect(de('pedazo')!.reasons).toEqual(['sin_forma', 'nota_de_otra_palabra']);
+    expect(de('pedazo')!.reasons).toEqual(['no_form', 'note_from_other_word']);
     expect(de('pedazo')!.hint).toContain('pastores');
-    expect(de('pastores')!.reasons).toEqual(['nota_de_otra_palabra']);
+    expect(de('pastores')!.reasons).toEqual(['note_from_other_word']);
     expect(de('pastores')!.hint).toContain('nuestros = nabinzhe');
   });
 
   it('a note that does talk about its own word only needs confirming', () => {
-    expect(de('nuestros')).toMatchObject({ reasons: ['nota_por_confirmar'], hint: '' });
+    expect(de('nuestros')).toMatchObject({ reasons: ['note_to_confirm'], hint: '' });
   });
 
   it('same as the Spanish, no form, several forms in one cell and unclear Spanish', () => {
-    expect(de('tan')!.reasons).toEqual(['igual_que_espanol', 'sin_forma']);
-    expect(de('quería')!.reasons).toEqual(['varias_formas', 'nota_por_confirmar']);
-    expect(de('Verb: Hacer')!.reasons).toEqual(['espanol_poco_claro']);
+    expect(de('tan')!.reasons).toEqual(['same_as_spanish', 'no_form']);
+    expect(de('quería')!.reasons).toEqual(['multiple_forms', 'note_to_confirm']);
+    expect(de('Verb: Hacer')!.reasons).toEqual(['unclear_spanish']);
   });
 
   it('what is clear is not listed (nor the dictionary category notes)', () => {

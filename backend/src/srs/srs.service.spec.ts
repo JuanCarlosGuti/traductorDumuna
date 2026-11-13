@@ -20,18 +20,18 @@ describe('SrsService', () => {
     runMigrations(db);
     // Vocabulary: entries with ʉ and with ñ
     db.prepare(
-      "INSERT INTO vocabulario (espanol, damana, notas) VALUES ('agua', 'nʉnka', NULL)",
+      "INSERT INTO vocabulary (spanish, damana, notes) VALUES ('agua', 'nʉnka', NULL)",
     ).run();
     db.prepare(
-      "INSERT INTO vocabulario (espanol, damana, notas) VALUES ('otra vez', 'ñingui', NULL)",
+      "INSERT INTO vocabulary (spanish, damana, notes) VALUES ('otra vez', 'ñingui', NULL)",
     ).run();
     // Phrase so that 'gontka' exists as a frequent word with a parallel
     db.prepare(
-      "INSERT INTO frases (fuente, damana, espanol, notas) VALUES ('Prueba', 'gontka nanu', 'hizo esto aqui', NULL)",
+      "INSERT INTO phrases (source, damana, spanish, notes) VALUES ('Prueba', 'gontka nanu', 'hizo esto aqui', NULL)",
     ).run();
     const insToken = db.prepare(
-      `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
-       VALUES (?, ?, 'frases', 1, ?)`,
+      `INSERT INTO damana_tokens (normalized_word, original_word, source_table, source_id, position)
+       VALUES (?, ?, 'phrases', 1, ?)`,
     );
     insToken.run('gontka', 'gontka', 0);
     insToken.run('gontka', 'gontka', 1);
@@ -52,7 +52,7 @@ describe('SrsService', () => {
     const status = service.nextCard(day0);
     expect(status.card).toMatchObject({
       word: 'nʉnka',
-      type: 'vocabulario',
+      type: 'vocabulary',
       translation: 'agua',
       repetitions: 0,
     });
@@ -62,16 +62,16 @@ describe('SrsService', () => {
   });
 
   it('frequent words carry candidate translations as the back', () => {
-    service.answer('nʉnka', Grade.bien, day0);
-    service.answer('ñingui', Grade.bien, day0);
+    service.answer('nʉnka', Grade.good, day0);
+    service.answer('ñingui', Grade.good, day0);
     const status = service.nextCard(day0);
     expect(status.card!.word).toBe('gontka');
-    expect(status.card!.type).toBe('frecuencia');
+    expect(status.card!.type).toBe('frequency');
     expect(status.card!.translation).toContain('hizo'); // 'esto'/'aqui' are candidates too
   });
 
   it('answering "bien" schedules the review and the card is due the next day', () => {
-    const r = service.answer('nʉnka', Grade.bien, day0);
+    const r = service.answer('nʉnka', Grade.good, day0);
     expect(r.intervalDays).toBe(1);
 
     // Just answered: no longer pending today
@@ -84,15 +84,15 @@ describe('SrsService', () => {
   });
 
   it('"otra vez" makes the card due immediately (case with ñ)', () => {
-    service.answer('ñingui', Grade.otra_vez, day0);
+    service.answer('ñingui', Grade.again, day0);
     const status = service.nextCard(day0);
     expect(status.pendingCards).toBe(1);
     expect(status.card!.word).toBe('ñingui');
   });
 
   it('prioritizes the oldest overdue card', () => {
-    service.answer('nʉnka', Grade.bien, day0); // due day 1
-    service.answer('ñingui', Grade.bien, days(0.5)); // due day 1.5
+    service.answer('nʉnka', Grade.good, day0); // due day 1
+    service.answer('ñingui', Grade.good, days(0.5)); // due day 1.5
     const status = service.nextCard(days(2));
     expect(status.pendingCards).toBe(2);
     expect(status.card!.word).toBe('nʉnka');
@@ -100,16 +100,16 @@ describe('SrsService', () => {
 
   it('rejects words outside the deck', () => {
     expect(() =>
-      service.answer('inexistente', Grade.bien, day0),
+      service.answer('inexistente', Grade.good, day0),
     ).toThrow(NotFoundException);
   });
 
   it('progress survives a re-import (DELETE of corpus tables)', () => {
-    service.answer('nʉnka', Grade.bien, day0);
-    db.exec('DELETE FROM tokens_damana'); // what the importer does
+    service.answer('nʉnka', Grade.good, day0);
+    db.exec('DELETE FROM damana_tokens'); // what the importer does
     const row = db
-      .prepare('SELECT repeticiones FROM progreso_srs WHERE palabra = ?')
-      .get('nʉnka') as { repeticiones: number };
-    expect(row.repeticiones).toBe(1);
+      .prepare('SELECT repetitions FROM srs_progress WHERE word = ?')
+      .get('nʉnka') as { repetitions: number };
+    expect(row.repetitions).toBe(1);
   });
 });

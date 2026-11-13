@@ -10,19 +10,19 @@ import { Language } from './query.enums';
  */
 export type Trigger =
   | 'plural'
-  | 'posesivo'
-  | 'negacion'
-  | 'pregunta'
-  | 'pasado'
-  | 'futuro';
+  | 'possessive'
+  | 'negation'
+  | 'question'
+  | 'past'
+  | 'future';
 
 export const TRIGGERS: Trigger[] = [
   'plural',
-  'posesivo',
-  'negacion',
-  'pregunta',
-  'pasado',
-  'futuro',
+  'possessive',
+  'negation',
+  'question',
+  'past',
+  'future',
 ];
 
 export interface GrammarRule {
@@ -53,11 +53,11 @@ export function inferTrigger(
 ): Trigger | null {
   const text = normalize(`${kind ?? ''} ${meaning ?? ''}`);
   if (/plural/.test(text)) return 'plural';
-  if (/poses|pertenen|genitiv|"de"|«de»|'de'/.test(text)) return 'posesivo';
-  if (/negac|negativ/.test(text)) return 'negacion';
-  if (/pregunt|interrog/.test(text)) return 'pregunta';
-  if (/pasado|preterit/.test(text)) return 'pasado';
-  if (/futuro/.test(text)) return 'futuro';
+  if (/poses|pertenen|genitiv|"de"|«de»|'de'/.test(text)) return 'possessive';
+  if (/negac|negativ/.test(text)) return 'negation';
+  if (/pregunt|interrog/.test(text)) return 'question';
+  if (/pasado|preterit/.test(text)) return 'past';
+  if (/futuro/.test(text)) return 'future';
   return null;
 }
 
@@ -114,10 +114,10 @@ export function detectSpanishTriggers(text: string): Trigger[] {
   const found = new Set<Trigger>();
 
   if (/[¿?]/.test(text) || INTERROGATIVES.has(normalizedTokens[0] ?? '')) {
-    found.add('pregunta');
+    found.add('question');
   }
-  if (normalizedTokens.some((t) => isSpanishNegation(t))) found.add('negacion');
-  if (normalizedTokens.some((t) => POSSESSIVES.has(t))) found.add('posesivo');
+  if (normalizedTokens.some((t) => isSpanishNegation(t))) found.add('negation');
+  if (normalizedTokens.some((t) => POSSESSIVES.has(t))) found.add('possessive');
 
   const lexicalPlural = normalizedTokens.some(
     (t) =>
@@ -135,14 +135,14 @@ export function detectSpanishTriggers(text: string): Trigger[] {
     normalizedTokens.some((t) => PAST_MARKERS.has(t)) ||
     normalizedTokens.some((t) => t.length >= 5 && RE_REGULAR_PAST.test(t)) ||
     originals.some((t) => t.length >= 3 && /[óí]$/.test(t.normalize('NFC')));
-  if (past) found.add('pasado');
+  if (past) found.add('past');
 
   const future =
     normalizedTokens.some((t) => FUTURE_MARKERS.has(t)) ||
     normalizedTokens.some((t) => t.length >= 5 && RE_REGULAR_FUTURE.test(t)) ||
     originals.some((t) => t.length >= 4 && /r(á|án|é|ás)$/.test(t.normalize('NFC'))) ||
     RE_FUTURE_PERIPHRASIS.test(normalize(text));
-  if (future) found.add('futuro');
+  if (future) found.add('future');
 
   return TRIGGERS.filter((d) => found.has(d));
 }
@@ -186,7 +186,7 @@ export function selectRules(
   let triggers: Trigger[];
   let triggered: GrammarRule[];
 
-  if (language === Language.espanol) {
+  if (language === Language.spanish) {
     triggers = detectSpanishTriggers(text);
     const activeOnes = new Set(triggers);
     triggered = rules.filter((r) => r.trigger !== null && activeOnes.has(r.trigger));

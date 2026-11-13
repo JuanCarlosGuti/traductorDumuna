@@ -1,8 +1,8 @@
 export enum Grade {
-  otra_vez = 'otra_vez',
-  dificil = 'dificil',
-  bien = 'bien',
-  facil = 'facil',
+  again = 'again',
+  hard = 'hard',
+  good = 'good',
+  easy = 'easy',
 }
 
 export interface Sm2State {
@@ -18,10 +18,10 @@ export const INITIAL_SM2_STATE: Sm2State = {
 };
 
 const QUALITY: Record<Grade, number> = {
-  [Grade.otra_vez]: 0,
-  [Grade.dificil]: 3,
-  [Grade.bien]: 4,
-  [Grade.facil]: 5,
+  [Grade.again]: 0,
+  [Grade.hard]: 3,
+  [Grade.good]: 4,
+  [Grade.easy]: 5,
 };
 
 /**

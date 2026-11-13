@@ -10,10 +10,10 @@ describe('MissingWordsService', () => {
   let db: Database.Database;
   let service: MissingWordsService;
 
-  const insertSentence = (damana: string, spanish: string, status = 'aprobado') =>
+  const insertSentence = (damana: string, spanish: string, status = 'approved') =>
     db
       .prepare(
-        `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
+        `INSERT INTO sentences (external_id, damana, spanish, status, source)
          VALUES ('x', ?, ?, ?, 'lfb')`,
       )
       .run(damana, spanish, status);
@@ -28,9 +28,9 @@ describe('MissingWordsService', () => {
   ) =>
     db
       .prepare(
-        `INSERT INTO traducciones
-           (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
-            fuente_top, ejemplos_recuperados, palabras_dudosas, vocabulario_usado, modelo)
+        `INSERT INTO translations
+           (created_at, text, translation, direction, top_score, mean_score,
+            top_source, retrieved_examples, doubtful_words, vocabulary_used, model)
          VALUES ('2026-07-28T10:00:00.000Z', ?, ?, ?, 0.5, ?, ?, ?, '[]', '[]', 'm')`,
       )
       .run(text, translation, direction, meanScore, topSource, examples);
@@ -39,7 +39,7 @@ describe('MissingWordsService', () => {
     db = new Database(':memory:');
     runMigrations(db);
     db.prepare(
-      `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+      `INSERT INTO vocabulary (spanish, damana, category, notes, source)
        VALUES ('agua', 'nʉnka', NULL, NULL, 'dic')`,
     ).run();
     const repo = new CorpusRepository(db);
@@ -56,7 +56,7 @@ describe('MissingWordsService', () => {
     expect(rows[0]).toMatchObject({
       spanish: 'pueblo',
       damana: '',
-      reason: 'en_corpus_sin_glosario',
+      reason: 'in_corpus_without_glossary',
       priority: 2,
       timesSeen: 3,
       date: TODAY,
@@ -83,8 +83,8 @@ describe('MissingWordsService', () => {
   it('excludes words that are written the same in Damana (case with ʉ)', () => {
     // 'nʉnka' is in the Damana glossary and also appears as a Damana token
     db.prepare(
-      `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
-       VALUES ('ciudad', 'ciudad', 'oraciones', 1, 0)`,
+      `INSERT INTO damana_tokens (normalized_word, original_word, source_table, source_id, position)
+       VALUES ('ciudad', 'ciudad', 'sentences', 1, 0)`,
     ).run();
     insertSentence('ciudad guma', 'ciudad grande');
     const words = service.compute(TODAY).map((f) => f.spanish);
@@ -93,8 +93,8 @@ describe('MissingWordsService', () => {
   });
 
   it('ignores sentences marked «revisar» (doubtful alignment)', () => {
-    insertSentence('a', 'fiable', 'aprobado');
-    insertSentence('b', 'dudosa', 'revisar');
+    insertSentence('a', 'fiable', 'approved');
+    insertSentence('b', 'dudosa', 'review');
     const words = service.compute(TODAY).map((f) => f.spanish);
     expect(words).toContain('fiable');
     expect(words).not.toContain('dudosa');
@@ -102,24 +102,24 @@ describe('MissingWordsService', () => {
 
   it('prioritizes words from poorly supported translations over corpus ones', () => {
     insertSentence('x', 'pueblo pueblo pueblo pueblo pueblo'); // very frequent
-    // Translation with no example at all → revisar level
-    insertTranslation('quiero sanar', 'x', 'espanol_a_damana', 0, null, 0);
+    // Translation with no example at all → review level
+    insertTranslation('quiero sanar', 'x', 'spanish_to_damana', 0, null, 0);
     const rows = service.compute(TODAY);
     expect(rows[0].priority).toBe(1);
     expect(['quiero', 'sanar']).toContain(rows[0].spanish);
-    expect(rows[0].reason).toBe('traduccion_con_poco_apoyo');
+    expect(rows[0].reason).toBe('translation_with_little_support');
     // 'pueblo' is still there, but later
     expect(rows.find((f) => f.spanish === 'pueblo')?.priority).toBe(2);
   });
 
   it('does NOT prioritize translations that did have good support', () => {
-    insertTranslation('sanar', 'x', 'espanol_a_damana', 0.55, 'oraciones', 8);
+    insertTranslation('sanar', 'x', 'spanish_to_damana', 0.55, 'sentences', 8);
     expect(service.compute(TODAY)).toEqual([]);
   });
 
   it('counts the times a word was requested in different translations', () => {
-    insertTranslation('sanar rápido', 'x', 'espanol_a_damana', 0, null, 0);
-    insertTranslation('sanar pronto', 'y', 'espanol_a_damana', 0, null, 0);
+    insertTranslation('sanar rápido', 'x', 'spanish_to_damana', 0, null, 0);
+    insertTranslation('sanar pronto', 'y', 'spanish_to_damana', 0, null, 0);
     const sanitize = service.compute(TODAY).find((f) => f.spanish === 'sanar');
     expect(sanitize?.timesSeen).toBe(2);
   });
@@ -144,8 +144,8 @@ describe('MissingWordsService.calcularDamana', () => {
   const token = (word: string, original: string, times = 1) => {
     for (let i = 0; i < times; i++) {
       db.prepare(
-        `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
-         VALUES (?, ?, 'oraciones', 1, ?)`,
+        `INSERT INTO damana_tokens (normalized_word, original_word, source_table, source_id, position)
+         VALUES (?, ?, 'sentences', 1, ?)`,
       ).run(word, original, i);
     }
   };
@@ -154,21 +154,21 @@ describe('MissingWordsService.calcularDamana', () => {
     db = new Database(':memory:');
     runMigrations(db);
     db.prepare(
-      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
-       VALUES ('o1', 'gontka nʉnka Jehovága zhaguasheka', 'hizo el agua', 'aprobado', 'lfb')`,
+      `INSERT INTO sentences (external_id, damana, spanish, status, source)
+       VALUES ('o1', 'gontka nʉnka Jehovága zhaguasheka', 'hizo el agua', 'approved', 'lfb')`,
     ).run();
     db.prepare(
-      `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+      `INSERT INTO vocabulary (spanish, damana, category, notes, source)
        VALUES ('agua', 'nʉnka', NULL, NULL, 'dic')`,
     ).run();
     db.prepare(
-      `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+      `INSERT INTO conjugations (damana, spanish, lemma, source, notes)
        VALUES ('zhaguasheka', 'él acechó', 'acechar', 'doc', NULL)`,
     ).run();
     token('gontka', 'gontka', 3);
     token('nʉnka', 'nʉnka', 5); // already in the glossary
     token('jehovaga', 'Jehovága', 4); // always capitalized
-    token('zhaguasheka', 'zhaguasheka', 2); // already has a gloss in conjugaciones
+    token('zhaguasheka', 'zhaguasheka', 2); // already has a gloss in conjugations
     const repo = new CorpusRepository(db);
     service = new MissingWordsService(repo, new TranslationsRepository(db));
   });

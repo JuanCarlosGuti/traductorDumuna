@@ -53,22 +53,22 @@ function main(): void {
   const dataDir = resolveDataDir();
   const dbPath = defaultDbPath();
   if (!fs.existsSync(dbPath)) {
-    console.error(`No existe ${dbPath}. Ejecuta antes: npm run importar`);
+    console.error(`${dbPath} does not exist. Run first: npm run import:corpus`);
     process.exit(1);
   }
   // Same opening as the app (database.module.ts): migrations are
-  // idempotent and guarantee that the validadas table exists.
+  // idempotent and guarantee that the validated_pairs table exists.
   const db = new Database(dbPath);
   try {
     runMigrations(db);
     const r = exportValidatedToTests(db, dataDir);
     console.log(
-      `${r.validated} pares validados en la base; ${r.added} nuevos añadidos a ` +
-        `${path.join(dataDir, TESTS_FILE)} (${r.total} pruebas en total).`,
+      `${r.validated} validated pairs in the database; ${r.added} new ones added to ` +
+        `${path.join(dataDir, TESTS_FILE)} (${r.total} tests in total).`,
     );
     if (r.validated === 0) {
       console.log(
-        'Todavía no hay pares validados: en la vista Traductor, «esta traducción es correcta» o «corregir».',
+        'There are no validated pairs yet: in the Traductor view, use «esta traducción es correcta» or «corregir».',
       );
     }
   } finally {

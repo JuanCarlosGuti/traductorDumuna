@@ -3,9 +3,9 @@ import type { Database } from 'better-sqlite3';
 import { normalize } from '../common/text/normalizer';
 import { DB_CONNECTION } from '../database/database.constants';
 
-export type PendingLanguage = 'espanol' | 'damana';
-export type PendingStatus = 'pendiente' | 'exportada' | 'resuelta';
-export type PendingOrigin = 'traductor' | 'elicitacion';
+export type PendingLanguage = 'spanish' | 'damana';
+export type PendingStatus = 'pending' | 'exported' | 'resolved';
+export type PendingOrigin = 'translator' | 'elicitation';
 
 export interface PendingItem {
   id: number;
@@ -38,10 +38,10 @@ export class PendingRepository {
     return (
       this.db
         .prepare(
-          `SELECT rowid AS id, palabra, idioma, contexto, veces_pedida, estado, origen,
-                  creado_en, actualizado_en
-           FROM pendientes
-           ORDER BY veces_pedida DESC, actualizado_en DESC, rowid`,
+          `SELECT rowid AS id, word, language, context, times_requested, status, origin,
+                  created_at, updated_at
+           FROM pending_items
+           ORDER BY times_requested DESC, updated_at DESC, rowid`,
         )
         .all() as any[]
     ).map(mapRow);
@@ -49,7 +49,7 @@ export class PendingRepository {
 
   /** Those that have not come back resolved yet: what is exported to the native speakers. */
   listOpen(): PendingItem[] {
-    return this.listAll().filter((p) => p.status !== 'resuelta');
+    return this.listAll().filter((p) => p.status !== 'resolved');
   }
 
   /**
@@ -67,14 +67,14 @@ export class PendingRepository {
     if (!clean) return;
     this.db
       .prepare(
-        `INSERT INTO pendientes
-           (clave, palabra, idioma, contexto, veces_pedida, estado, origen, creado_en, actualizado_en)
-         VALUES (?, ?, ?, ?, 1, 'pendiente', 'traductor', ?, ?)
-         ON CONFLICT(clave) DO UPDATE SET
-           veces_pedida = veces_pedida + 1,
-           contexto = COALESCE(pendientes.contexto, excluded.contexto),
-           estado = CASE WHEN pendientes.estado = 'resuelta' THEN 'pendiente' ELSE pendientes.estado END,
-           actualizado_en = excluded.actualizado_en`,
+        `INSERT INTO pending_items
+           (lookup_key, word, language, context, times_requested, status, origin, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 1, 'pending', 'translator', ?, ?)
+         ON CONFLICT(lookup_key) DO UPDATE SET
+           times_requested = times_requested + 1,
+           context = COALESCE(pending_items.context, excluded.context),
+           status = CASE WHEN pending_items.status = 'resolved' THEN 'pending' ELSE pending_items.status END,
+           updated_at = excluded.updated_at`,
       )
       .run(pendingKey(clean), clean, language, context, now, now);
   }
@@ -92,10 +92,10 @@ export class PendingRepository {
     if (!clean) return false;
     const info = this.db
       .prepare(
-        `INSERT INTO pendientes
-           (clave, palabra, idioma, contexto, veces_pedida, estado, origen, creado_en, actualizado_en)
-         VALUES (?, ?, 'espanol', ?, 1, 'pendiente', 'elicitacion', ?, ?)
-         ON CONFLICT(clave) DO NOTHING`,
+        `INSERT INTO pending_items
+           (lookup_key, word, language, context, times_requested, status, origin, created_at, updated_at)
+         VALUES (?, ?, 'spanish', ?, 1, 'pending', 'elicitation', ?, ?)
+         ON CONFLICT(lookup_key) DO NOTHING`,
       )
       .run(pendingKey(clean), clean, context || null, now, now);
     return info.changes > 0;
@@ -105,8 +105,8 @@ export class PendingRepository {
   markResolved(word: string, now: string = new Date().toISOString()): boolean {
     const info = this.db
       .prepare(
-        `UPDATE pendientes SET estado = 'resuelta', actualizado_en = ?
-         WHERE clave = ? AND estado != 'resuelta'`,
+        `UPDATE pending_items SET status = 'resolved', updated_at = ?
+         WHERE lookup_key = ? AND status != 'resolved'`,
       )
       .run(now, pendingKey(word));
     return info.changes > 0;
@@ -115,8 +115,8 @@ export class PendingRepository {
   markExported(ids: number[], now: string = new Date().toISOString()): void {
     if (ids.length === 0) return;
     const update = this.db.prepare(
-      `UPDATE pendientes SET estado = 'exportada', actualizado_en = ?
-       WHERE rowid = ? AND estado = 'pendiente'`,
+      `UPDATE pending_items SET status = 'exported', updated_at = ?
+       WHERE rowid = ? AND status = 'pending'`,
     );
     const all = this.db.transaction((list: number[]) => {
       for (const id of list) update.run(now, id);
@@ -128,13 +128,13 @@ export class PendingRepository {
 function mapRow(f: any): PendingItem {
   return {
     id: f.id,
-    word: f.palabra,
-    language: f.idioma,
-    context: f.contexto,
-    timesRequested: f.veces_pedida,
-    status: f.estado,
-    origin: f.origen,
-    createdAt: f.creado_en,
-    updatedAt: f.actualizado_en,
+    word: f.word,
+    language: f.language,
+    context: f.context,
+    timesRequested: f.times_requested,
+    status: f.status,
+    origin: f.origin,
+    createdAt: f.created_at,
+    updatedAt: f.updated_at,
   };
 }

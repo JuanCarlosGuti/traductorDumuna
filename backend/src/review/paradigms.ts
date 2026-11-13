@@ -1,6 +1,11 @@
 import * as ExcelJS from 'exceljs';
 import { YELLOW, ELICITATION_COLUMNS } from '../pending/pending.service';
 
+/**
+ * Variant labels written into the grammar batch workbook. The workbook is
+ * filled in by Spanish-speaking native speakers, so the labels stay in Spanish
+ * (pasado = past, futuro = future, negativo = negative, pregunta = question).
+ */
 export type ParadigmVariant = '' | 'pasado' | 'futuro' | 'negativo' | 'plural' | 'pregunta';
 
 export interface ParadigmRow {
@@ -11,7 +16,7 @@ export interface ParadigmRow {
   label: string;
 }
 
-type Row = [oracion: string, variante: ParadigmVariant, etiqueta: string];
+type Row = [sentence: string, variant: ParadigmVariant, label: string];
 
 /**
  * Sentences that are almost equal on purpose: they change ONE thing at a time (the
@@ -159,7 +164,7 @@ export const PARADIGMS_FILE = 'formato_elicitacion_lote2_gramatica.xlsx';
  * The grammar batch in the SAME elicitation format, so that the
  * importer absorbs it unchanged when it comes back filled in: each translated
  * sentence goes in as an everyday example (and 1 in 10 is kept as a test).
- * It does not ask for a single word: only ejemplo_dm is filled in.
+ * It does not ask for a single word: only example_dm is filled in.
  */
 export function buildParadigmsWorkbook(): ExcelJS.Workbook {
   const workbook = new ExcelJS.Workbook();

@@ -73,13 +73,13 @@ export function waitAfterLimit(retryAfter: string | null | undefined): number {
 
 /** Separate so that tests do not really wait. */
 export const clock = {
-  dormir: (ms: number): Promise<void> => new Promise((resolver) => setTimeout(resolver, ms)),
+  sleep: (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms)),
 };
 
 export const NO_PROVIDER_MESSAGE =
   'El traductor no tiene ningún motor configurado. Opciones: ' +
-  '(A) gratis: define TRADUCTOR_BASE_URL, TRADUCTOR_MODELO y opcionalmente ' +
-  'TRADUCTOR_API_KEY para un proveedor compatible con OpenAI (Ollama local, ' +
+  '(A) gratis: define TRANSLATOR_BASE_URL, TRANSLATOR_MODEL y opcionalmente ' +
+  'TRANSLATOR_API_KEY para un proveedor compatible con OpenAI (Ollama local, ' +
   'Google Gemini, Groq, Hugging Face); ' +
   '(B) Claude: define ANTHROPIC_API_KEY (console.anthropic.com). ' +
   'Después reinicia el backend. Detalles en el README.';
@@ -121,7 +121,7 @@ export function usageFromCompatible(usage: UsageCompatible | null | undefined): 
 
 export interface TranslationOptions {
   /**
-   * false to evaluate without leaving a trace: no row in traducciones and no
+   * false to evaluate without leaving a trace: no row in translations and no
    * new pending items. By default everything is logged.
    */
   record?: boolean;
@@ -138,7 +138,7 @@ export function extractJson(text: string): Record<string, unknown> {
   const start = candidate.indexOf('{');
   const end = candidate.lastIndexOf('}');
   if (start === -1 || end <= start) {
-    throw new Error('La respuesta del modelo no contiene un objeto JSON');
+    throw new Error('The model response does not contain a JSON object');
   }
   return JSON.parse(candidate.slice(start, end + 1)) as Record<string, unknown>;
 }
@@ -170,13 +170,13 @@ export class TranslationService {
   ): Promise<TranslationResponseDto> {
     if (!this.config.provider) {
       throw new ServiceUnavailableException({
-        codigo: 'SIN_PROVEEDOR',
+        code: 'NO_PROVIDER',
         message: NO_PROVIDER_MESSAGE,
       });
     }
 
     const sourceLanguage =
-      dto.direction === TranslationDirection.damana_a_espanol ? Language.damana : Language.espanol;
+      dto.direction === TranslationDirection.damana_to_spanish ? Language.damana : Language.spanish;
     const context = this.retrieval.retrieveContext(dto.text, sourceLanguage);
 
     const system = buildSystemPrompt(dto.direction);
@@ -202,18 +202,18 @@ export class TranslationService {
 
   /** One line per translation: to track spending and see whether the cache kicks in. */
   private usageSummary(direction: TranslationDirection, usageData: ModelUsage | null, durationMs: number): string {
-    const header = `Traducción ${direction} con ${this.config.provider} ${this.config.model} en ${durationMs} ms`;
-    if (!usageData) return `${header} · el proveedor no informó tokens`;
+    const header = `Translation ${direction} with ${this.config.provider} ${this.config.model} in ${durationMs} ms`;
+    if (!usageData) return `${header} · the provider did not report tokens`;
     const n = (v: number | null) => (v === null ? '?' : String(v));
     return (
-      `${header} · tokens: entrada ${n(usageData.inputTokens)} ` +
-      `(caché leída ${n(usageData.cacheReadTokens)}, creada ${n(usageData.cacheCreatedTokens)}), salida ${n(usageData.outputTokens)}`
+      `${header} · tokens: input ${n(usageData.inputTokens)} ` +
+      `(cache read ${n(usageData.cacheReadTokens)}, created ${n(usageData.cacheCreatedTokens)}), output ${n(usageData.outputTokens)}`
     );
   }
 
   /** «This translation is correct» / «correct it»: stores the validated pair. */
   validate(dto: ValidateTranslationDto): SavedValidationDto {
-    const toDamana = dto.direction === TranslationDirection.espanol_a_damana;
+    const toDamana = dto.direction === TranslationDirection.spanish_to_damana;
     this.validatedPairs.save({
       spanish: (toDamana ? dto.text : dto.translation).trim(),
       damana: (toDamana ? dto.translation : dto.text).trim(),
@@ -282,7 +282,7 @@ export class TranslationService {
       topSource: top?.source ?? null,
       retrievedExamples: examples.length,
       examplesInContext: examples.filter(
-        (e) => e.source === CorpusSource.oraciones || e.source === CorpusSource.frases,
+        (e) => e.source === CorpusSource.sentences || e.source === CorpusSource.phrases,
       ).length,
     };
   }
@@ -310,7 +310,7 @@ export class TranslationService {
         retrievedExamples: signals.retrievedExamples,
         examplesInContext: signals.examplesInContext ?? 0,
         doubtfulWords: response.wordsWithoutEquivalent,
-        usedVocabulary: response.dictionary.map((a) => ({ espanol: a.spanish, damana: a.damana })),
+        usedVocabulary: response.dictionary.map((a) => ({ spanish: a.spanish, damana: a.damana })),
         model: this.config.model,
         confidence: response.confidence,
         appliedRules: response.appliedRules,
@@ -319,25 +319,25 @@ export class TranslationService {
         durationMs: durationMs,
       });
     } catch (error) {
-      this.logger.warn(`No se pudo registrar la traducción: ${messageOf(error)}`);
+      this.logger.warn(`Could not log the translation: ${messageOf(error)}`);
     }
   }
 
   /** Closes the loop with the speakers: what was missing gets noted down. */
   private recordPendingItems(dto: TranslateDto, words: string[]): void {
-    const language = dto.direction === TranslationDirection.espanol_a_damana ? 'espanol' : 'damana';
+    const language = dto.direction === TranslationDirection.spanish_to_damana ? 'spanish' : 'damana';
     // Articles and other Spanish function words are not
     // missing vocabulary: Damana does not have them. If the model leaves them
     // in square brackets they are shown, but the speakers are not asked about them.
     const toRecord =
-      language === 'espanol' ? words.filter((p) => !isSpanishStopword(normalize(p))) : words;
+      language === 'spanish' ? words.filter((p) => !isSpanishStopword(normalize(p))) : words;
     if (toRecord.length === 0) return;
     const context = dto.text.replace(/\s+/g, ' ').trim().slice(0, MAX_PENDING_CONTEXT);
     for (const word of toRecord) {
       try {
         this.pendingItems.recordRequested(word, language, context);
       } catch (error) {
-        this.logger.warn(`No se pudo registrar la pendiente «${word}»: ${messageOf(error)}`);
+        this.logger.warn(`Could not record the pending item «${word}»: ${messageOf(error)}`);
       }
     }
   }
@@ -433,7 +433,7 @@ export class TranslationService {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new GatewayTimeoutException(
           `La traducción superó el tiempo de espera (${Math.round(modelTimeoutMs() / 1000)} s). ` +
-            'Con modelos locales puedes ampliarlo con TRADUCTOR_TIMEOUT_MS.',
+            'Con modelos locales puedes ampliarlo con TRANSLATOR_TIMEOUT_MS.',
         );
       }
       throw new GatewayTimeoutException(
@@ -450,15 +450,15 @@ export class TranslationService {
     if (response.status === 429 && attempt < RETRIES_429) {
       const wait = waitAfterLimit(response.headers?.get?.('retry-after'));
       this.logger.warn(
-        `El proveedor devolvió 429; se reintenta en ${Math.round(wait / 1000)} s ` +
-          `(intento ${attempt + 1} de ${RETRIES_429}).`,
+        `The provider returned 429; retrying in ${Math.round(wait / 1000)} s ` +
+          `(attempt ${attempt + 1} of ${RETRIES_429}).`,
       );
-      await clock.dormir(wait);
+      await clock.sleep(wait);
       return this.callCompatible(system, user, withJsonFormat, attempt + 1);
     }
     if (response.status === 401 || response.status === 403) {
       throw new BadGatewayException(
-        'El proveedor rechazó la clave TRADUCTOR_API_KEY. Revísala y reinicia el backend.',
+        'El proveedor rechazó la clave TRANSLATOR_API_KEY. Revísala y reinicia el backend.',
       );
     }
     if (response.status === 429) {
@@ -470,7 +470,7 @@ export class TranslationService {
     if (response.status === 404) {
       throw new BadGatewayException(
         `El proveedor no encontró el modelo "${this.config.model}" (404). ` +
-          'Revisa TRADUCTOR_MODELO (con Ollama: ¿hiciste "ollama pull <modelo>"?).',
+          'Revisa TRANSLATOR_MODEL (con Ollama: ¿hiciste "ollama pull <modelo>"?).',
       );
     }
     if (!response.ok) {

@@ -1,4 +1,4 @@
-export const DB_CONNECTION = 'CONEXION_DB';
+export const DB_CONNECTION = 'DB_CONNECTION';
 
 export interface DatabaseOptions {
   dbPath: string;

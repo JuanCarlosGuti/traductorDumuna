@@ -20,30 +20,30 @@ async function main(): Promise<void> {
   });
 
   const dataDir = resolveDataDir();
-  console.log(`Importando corpus desde: ${dataDir}`);
+  console.log(`Importing corpus from: ${dataDir}`);
   const stats = await app.get(ImporterService).importAll(dataDir);
   const e = stats.elicitation;
 
-  console.log('\n=== Importación completada ===');
-  console.log(`Oraciones:        ${stats.sentences}`);
-  console.log(`Frases:           ${stats.phrases}`);
-  console.log(`Vocabulario:      ${stats.vocabulary}`);
-  console.log(`Conjugaciones:    ${stats.conjugations}`);
-  console.log(`Reglas:           ${stats.rules}`);
-  console.log(`Nombres propios:  ${stats.properNames}`);
+  console.log('\n=== Import completed ===');
+  console.log(`Sentences:        ${stats.sentences}`);
+  console.log(`Phrases:          ${stats.phrases}`);
+  console.log(`Vocabulary:       ${stats.vocabulary}`);
+  console.log(`Conjugations:     ${stats.conjugations}`);
+  console.log(`Rules:            ${stats.rules}`);
+  console.log(`Proper names:     ${stats.properNames}`);
   console.log(
-    `Elicitación:      ${e.files} archivo(s), ${e.rows} filas → ` +
-      `${e.vocabulary} palabras, ${e.sentences} oraciones, ${e.tests} pruebas reservadas, ` +
-      `${e.pending} pendientes, ${e.resolved} resueltas` +
-      (e.coveredByVocabulary ? `, ${e.coveredByVocabulary} ya en el vocabulario (no se piden)` : '') +
-      (e.repeatedIds ? `, ${e.repeatedIds} ids repetidos (ganó el último lote)` : ''),
+    `Elicitation:      ${e.files} file(s), ${e.rows} rows → ` +
+      `${e.vocabulary} words, ${e.sentences} sentences, ${e.tests} reserved tests, ` +
+      `${e.pending} pending, ${e.resolved} resolved` +
+      (e.coveredByVocabulary ? `, ${e.coveredByVocabulary} already in the vocabulary (not requested)` : '') +
+      (e.repeatedIds ? `, ${e.repeatedIds} repeated ids (the last batch won)` : ''),
   );
   if (e.closedByVocabulary) {
-    console.log(`Pendientes cerradas porque el vocabulario ya las cubre: ${e.closedByVocabulary}`);
+    console.log(`Pending items closed because the vocabulary already covers them: ${e.closedByVocabulary}`);
   }
-  console.log(`Pruebas (CSV):    ${stats.testsInFile}`);
+  console.log(`Tests (CSV):      ${stats.testsInFile}`);
   console.log(`Tokens:           ${stats.totalTokens}`);
-  console.log('\nTop 20 palabras damana más frecuentes:');
+  console.log('\nTop 20 most frequent Damana words:');
   console.table(stats.topWords);
 
   await app.close();

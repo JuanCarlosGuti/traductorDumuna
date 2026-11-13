@@ -4,7 +4,7 @@ import {
   DEFAULT_TEMPERATURE,
 } from './translator-config.provider';
 
-describe('readTemperature (TRADUCTOR_TEMPERATURA)', () => {
+describe('readTemperature (TRANSLATOR_TEMPERATURE)', () => {
   it('0.2 by default; accepts numbers and clamps them to [0, 2]; ignores what is not a number', () => {
     expect(readTemperature(undefined)).toBe(DEFAULT_TEMPERATURE);
     expect(readTemperature('')).toBe(DEFAULT_TEMPERATURE);
@@ -16,7 +16,7 @@ describe('readTemperature (TRADUCTOR_TEMPERATURA)', () => {
   });
 });
 
-describe('readEffort (ANTHROPIC_ESFUERZO)', () => {
+describe('readEffort (ANTHROPIC_EFFORT)', () => {
   it('only accepts the API levels, case-insensitively; if missing or invalid, undefined', () => {
     expect(readEffort(undefined)).toBeUndefined();
     expect(readEffort('')).toBeUndefined();

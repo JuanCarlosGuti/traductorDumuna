@@ -13,8 +13,8 @@ const validatedPair = (id: number, spanish: string, damana: string): ValidatedPa
   createdAt: '2026-10-21T00:00:00.000Z',
   spanish: spanish,
   damana,
-  direction: TranslationDirection.espanol_a_damana,
-  origin: 'confirmada',
+  direction: TranslationDirection.spanish_to_damana,
+  origin: 'confirmed',
   modelTranslation: null,
 });
 
@@ -23,7 +23,7 @@ describe('testsFromValidated', () => {
     expect(
       testsFromValidated([
         validatedPair(1, ' mi mamá cocina ', 'Ranzhe abu dugwa '),
-        { ...validatedPair(2, 'otra vez', 'ñingui'), direction: TranslationDirection.damana_a_espanol },
+        { ...validatedPair(2, 'otra vez', 'ñingui'), direction: TranslationDirection.damana_to_spanish },
         validatedPair(3, 'vacía', '   '),
       ]),
     ).toEqual([
@@ -39,15 +39,15 @@ describe('exportValidatedToTests', () => {
   const newItem = (spanish: string, damana: string): NewValidated => ({
     spanish: spanish,
     damana,
-    direction: TranslationDirection.espanol_a_damana,
-    origin: 'corregida',
+    direction: TranslationDirection.spanish_to_damana,
+    origin: 'corrected',
     modelTranslation: 'lo que dijo el modelo',
   });
 
   beforeEach(() => {
     db = new Database(':memory:');
     runMigrations(db);
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pruebas-validadas-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tests-from-validated-'));
   });
 
   afterEach(() => {

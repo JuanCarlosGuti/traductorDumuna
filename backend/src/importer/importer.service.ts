@@ -50,38 +50,60 @@ export interface ImportStats {
   /** Rows left in pruebas_traduccion.csv after merging. */
   testsInFile: number;
   totalTokens: number;
-  topWords: { palabra: string; frecuencia: number }[];
+  topWords: { word: string; frequency: number }[];
 }
+
+/**
+ * The corpus CSVs are data files written in Spanish (they are shared with the
+ * Wiwa community), so their headers and their status values stay in Spanish.
+ * They are mapped to the English field names right when they are read.
+ */
+const CSV_COLUMNS: Record<string, string> = {
+  id: 'id',
+  damana: 'damana',
+  espanol: 'spanish',
+  estado: 'status',
+  fuente: 'source',
+  notas: 'notes',
+  categoria: 'category',
+  lema: 'lemma',
+};
+
+/** Sentence status values in corpus_oraciones.csv → status stored in the database. */
+const CSV_SENTENCE_STATUS: Record<string, string> = {
+  aprobado: 'approved',
+  revisar: 'review',
+};
 
 interface SentenceRow {
   id: string;
   damana: string;
-  espanol: string;
-  estado: string;
-  fuente: string;
+  spanish: string;
+  status: string;
+  source: string;
 }
 
 interface PhraseRow {
-  fuente: string;
+  source: string;
   damana: string;
-  espanol: string;
-  notas: string;
+  spanish: string;
+  notes: string;
 }
 
 interface VocabularyRow {
-  espanol: string;
+  spanish: string;
   damana: string;
-  categoria: string;
-  notas: string;
-  fuente: string;
+  category: string;
+  notes: string;
+  source: string;
 }
 
 interface ConjugationRow {
   damana: string;
-  espanol: string;
-  lema: string;
-  fuente: string;
-  notas: string;
+  spanish: string;
+  lemma: string;
+  source: string;
+  notes: string;
 }
 
 interface RuleRow {
@@ -106,8 +128,8 @@ interface ProperNameRow {
 /** The biblical booklet (lfb) is the only «biblical» corpus; the rest is everyday. */
 export function sentenceDomain(source: string | undefined): CorpusDomain {
   return (source ?? '').trim().toLowerCase().startsWith('lfb')
-    ? CorpusDomain.biblico
-    : CorpusDomain.cotidiano;
+    ? CorpusDomain.biblical
+    : CorpusDomain.everyday;
 }
 
 @Injectable()
@@ -123,8 +145,8 @@ export class ImporterService {
    * Imports the whole corpus idempotently: the 4 CSVs, the rules and
    * proper names from reglas_damana.xlsx and all the elicitation batches
    * (formato_elicitacion*.xlsx). Content tables are rebuilt
-   * (DELETE + INSERT in one transaction); progreso_srs, traducciones,
-   * validadas and pendientes are kept — in pendientes only the
+   * (DELETE + INSERT in one transaction); srs_progress, translations,
+   * validated_pairs and pending_items are kept — in pending_items only the
    * unfilled elicitation rows are added and those that arrived
    * complete are closed —. One in every 10 complete elicitation rows is reserved
    * for pruebas_traduccion.csv and does not go into retrieval.
@@ -134,16 +156,16 @@ export class ImporterService {
     const phrases = this.readCsv<PhraseRow>(dataDir, 'corpus_frases_v2.csv');
     const vocabulary = this.readCsv<VocabularyRow>(dataDir, VOCABULARY_FILE);
     const conjugations = this.readCsv<ConjugationRow>(dataDir, 'corpus_conjugaciones.csv');
-    const { reglas: rules, nombres: names } = await this.readRules(dataDir);
+    const { rules: rules, names: names } = await this.readRules(dataDir);
     const elicitation = await this.readElicitation(dataDir);
-    const plan = planElicitation(elicitation.filas);
+    const plan = planElicitation(elicitation.rows);
     const now = new Date().toISOString();
     // What the vocabulary already knows is not requested from the speakers (they
     // charge per word): an unfilled row whose word already exists is not
     // recorded as pending, and open pending items that the vocabulary
     // covers are closed.
     const coverage = new VocabularyCoverage([
-      ...vocabulary.map((v) => ({ spanish: v.espanol, damana: v.damana })),
+      ...vocabulary.map((v) => ({ spanish: v.spanish, damana: v.damana })),
       ...plan.vocabulary,
     ]);
     const coveredByVocabulary = plan.pending.filter((p) => coverage.coversSpanish(p.word)).length;
@@ -151,15 +173,15 @@ export class ImporterService {
 
     const insertAll = this.db.transaction(() => {
       this.db.exec(
-        'DELETE FROM tokens_damana; DELETE FROM oraciones; DELETE FROM frases; ' +
-          'DELETE FROM vocabulario; DELETE FROM conjugaciones; ' +
-          'DELETE FROM reglas; DELETE FROM nombres_propios;',
+        'DELETE FROM damana_tokens; DELETE FROM sentences; DELETE FROM phrases; ' +
+          'DELETE FROM vocabulary; DELETE FROM conjugations; ' +
+          'DELETE FROM rules; DELETE FROM proper_names;',
       );
 
       // Damana columns go through fixDamanaSpelling (ü→ʉ, see
       // common/text/spelling.ts); the source CSVs are left intact.
       const insSentence = this.db.prepare(
-        `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente, dominio)
+        `INSERT INTO sentences (external_id, damana, spanish, status, source, domain)
          VALUES (?, ?, ?, ?, ?, ?)`,
       );
       for (const row of sentences) {
@@ -167,58 +189,58 @@ export class ImporterService {
         const info = insSentence.run(
           row.id,
           damana,
-          row.espanol,
-          row.estado,
-          row.fuente,
-          sentenceDomain(row.fuente),
+          row.spanish,
+          CSV_SENTENCE_STATUS[row.status.trim().toLowerCase()] ?? row.status,
+          row.source,
+          sentenceDomain(row.source),
         );
-        this.tokenize(damana, 'oraciones', info.lastInsertRowid as number);
+        this.tokenize(damana, 'sentences', info.lastInsertRowid as number);
       }
 
       const insPhrase = this.db.prepare(
-        'INSERT INTO frases (fuente, damana, espanol, notas, dominio) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO phrases (source, damana, spanish, notes, domain) VALUES (?, ?, ?, ?, ?)',
       );
       for (const row of phrases) {
         const damana = fixDamanaSpelling(row.damana);
         const info = insPhrase.run(
-          row.fuente,
+          row.source,
           damana,
-          row.espanol,
-          row.notas,
-          CorpusDomain.cotidiano,
+          row.spanish,
+          row.notes,
+          CorpusDomain.everyday,
         );
-        this.tokenize(damana, 'frases', info.lastInsertRowid as number);
+        this.tokenize(damana, 'phrases', info.lastInsertRowid as number);
       }
 
       const insVocabulary = this.db.prepare(
-        `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+        `INSERT INTO vocabulary (spanish, damana, category, notes, source)
          VALUES (?, ?, ?, ?, ?)`,
       );
       for (const row of vocabulary) {
         const damana = fixDamanaSpelling(row.damana);
         const info = insVocabulary.run(
-          row.espanol,
+          row.spanish,
           damana,
-          row.categoria,
-          row.notas,
-          row.fuente,
+          row.category,
+          row.notes,
+          row.source,
         );
-        this.tokenize(damana, 'vocabulario', info.lastInsertRowid as number);
+        this.tokenize(damana, 'vocabulary', info.lastInsertRowid as number);
       }
 
       const insConjugation = this.db.prepare(
-        `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+        `INSERT INTO conjugations (damana, spanish, lemma, source, notes)
          VALUES (?, ?, ?, ?, ?)`,
       );
       for (const row of conjugations) {
         const damana = fixDamanaSpelling(row.damana);
-        const info = insConjugation.run(damana, row.espanol, row.lema, row.fuente, row.notas);
-        this.tokenize(damana, 'conjugaciones', info.lastInsertRowid as number);
+        const info = insConjugation.run(damana, row.spanish, row.lemma, row.source, row.notes);
+        this.tokenize(damana, 'conjugations', info.lastInsertRowid as number);
       }
 
       const insRule = this.db.prepare(
-        `INSERT INTO reglas (tipo, forma, significado, ejemplo_base, ejemplo_regla,
-                             traduccion_ejemplo, notas, disparador)
+        `INSERT INTO rules (kind, form, meaning, base_example, rule_example,
+                             example_translation, notes, trigger_feature)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       );
       for (const r of rules) {
@@ -235,7 +257,7 @@ export class ImporterService {
       }
 
       const insName = this.db.prepare(
-        `INSERT INTO nombres_propios (damana, espanol, se_escribe_igual, otras_grafias, notas)
+        `INSERT INTO proper_names (damana, spanish, same_spelling, other_spellings, notes)
          VALUES (?, ?, ?, ?, ?)`,
       );
       for (const n of names) {
@@ -246,18 +268,18 @@ export class ImporterService {
       // go into the database: they live only in pruebas_traduccion.csv).
       for (const v of plan.vocabulary) {
         const info = insVocabulary.run(v.spanish, v.damana, v.category, v.notes || null, v.source);
-        this.tokenize(v.damana, 'vocabulario', info.lastInsertRowid as number);
+        this.tokenize(v.damana, 'vocabulary', info.lastInsertRowid as number);
       }
       for (const o of plan.sentences) {
         const info = insSentence.run(
           o.externalId,
           o.damana,
           o.spanish,
-          'aprobado',
+          'approved',
           o.source,
-          CorpusDomain.cotidiano,
+          CorpusDomain.everyday,
         );
-        this.tokenize(o.damana, 'oraciones', info.lastInsertRowid as number);
+        this.tokenize(o.damana, 'sentences', info.lastInsertRowid as number);
       }
       for (const p of plan.pending) {
         if (coverage.coversSpanish(p.word)) continue;
@@ -284,7 +306,7 @@ export class ImporterService {
   private readCsv<T>(dataDir: string, name: string): T[] {
     const content = fs.readFileSync(path.join(dataDir, name));
     return parse(content, {
-      columns: true,
+      columns: (headers: string[]) => headers.map((h) => CSV_COLUMNS[h.trim()] ?? h.trim()),
       bom: true,
       skip_empty_lines: true,
     }) as T[];
@@ -296,11 +318,11 @@ export class ImporterService {
    */
   private async readRules(
     dataDir: string,
-  ): Promise<{ reglas: RuleRow[]; nombres: ProperNameRow[] }> {
+  ): Promise<{ rules: RuleRow[]; names: ProperNameRow[] }> {
     const filePath = path.join(dataDir, RULES_FILE);
     if (!fs.existsSync(filePath)) {
-      this.logger.warn(`No se encontró ${RULES_FILE}: se importa sin reglas ni nombres propios.`);
-      return { reglas: [], nombres: [] };
+      this.logger.warn(`${RULES_FILE} not found: importing without rules or proper names.`);
+      return { rules: [], names: [] };
     }
     const sheets = await readWorkbook(filePath);
     const rulesSheet = sheets.find((h) => headerKey(h.name).includes('regla'));
@@ -333,17 +355,17 @@ export class ImporterService {
       }))
       .filter((n) => n.damana.length > 0 && n.spanish.length > 0);
 
-    return { reglas: rules, nombres: names };
+    return { rules: rules, names: names };
   }
 
   /**
    * All the formato_elicitacion*.xlsx batches in the folder, in name
-   * order. The sheet that has the palabra_es column is read (templates
+   * order. The sheet that has the word_es column is read (templates
    * also include an instructions sheet).
    */
   private async readElicitation(
     dataDir: string,
-  ): Promise<{ archivos: string[]; filas: ElicitationRow[] }> {
+  ): Promise<{ files: string[]; rows: ElicitationRow[] }> {
     const files = fs
       .readdirSync(dataDir)
       .filter((n) => ELICITATION_PATTERN.test(n) && !n.startsWith('~$'))
@@ -353,7 +375,7 @@ export class ImporterService {
       const sheets = await readWorkbook(path.join(dataDir, file));
       const sheet = sheets.find((h) => hasColumns(h, 'palabra_es'));
       if (!sheet) {
-        this.logger.warn(`${file}: ninguna hoja tiene la columna palabra_es; se omite.`);
+        this.logger.warn(`${file}: no sheet has the palabra_es column; skipped.`);
         continue;
       }
       for (const raw of sheet.rows) {
@@ -361,12 +383,12 @@ export class ImporterService {
         if (row) rows.push(row);
       }
     }
-    return { archivos: files, filas: rows };
+    return { files: files, rows: rows };
   }
 
   private tokenize(text: string, sourceTable: string, sourceId: number): void {
     const insToken = this.db.prepare(
-      `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
+      `INSERT INTO damana_tokens (normalized_word, original_word, source_table, source_id, position)
        VALUES (?, ?, ?, ?, ?)`,
     );
     for (const token of tokenizeDamana(text)) {
@@ -377,7 +399,7 @@ export class ImporterService {
   private statistics(
     rules: number,
     properNames: number,
-    elicitation: { archivos: string[]; filas: ElicitationRow[] },
+    elicitation: { files: string[]; rows: ElicitationRow[] },
     plan: ElicitationPlan,
     testsInFile: number,
     coverage: { coveredByVocabulary: number; closedByVocabulary: number },
@@ -387,24 +409,24 @@ export class ImporterService {
 
     const topWords = this.db
       .prepare(
-        `SELECT palabra_normalizada AS palabra, COUNT(*) AS frecuencia
-         FROM tokens_damana
-         GROUP BY palabra_normalizada
-         ORDER BY frecuencia DESC, palabra_normalizada
+        `SELECT normalized_word AS word, COUNT(*) AS frequency
+         FROM damana_tokens
+         GROUP BY normalized_word
+         ORDER BY frequency DESC, normalized_word
          LIMIT 20`,
       )
-      .all() as { palabra: string; frecuencia: number }[];
+      .all() as { word: string; frequency: number }[];
 
     return {
-      sentences: count('oraciones'),
-      phrases: count('frases'),
-      vocabulary: count('vocabulario'),
-      conjugations: count('conjugaciones'),
+      sentences: count('sentences'),
+      phrases: count('phrases'),
+      vocabulary: count('vocabulary'),
+      conjugations: count('conjugations'),
       rules: rules,
       properNames: properNames,
       elicitation: {
-        files: elicitation.archivos.length,
-        rows: elicitation.filas.length,
+        files: elicitation.files.length,
+        rows: elicitation.rows.length,
         vocabulary: plan.vocabulary.length,
         sentences: plan.sentences.length,
         tests: plan.tests.length,
@@ -415,7 +437,7 @@ export class ImporterService {
         repeatedIds: plan.repeatedIds,
       },
       testsInFile: testsInFile,
-      totalTokens: count('tokens_damana'),
+      totalTokens: count('damana_tokens'),
       topWords: topWords,
     };
   }

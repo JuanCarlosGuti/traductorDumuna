@@ -3,7 +3,7 @@ import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { Grade } from '../sm2';
 
 export class SrsAnswerDto {
-  @ApiProperty({ description: 'La palabra de la tarjeta respondida', example: 'nʉnka' })
+  @ApiProperty({ description: 'The word of the answered card', example: 'nʉnka' })
   @IsString()
   @IsNotEmpty()
   word!: string;
@@ -14,15 +14,15 @@ export class SrsAnswerDto {
 }
 
 export class SrsCardDto {
-  @ApiProperty({ description: 'Palabra o expresión damana (anverso)' })
+  @ApiProperty({ description: 'Damana word or expression (front)' })
   word!: string;
 
-  @ApiProperty({ enum: ['vocabulario', 'frecuencia'], description: 'De dónde sale la tarjeta' })
-  type!: 'vocabulario' | 'frecuencia';
+  @ApiProperty({ enum: ['vocabulary', 'frequency'], description: 'Where the card comes from' })
+  type!: 'vocabulary' | 'frequency';
 
   @ApiProperty({
     description:
-      'Reverso: la traducción del vocabulario, o las traducciones candidatas para palabras frecuentes',
+      'Back: the vocabulary translation, or the candidate translations for frequent words',
   })
   translation!: string;
 
@@ -31,13 +31,13 @@ export class SrsCardDto {
 }
 
 export class SrsStatusDto {
-  @ApiProperty({ type: SrsCardDto, nullable: true, description: 'null si no queda nada por repasar' })
+  @ApiProperty({ type: SrsCardDto, nullable: true, description: 'null if there is nothing left to review' })
   card!: SrsCardDto | null;
 
-  @ApiProperty({ description: 'Tarjetas ya vistas cuya revisión venció' })
+  @ApiProperty({ description: 'Cards already seen whose review is due' })
   pendingCards!: number;
 
-  @ApiProperty({ description: 'Tarjetas nunca vistas' })
+  @ApiProperty({ description: 'Cards never seen' })
   newCards!: number;
 }
 

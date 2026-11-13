@@ -22,9 +22,9 @@ export class TranslationController {
 
   @Get('status')
   @ApiOperation({
-    summary: 'Disponibilidad y motor del traductor',
+    summary: 'Translator availability and engine',
     description:
-      'Motores: ANTHROPIC_API_KEY → Claude (prioridad); TRADUCTOR_BASE_URL + TRADUCTOR_MODELO → API compatible OpenAI (Ollama, Gemini, Groq, Hugging Face). Sin nada configurado: disponible=false.',
+      'Engines: ANTHROPIC_API_KEY → Claude (priority); TRANSLATOR_BASE_URL + TRANSLATOR_MODEL → OpenAI-compatible API (Ollama, Gemini, Groq, Hugging Face). With nothing configured: available=false.',
   })
   @ApiOkResponse({ type: TranslatorStatusDto })
   status(): TranslatorStatusDto {
@@ -38,22 +38,22 @@ export class TranslationController {
 
   @Post()
   @ApiOperation({
-    summary: 'Traducción asistida damana ↔ español',
+    summary: 'Assisted Damana ↔ Spanish translation',
     description:
-      'El prompt lleva, en este orden: reglas gramaticales aplicables, diccionario palabra por palabra (exacta → sin tildes → singular → prefijo), nombres propios, y ejemplos por similitud con cupos por dominio (hasta 6 cotidianos, 4 de gramática, 4 bíblicos —2 si hay cotidianos suficientes—, máximo 14). Devuelve glosa, palabras sin equivalente (se registran en pendientes), reglas aplicadas y confianza, más todo el apoyo usado.',
+      'The prompt carries, in this order: applicable grammar rules, a word-by-word dictionary (exact → no accents → singular → prefix), proper names, and examples by similarity with quotas per domain (up to 6 everyday, 4 grammar, 4 biblical —2 if there are enough everyday ones—, 14 at most). It returns the gloss, the words without an equivalent (recorded as pending items), the applied rules and the confidence, plus all the support used.',
   })
   @ApiOkResponse({ type: TranslationResponseDto })
-  @ApiServiceUnavailableResponse({ description: 'Ningún motor configurado (codigo: SIN_PROVEEDOR)' })
-  @ApiBadGatewayResponse({ description: 'Error del proveedor o respuesta no parseable' })
+  @ApiServiceUnavailableResponse({ description: 'No engine configured (code: NO_PROVIDER)' })
+  @ApiBadGatewayResponse({ description: 'Provider error or unparseable response' })
   translate(@Body() dto: TranslateDto): Promise<TranslationResponseDto> {
     return this.translation.translate(dto);
   }
 
   @Post('validate')
   @ApiOperation({
-    summary: 'Guardar una traducción confirmada o corregida',
+    summary: 'Save a confirmed or corrected translation',
     description:
-      'Botones «esta traducción es correcta» y «corregir» de la vista: el par queda en la tabla validadas, futura fuente cotidiana de máxima confianza.',
+      'The «this translation is correct» and «correct it» buttons of the view: the pair is stored in the validated_pairs table, a future everyday source of maximum confidence.',
   })
   @ApiOkResponse({ type: SavedValidationDto })
   validate(@Body() dto: ValidateTranslationDto): SavedValidationDto {

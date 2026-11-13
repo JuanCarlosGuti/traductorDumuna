@@ -10,7 +10,7 @@ export interface CoverableEntry {
 /**
  * Which words does the vocabulary already know? Used to avoid asking the
  * speakers (who charge per word) for something the corpus already has: an unfilled
- * elicitation row whose palabra_es already exists is not recorded as
+ * elicitation row whose word_es already exists is not recorded as
  * pending, and an open pending item that the vocabulary covers is closed.
  *
  * The comparison uses the same rules the translator uses to find a
@@ -54,8 +54,8 @@ export class VocabularyCoverage {
     return key.length > 0 && this.damana.has(key);
   }
 
-  covers(word: string, language: 'espanol' | 'damana'): boolean {
-    return language === 'espanol' ? this.coversSpanish(word) : this.coversDamana(word);
+  covers(word: string, language: 'spanish' | 'damana'): boolean {
+    return language === 'spanish' ? this.coversSpanish(word) : this.coversDamana(word);
   }
 }
 

@@ -15,33 +15,33 @@ describe('WordService', () => {
     runMigrations(db);
     // Content: nʉnka appears in all three sources; ñingui only in sentences.
     db.prepare(
-      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
-       VALUES ('o1', 'Ñingui nʉnka gontka nʉnka', 'Dios hizo el agua del cielo', 'aprobado', 'lfb')`,
+      `INSERT INTO sentences (external_id, damana, spanish, status, source)
+       VALUES ('o1', 'Ñingui nʉnka gontka nʉnka', 'Dios hizo el agua del cielo', 'approved', 'lfb')`,
     ).run();
     db.prepare(
-      `INSERT INTO frases (fuente, damana, espanol, notas)
+      `INSERT INTO phrases (source, damana, spanish, notes)
        VALUES ('Prueba', 'nʉnka nanu', 'agua fresca de aquí', NULL)`,
     ).run();
     db.prepare(
-      `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+      `INSERT INTO vocabulary (spanish, damana, category, notes, source)
        VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')`,
     ).run();
     db.prepare(
-      `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+      `INSERT INTO conjugations (damana, spanish, lemma, source, notes)
        VALUES ('ñingui', 'él volvió', 'volver', 'doc', NULL)`,
     ).run();
     const insToken = db.prepare(
-      `INSERT INTO tokens_damana (palabra_normalizada, palabra_original, tabla_origen, id_origen, posicion)
+      `INSERT INTO damana_tokens (normalized_word, original_word, source_table, source_id, position)
        VALUES (?, ?, ?, ?, ?)`,
     );
-    insToken.run('ñingui', 'Ñingui', 'oraciones', 1, 0);
-    insToken.run('nʉnka', 'nʉnka', 'oraciones', 1, 1);
-    insToken.run('gontka', 'gontka', 'oraciones', 1, 2);
-    insToken.run('nʉnka', 'nʉnka', 'oraciones', 1, 3);
-    insToken.run('nʉnka', 'nʉnka', 'frases', 1, 0);
-    insToken.run('nanu', 'nanu', 'frases', 1, 1);
-    insToken.run('nʉnka', 'nʉnka', 'vocabulario', 1, 0);
-    insToken.run('ñingui', 'ñingui', 'conjugaciones', 1, 0);
+    insToken.run('ñingui', 'Ñingui', 'sentences', 1, 0);
+    insToken.run('nʉnka', 'nʉnka', 'sentences', 1, 1);
+    insToken.run('gontka', 'gontka', 'sentences', 1, 2);
+    insToken.run('nʉnka', 'nʉnka', 'sentences', 1, 3);
+    insToken.run('nʉnka', 'nʉnka', 'phrases', 1, 0);
+    insToken.run('nanu', 'nanu', 'phrases', 1, 1);
+    insToken.run('nʉnka', 'nʉnka', 'vocabulary', 1, 0);
+    insToken.run('ñingui', 'ñingui', 'conjugations', 1, 0);
     const repo = new CorpusRepository(db);
     service = new WordService(
       repo,
@@ -55,11 +55,11 @@ describe('WordService', () => {
     const wordCard = service.wordCard('nʉnka');
     expect(wordCard.word).toBe('nʉnka');
     expect(wordCard.totalFrequency).toBe(4);
-    // GROUP BY tabla_origen with alphabetical ORDER BY
+    // GROUP BY source_table with alphabetical ORDER BY
     expect(wordCard.frequencyBySource).toEqual([
-      { source: 'frases', frequency: 1 },
-      { source: 'oraciones', frequency: 2 },
-      { source: 'vocabulario', frequency: 1 },
+      { source: 'phrases', frequency: 1 },
+      { source: 'sentences', frequency: 2 },
+      { source: 'vocabulary', frequency: 1 },
     ]);
   });
 

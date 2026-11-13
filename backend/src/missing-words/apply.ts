@@ -7,7 +7,7 @@ import { fixDamanaSpelling } from '../common/text/spelling';
 import { resolveDataDir } from '../importer/data-paths';
 import { DAMANA_FILE, SPANISH_FILE } from './missing-words';
 
-const CSV_VOCABULARIO = 'corpus_vocabulario_v3.csv';
+const CSV_VOCABULARY = 'corpus_vocabulario_v3.csv';
 const NEW_SOURCE = 'lista automatica';
 const BOM = String.fromCharCode(0xfeff);
 
@@ -114,14 +114,14 @@ async function readExcel(
 
 async function main(): Promise<void> {
   const dataDir = resolveDataDir();
-  const csvPath = path.join(dataDir, CSV_VOCABULARIO);
+  const csvPath = path.join(dataDir, CSV_VOCABULARY);
   const spanishPath = path.join(dataDir, SPANISH_FILE);
   const damanaPath = path.join(dataDir, DAMANA_FILE);
 
   if (!fs.existsSync(spanishPath) && !fs.existsSync(damanaPath)) {
     console.error(
-      `No se encontró ni ${SPANISH_FILE} ni ${DAMANA_FILE} en ${dataDir}.\n` +
-        'Ejecuta antes: npm run necesito',
+      `Neither ${SPANISH_FILE} nor ${DAMANA_FILE} was found in ${dataDir}.\n` +
+        'Run first: npm run missing-words',
     );
     process.exit(1);
   }
@@ -132,14 +132,14 @@ async function main(): Promise<void> {
   const filled = [...fromSpanish.filled, ...fromDamana.filled];
   const unfilled = fromSpanish.unfilled + fromDamana.unfilled;
 
-  // The CSV headers are data and stay in Spanish (espanol, damana).
+  // The CSV headers are data and stay in Spanish (spanish, damana).
   const vocabulary = (
     parse(fs.readFileSync(csvPath), {
       columns: true,
       bom: true,
       skip_empty_lines: true,
-    }) as { espanol: string; damana: string }[]
-  ).map((r) => ({ spanish: r.espanol, damana: r.damana }));
+    }) as { spanish: string; damana: string }[]
+  ).map((r) => ({ spanish: r.spanish, damana: r.damana }));
 
   const { added: added, duplicated: duplicated } = planChanges(filled, vocabulary);
 
@@ -149,18 +149,18 @@ async function main(): Promise<void> {
     fs.appendFileSync(csvPath, buildLines(added, current), 'utf8');
   }
 
-  console.log(`\n=== ${CSV_VOCABULARIO} actualizado ===`);
+  console.log(`\n=== ${CSV_VOCABULARY} updated ===`);
   console.log(
-    `Pares completos: ${filled.length}  ` +
-      `(${fromSpanish.filled.length} de ${SPANISH_FILE}, ` +
-      `${fromDamana.filled.length} de ${DAMANA_FILE}; sin llenar: ${unfilled})`,
+    `Complete pairs: ${filled.length}  ` +
+      `(${fromSpanish.filled.length} from ${SPANISH_FILE}, ` +
+      `${fromDamana.filled.length} from ${DAMANA_FILE}; unfilled: ${unfilled})`,
   );
-  console.log(`  agregadas al glosario:  ${added.length}`);
-  console.log(`  omitidas por duplicadas: ${duplicated.length}`);
+  console.log(`  added to the glossary:  ${added.length}`);
+  console.log(`  skipped as duplicates:  ${duplicated.length}`);
   added.slice(0, 10).forEach((f) => console.log(`    + ${f.spanish} = ${f.damana}`));
-  duplicated.slice(0, 5).forEach((f) => console.log(`    · ya estaba: ${f.spanish} = ${f.damana}`));
+  duplicated.slice(0, 5).forEach((f) => console.log(`    · already there: ${f.spanish} = ${f.damana}`));
   if (added.length > 0) {
-    console.log('\nAhora ejecuta: npm run importar   (para que la app las use)');
+    console.log('\nNow run: npm run import:corpus   (so the app uses them)');
   }
 }
 

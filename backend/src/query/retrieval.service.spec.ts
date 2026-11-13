@@ -37,23 +37,23 @@ describe('RetrievalService (corpus v3)', () => {
     db = new Database(':memory:');
     runMigrations(db);
     const insSentence = db.prepare(
-      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
+      `INSERT INTO sentences (external_id, damana, spanish, status, source)
        VALUES (?, ?, ?, ?, 'lfb')`,
     );
     // Same Damana text with different states → weight test
-    insSentence.run('a1', 'nʉnka shkua gontka', 'el agua es una', 'aprobado');
-    insSentence.run('r1', 'nʉnka shkua gontka', 'el agua es una', 'revisar');
-    insSentence.run('a2', 'guma sheka dzʉwa', 'otra cosa distinta', 'aprobado');
+    insSentence.run('a1', 'nʉnka shkua gontka', 'el agua es una', 'approved');
+    insSentence.run('r1', 'nʉnka shkua gontka', 'el agua es una', 'review');
+    insSentence.run('a2', 'guma sheka dzʉwa', 'otra cosa distinta', 'approved');
     db.prepare(
-      `INSERT INTO frases (fuente, damana, espanol, notas)
+      `INSERT INTO phrases (source, damana, spanish, notes)
        VALUES ('Prueba', 'ñingui tua ukurra', 'otra vez al monte', NULL)`,
     ).run();
     db.prepare(
-      `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+      `INSERT INTO vocabulary (spanish, damana, category, notes, source)
        VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')`,
     ).run();
     db.prepare(
-      `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+      `INSERT INTO conjugations (damana, spanish, lemma, source, notes)
        VALUES ('nujkunʉnanka', 'yo tuve', 'tener', 'doc', NULL)`,
     ).run();
     service = new RetrievalService(new CorpusRepository(db));
@@ -83,14 +83,14 @@ describe('RetrievalService (corpus v3)', () => {
 
   it('the vocabulary does NOT take part in retrieval (it goes separately in the prompt)', () => {
     const results = service.similar('nʉnka', Language.damana, 8);
-    expect(results.some((r) => r.source === 'vocabulario')).toBe(false);
+    expect(results.some((r) => r.source === 'vocabulary')).toBe(false);
     expect(results.length).toBeGreaterThan(0); // but it does find sentences
   });
 
   it('conjugations do take part (case with ʉ in the verb form)', () => {
     const results = service.similar('nujkunʉnanka', Language.damana, 8);
     expect(results).toHaveLength(1);
-    expect(results[0].source).toBe('conjugaciones');
+    expect(results[0].source).toBe('conjugations');
     expect(results[0].reference).toBe('conjugación 1 (tener)');
     expect(results[0].spanish).toBe('yo tuve');
   });
@@ -100,7 +100,7 @@ describe('RetrievalService (corpus v3)', () => {
   });
 
   it('retrieves by Spanish and brings the parallel Damana (case with ñ in Damana)', () => {
-    const results = service.similar('otra vez al monte', Language.espanol, 8);
+    const results = service.similar('otra vez al monte', Language.spanish, 8);
     expect(results[0].damana).toBe('ñingui tua ukurra');
   });
 
@@ -112,15 +112,15 @@ describe('RetrievalService (corpus v3)', () => {
     /** Corpus with the verb «leer» in two different persons. */
     const prepareVerb = () => {
       db.prepare(
-        `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
-         VALUES ('v1', 'Ima texto nʉjkasheshisha ushi', 'Léeme este texto', 'aprobado', 'lfb')`,
+        `INSERT INTO sentences (external_id, damana, spanish, status, source)
+         VALUES ('v1', 'Ima texto nʉjkasheshisha ushi', 'Léeme este texto', 'approved', 'lfb')`,
       ).run();
       db.prepare(
-        `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
-         VALUES ('v2', 'Ima texto mʉjkasheshisha awʉnga', 'Te voy a leer este texto', 'aprobado', 'lfb')`,
+        `INSERT INTO sentences (external_id, damana, spanish, status, source)
+         VALUES ('v2', 'Ima texto mʉjkasheshisha awʉnga', 'Te voy a leer este texto', 'approved', 'lfb')`,
       ).run();
       const ins = db.prepare(
-        `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+        `INSERT INTO conjugations (damana, spanish, lemma, source, notes)
          VALUES (?, ?, 'leer', 'doc', NULL)`,
       );
       ins.run('nʉjkasheshisha', 'me lee');
@@ -133,7 +133,7 @@ describe('RetrievalService (corpus v3)', () => {
       const service = prepareVerb();
       // 'naijkasheshisha' is in no sentence: it used to return 0 results
       const results = service.similar('naijkasheshisha', Language.damana, 8);
-      const sentences = results.filter((r) => r.source === 'oraciones');
+      const sentences = results.filter((r) => r.source === 'sentences');
       expect(sentences.length).toBeGreaterThan(0);
       expect(sentences.every((r) => r.byLemma === 'leer')).toBe(true);
     });
@@ -153,8 +153,8 @@ describe('RetrievalService (corpus v3)', () => {
       const results = service.similar('naijkasheshisha', Language.damana, 8);
       // The conjugations entry itself matches directly (1.0);
       // sentences arrive via the lemma and are discounted by LEMMA_WEIGHT.
-      const direct = results.find((r) => r.source === 'conjugaciones')!;
-      const byLemma = results.filter((r) => r.source === 'oraciones');
+      const direct = results.find((r) => r.source === 'conjugations')!;
+      const byLemma = results.filter((r) => r.source === 'sentences');
       expect(direct.byLemma).toBeUndefined();
       expect(results.indexOf(direct)).toBe(0);
       for (const r of byLemma) {
@@ -166,7 +166,7 @@ describe('RetrievalService (corpus v3)', () => {
     it('does not bring sibling conjugations: they would take slots without teaching context', () => {
       const service = prepareVerb();
       const results = service.similar('naijkasheshisha', Language.damana, 8);
-      const conjugations = results.filter((r) => r.source === 'conjugaciones');
+      const conjugations = results.filter((r) => r.source === 'conjugations');
       expect(conjugations).toHaveLength(1); // only the direct match
       expect(conjugations[0].damana).toBe('naijkasheshisha');
       expect(conjugations[0].byLemma).toBeUndefined();
@@ -180,7 +180,7 @@ describe('RetrievalService (corpus v3)', () => {
 
     it('does not expand in the Spanish direction (lemmas are for Damana forms)', () => {
       const service = prepareVerb();
-      const results = service.similar('leer este texto', Language.espanol, 8);
+      const results = service.similar('leer este texto', Language.spanish, 8);
       expect(results.every((r) => r.byLemma === undefined)).toBe(true);
     });
   });
@@ -188,14 +188,14 @@ describe('RetrievalService (corpus v3)', () => {
   it('excludes untranslated pairs (biblical references) from the index', () => {
     const reference = 'Genesis 1:27-31; Salmo 115:16.';
     db.prepare(
-      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
-       VALUES ('ref1', ?, ?, 'aprobado', 'lfb')`,
+      `INSERT INTO sentences (external_id, damana, spanish, status, source)
+       VALUES ('ref1', ?, ?, 'approved', 'lfb')`,
     ).run(reference, reference);
     // Legitimate sentence that shares vocabulary with the query, to
     // check that the filter does not wipe out the good ones.
     db.prepare(
-      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
-       VALUES ('ok1', 'Salmo nʉnka gontka', 'el Salmo dice', 'aprobado', 'lfb')`,
+      `INSERT INTO sentences (external_id, damana, spanish, status, source)
+       VALUES ('ok1', 'Salmo nʉnka gontka', 'el Salmo dice', 'approved', 'lfb')`,
     ).run();
     const newService = new RetrievalService(new CorpusRepository(db));
 

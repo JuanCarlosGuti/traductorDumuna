@@ -61,13 +61,13 @@ describe('evaluateTest and summary', () => {
       { date: new Date('2026-10-03T14:30:00.000Z'), provider: 'compatible', model: 'm' },
     );
     const md = renderMarkdown(report);
-    expect(md).toContain('| ámbito | pruebas | exactas | chrF medio | sin equivalente | errores |');
+    expect(md).toContain('| scope | tests | exact | mean chrF | without equivalent | errors |');
     expect(md).toContain('| familia | 1 | 1 (100.0 %) |');
     expect(md).toContain('**mi mamá cocina** (familia)');
   });
 
   it('the report name carries date, time and sanitized model', () => {
     expect(reportBaseName(new Date('2026-10-03T14:30:00.000Z'), 'openai/gpt-oss-120b')).toBe('2026-10-03_1430_openai-gpt-oss-120b');
-    expect(reportBaseName(new Date('2026-10-03T14:30:00.000Z'), null)).toBe('2026-10-03_1430_sin-modelo');
+    expect(reportBaseName(new Date('2026-10-03T14:30:00.000Z'), null)).toBe('2026-10-03_1430_no-model');
   });
 });

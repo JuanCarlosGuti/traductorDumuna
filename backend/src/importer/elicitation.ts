@@ -52,7 +52,7 @@ export interface ElicitationPlan {
   repeatedIds: number;
 }
 
-export const ELICITATION_SOURCE = 'elicitacion';
+export const ELICITATION_SOURCE = 'elicitation';
 
 /** One in every TEST_PROPORTION complete rows is reserved for evaluation. */
 export const TEST_PROPORTION = 10;
@@ -104,27 +104,27 @@ export function parseRow(
  * order wins, which is the most recent by naming convention.
  */
 export function mergeById(rows: ElicitationRow[]): {
-  filas: ElicitationRow[];
-  repetidos: number;
+  rows: ElicitationRow[];
+  repeated: number;
 } {
   const byId = new Map<string, ElicitationRow>();
   let repeated = 0;
   for (const row of rows) {
-    const key = row.id || `sin-id:${normalize(row.wordEs)}`;
+    const key = row.id || `no-id:${normalize(row.wordEs)}`;
     if (byId.has(key)) repeated++;
     byId.set(key, row);
   }
-  return { filas: [...byId.values()], repetidos: repeated };
+  return { rows: [...byId.values()], repeated: repeated };
 }
 
 /**
  * What each row produces. A row feeds TWO things: a vocabulary
- * entry (palabra_es → palabra_dm) and an everyday sentence
- * (ejemplo_es → ejemplo_dm). Whatever is missing is not discarded: it stays as
+ * entry (word_es → word_dm) and an everyday sentence
+ * (example_es → example_dm). Whatever is missing is not discarded: it stays as
  * pending for the speakers to fill in.
  */
 export function planElicitation(rawRows: ElicitationRow[]): ElicitationPlan {
-  const { filas: rows, repetidos: repeated } = mergeById(rawRows);
+  const { rows: rows, repeated: repeated } = mergeById(rawRows);
   const plan: ElicitationPlan = {
     vocabulary: [],
     sentences: [],

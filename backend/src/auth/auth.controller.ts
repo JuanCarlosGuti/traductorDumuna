@@ -28,7 +28,7 @@ export class AuthController {
   @Public()
   @Get('status')
   @ApiOperation({
-    summary: '¿Exige sesión este servidor? Permite a la app saltarse el login en local.',
+    summary: 'Does this server require a session? Lets the app skip the login locally.',
   })
   status(): AuthStatusDto {
     return { active: this.config.active };
@@ -38,9 +38,9 @@ export class AuthController {
   @Post('login')
   // 200 instead of POST's default 201: no resource is being created.
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Entrega un token de sesión a cambio de las credenciales' })
+  @ApiOperation({ summary: 'Returns a session token in exchange for the credentials' })
   login(@Body() dto: LoginDto, @Req() request: RequestWithSession): SessionDto {
-    const ip = request.ip ?? 'desconocida';
+    const ip = request.ip ?? 'unknown';
     if (this.auth.blocked(ip)) {
       throw new HttpException(
         'Demasiados intentos fallidos; espera unos minutos.',
@@ -63,7 +63,7 @@ export class AuthController {
 
   @Get('session')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Comprueba que el token sigue siendo válido' })
+  @ApiOperation({ summary: 'Checks that the token is still valid' })
   session(@Req() request: RequestWithSession): UserDto {
     return { user: request.user ?? this.config.user };
   }

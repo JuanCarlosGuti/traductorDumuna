@@ -1,13 +1,13 @@
 export enum Language {
   damana = 'damana',
-  espanol = 'espanol',
+  spanish = 'spanish',
 }
 
 export enum CorpusSource {
-  oraciones = 'oraciones',
-  frases = 'frases',
-  vocabulario = 'vocabulario',
-  conjugaciones = 'conjugaciones',
+  sentences = 'sentences',
+  phrases = 'phrases',
+  vocabulary = 'vocabulary',
+  conjugations = 'conjugations',
 }
 
 /**
@@ -17,7 +17,7 @@ export enum CorpusSource {
  * when available; conjugations are the «grammar» domain.
  */
 export enum CorpusDomain {
-  biblico = 'biblico',
-  cotidiano = 'cotidiano',
-  gramatica = 'gramatica',
+  biblical = 'biblical',
+  everyday = 'everyday',
+  grammar = 'grammar',
 }

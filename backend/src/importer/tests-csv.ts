@@ -16,21 +16,29 @@ function key(p: TranslationTest): string {
   return `${normalize(p.spanish.trim())}|${normalize(p.expectedDamana.trim())}`;
 }
 
-/** Reads the tests CSV (espanol, damana_esperado, ambito); empty if it does not exist. */
+/**
+ * Header of pruebas_traduccion.csv. The file is shared data in Spanish, so its
+ * columns keep their Spanish names: espanol (Spanish text), damana_esperado
+ * (expected Damana) and ambito (scope).
+ */
+const TESTS_HEADER = 'espanol,damana_esperado,ambito';
+
+/** Reads the tests CSV (Spanish, expected Damana, scope); empty if it does not exist. */
 export function readTests(dataDir: string): TranslationTest[] {
   const filePath = path.join(dataDir, TESTS_FILE);
   if (!fs.existsSync(filePath)) return [];
   const rows = parse(fs.readFileSync(filePath), {
-    columns: true,
+    columns: (headers: string[]) =>
+      headers.map((h) => ({ espanol: 'spanish', damana_esperado: 'expected_damana', ambito: 'scope' })[h.trim()] ?? h.trim()),
     bom: true,
     skip_empty_lines: true,
-  }) as { espanol: string; damana_esperado: string; ambito: string }[];
+  }) as { spanish: string; expected_damana: string; scope: string }[];
   return rows
-    .filter((f) => f.espanol && f.damana_esperado)
+    .filter((f) => f.spanish && f.expected_damana)
     .map((f) => ({
-      spanish: f.espanol,
-      expectedDamana: f.damana_esperado,
-      scope: f.ambito || 'otro',
+      spanish: f.spanish,
+      expectedDamana: f.expected_damana,
+      scope: f.scope || 'otro',
     }));
 }
 
@@ -53,7 +61,7 @@ export function writeTests(
   });
   const all = [...existing, ...added];
   const lines = [
-    'espanol,damana_esperado,ambito',
+    TESTS_HEADER,
     ...all.map((p) => [field(p.spanish), field(p.expectedDamana), field(p.scope)].join(',')),
   ];
   fs.writeFileSync(path.join(dataDir, TESTS_FILE), BOM + lines.join(EOL) + EOL, 'utf8');

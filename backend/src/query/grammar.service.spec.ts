@@ -12,7 +12,7 @@ describe('GrammarService', () => {
     db = new Database(':memory:');
     runMigrations(db);
     const ins = db.prepare(
-      `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+      `INSERT INTO conjugations (damana, spanish, lemma, source, notes)
        VALUES (?, ?, ?, ?, ?)`,
     );
     ins.run('nujkunʉnanka', 'yo tuve', 'tener', 'VERBO TENER.docx', 'con ʉ');

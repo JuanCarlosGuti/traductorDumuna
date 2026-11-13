@@ -16,16 +16,16 @@ const MAX_CARD_CANDIDATES = 3;
 
 interface PoolCard {
   word: string;
-  type: 'vocabulario' | 'frecuencia';
+  type: 'vocabulary' | 'frequency';
   translation?: string;
 }
 
 interface ProgressRow {
-  palabra: string;
-  repeticiones: number;
-  factor_facilidad: number;
-  intervalo_dias: number;
-  proxima_revision: string;
+  word: string;
+  repetitions: number;
+  ease_factor: number;
+  interval_days: number;
+  next_review: string;
 }
 
 @Injectable()
@@ -39,7 +39,7 @@ export class SrsService {
 
   /**
    * Next card to review: first the overdue ones (oldest
-   * proxima_revision), then the never-seen ones (vocabulary first, then the
+   * next_review), then the never-seen ones (vocabulary first, then the
    * TOP_FREQUENCIES most frequent words in frequency order).
    */
   nextCard(now: Date = new Date()): SrsStatusDto {
@@ -49,12 +49,12 @@ export class SrsService {
     const overdue = pool
       .filter((c) => {
         const p = progressRows.get(c.word);
-        return p !== undefined && p.proxima_revision <= now.toISOString();
+        return p !== undefined && p.next_review <= now.toISOString();
       })
       .sort((a, b) =>
         progressRows
           .get(a.word)!
-          .proxima_revision.localeCompare(progressRows.get(b.word)!.proxima_revision),
+          .next_review.localeCompare(progressRows.get(b.word)!.next_review),
       );
     const newItems = pool.filter((c) => !progressRows.has(c.word));
 
@@ -78,13 +78,13 @@ export class SrsService {
     }
 
     const row = this.db
-      .prepare('SELECT * FROM progreso_srs WHERE palabra = ?')
+      .prepare('SELECT * FROM srs_progress WHERE word = ?')
       .get(word) as ProgressRow | undefined;
     const status: Sm2State = row
       ? {
-          repetitions: row.repeticiones,
-          easeFactor: row.factor_facilidad,
-          intervalDays: row.intervalo_dias,
+          repetitions: row.repetitions,
+          easeFactor: row.ease_factor,
+          intervalDays: row.interval_days,
         }
       : INITIAL_SM2_STATE;
 
@@ -95,15 +95,15 @@ export class SrsService {
 
     this.db
       .prepare(
-        `INSERT INTO progreso_srs
-           (palabra, repeticiones, factor_facilidad, intervalo_dias, proxima_revision, actualizado_en)
+        `INSERT INTO srs_progress
+           (word, repetitions, ease_factor, interval_days, next_review, updated_at)
          VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(palabra) DO UPDATE SET
-           repeticiones = excluded.repeticiones,
-           factor_facilidad = excluded.factor_facilidad,
-           intervalo_dias = excluded.intervalo_dias,
-           proxima_revision = excluded.proxima_revision,
-           actualizado_en = excluded.actualizado_en`,
+         ON CONFLICT(word) DO UPDATE SET
+           repetitions = excluded.repetitions,
+           ease_factor = excluded.ease_factor,
+           interval_days = excluded.interval_days,
+           next_review = excluded.next_review,
+           updated_at = excluded.updated_at`,
       )
       .run(
         word,
@@ -126,22 +126,22 @@ export class SrsService {
   private pool(): PoolCard[] {
     const vocabulary: PoolCard[] = this.repo.listVocabulary().map((v) => ({
       word: v.damana,
-      type: 'vocabulario',
+      type: 'vocabulary',
       translation: v.spanish,
     }));
     const inVocabulary = new Set(vocabulary.map((c) => c.word));
     const frequent: PoolCard[] = this.frequencies
       .listAll(TOP_FREQUENCIES)
       .filter((f) => !inVocabulary.has(f.word))
-      .map((f) => ({ word: f.word, type: 'frecuencia' }));
+      .map((f) => ({ word: f.word, type: 'frequency' }));
     return [...vocabulary, ...frequent];
   }
 
   private progressByWord(): Map<string, ProgressRow> {
     const rows = this.db
-      .prepare('SELECT * FROM progreso_srs')
+      .prepare('SELECT * FROM srs_progress')
       .all() as ProgressRow[];
-    return new Map(rows.map((f) => [f.palabra, f]));
+    return new Map(rows.map((f) => [f.word, f]));
   }
 
   private buildCard(card: PoolCard, progress?: ProgressRow): SrsCardDto {
@@ -162,7 +162,7 @@ export class SrsService {
       word: card.word,
       type: card.type,
       translation: translation,
-      repetitions: progress?.repeticiones ?? 0,
+      repetitions: progress?.repetitions ?? 0,
     };
   }
 }

@@ -10,8 +10,8 @@ import { TranslationsRepository } from '../translation/translations.repository';
 export const ROW_CAP = 300;
 
 export type MissingWordReason =
-  | 'traduccion_con_poco_apoyo'
-  | 'en_corpus_sin_glosario';
+  | 'translation_with_little_support'
+  | 'in_corpus_without_glossary';
 
 export interface MissingWordRow {
   spanish: string;
@@ -119,16 +119,16 @@ export class MissingWordsService {
         retrievedExamples: logEntry.retrievedExamples,
         examplesInContext: logEntry.examplesInContext,
       });
-      if (support.level !== 'revisar') continue;
+      if (support.level !== 'review') continue;
       // The Spanish side: the input if you translated from Spanish, the output otherwise.
       const spanishSide =
-        logEntry.direction === 'espanol_a_damana'
+        logEntry.direction === 'spanish_to_damana'
           ? logEntry.text
           : logEntry.translation;
       for (const token of tokenizeDamana(spanishSide)) {
         add(
           token.original,
-          'traduccion_con_poco_apoyo',
+          'translation_with_little_support',
           1,
           logEntry.createdAt.slice(0, 10),
           1,
@@ -138,7 +138,7 @@ export class MissingWordsService {
 
     // Priority 2 — corpus vocabulary the glossary does not cover yet.
     for (const [word, times] of this.spanishFrequencies()) {
-      add(word, 'en_corpus_sin_glosario', 2, today, times);
+      add(word, 'in_corpus_without_glossary', 2, today, times);
     }
 
     return [...candidateWords.values()]
@@ -206,9 +206,9 @@ export class MissingWordsService {
     side: (row: { damanaText: string; spanishText: string }) => string,
   ): Map<string, { spanish: string; damana: string }> {
     const examples = new Map<string, { spanish: string; damana: string }>();
-    for (const source of [CorpusSource.oraciones, CorpusSource.frases]) {
+    for (const source of [CorpusSource.sentences, CorpusSource.phrases]) {
       for (const row of this.repo.textsOf(source)) {
-        if (row.status === 'revisar') continue;
+        if (row.status === 'review') continue;
         for (const token of tokenizeDamana(side(row))) {
           if (examples.has(token.normalized)) continue;
           examples.set(token.normalized, {
@@ -243,27 +243,27 @@ export class MissingWordsService {
   private spanishFrequencies(): [string, number][] {
     const info = new Map<
       string,
-      { palabra: string; veces: number; algunaEnMinuscula: boolean }
+      { word: string; times: number; someLowercase: boolean }
     >();
-    const sources = [CorpusSource.oraciones, CorpusSource.frases];
+    const sources = [CorpusSource.sentences, CorpusSource.phrases];
     for (const source of sources) {
       for (const row of this.repo.textsOf(source)) {
-        if (row.status === 'revisar') continue; // reliable alignments only
+        if (row.status === 'review') continue; // reliable alignments only
         for (const token of tokenizeDamana(row.spanishText)) {
           const entry = info.get(token.normalized) ?? {
-            palabra: token.original.toLowerCase(),
-            veces: 0,
-            algunaEnMinuscula: false,
+            word: token.original.toLowerCase(),
+            times: 0,
+            someLowercase: false,
           };
-          entry.veces++;
-          if (!startsUppercase(token.original)) entry.algunaEnMinuscula = true;
+          entry.times++;
+          if (!startsUppercase(token.original)) entry.someLowercase = true;
           info.set(token.normalized, entry);
         }
       }
     }
     return [...info.values()]
-      .filter((e) => e.algunaEnMinuscula)
-      .sort((a, b) => b.veces - a.veces)
-      .map((e) => [e.palabra, e.veces]);
+      .filter((e) => e.someLowercase)
+      .sort((a, b) => b.times - a.times)
+      .map((e) => [e.word, e.times]);
   }
 }

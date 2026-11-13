@@ -28,21 +28,21 @@ import {
 })
 class EvaluateCliModule {}
 
-/** The /evaluaciones folder lives next to /datos, at the repo root. */
+/** The /evaluations folder lives next to /data, at the repo root. */
 export function evaluationsDir(dataDir: string): string {
-  return path.resolve(dataDir, '..', 'evaluaciones');
+  return path.resolve(dataDir, '..', 'evaluations');
 }
 
-/** --pausa <ms>: wait between translations (free Groq allows ~4 per minute). */
+/** --pause <ms>: wait between translations (free Groq allows ~4 per minute). */
 function readPause(argv: string[]): number {
-  const i = argv.indexOf('--pausa');
+  const i = argv.indexOf('--pause');
   if (i === -1) return 0;
   const n = Number(argv[i + 1]);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
 function readLimit(argv: string[]): number | undefined {
-  const i = argv.indexOf('--limite');
+  const i = argv.indexOf('--limit');
   if (i === -1) return undefined;
   const n = Number(argv[i + 1]);
   return Number.isFinite(n) && n > 0 ? n : undefined;
@@ -57,9 +57,9 @@ async function main(): Promise<void> {
 
   if (testCases.length === 0) {
     console.log(
-      `No hay pruebas en ${path.join(dataDir, 'pruebas_traduccion.csv')}.\n` +
-        'Se llena solo al importar lotes de elicitación con ejemplos completos ' +
-        '(1 de cada 10 filas) o añadiendo filas a mano: espanol,damana_esperado,ambito.',
+      `There are no tests in ${path.join(dataDir, 'pruebas_traduccion.csv')}.\n` +
+        'It fills itself when importing elicitation batches with complete examples ' +
+        '(1 in every 10 rows) or by adding rows by hand: espanol,damana_esperado,ambito.',
     );
     return;
   }
@@ -71,15 +71,15 @@ async function main(): Promise<void> {
   const config = translator.configuration();
   if (!translator.available()) {
     console.error(
-      'No hay motor de traducción configurado (TRADUCTOR_BASE_URL + TRADUCTOR_MODELO o ANTHROPIC_API_KEY).',
+      'No translation engine configured (TRANSLATOR_BASE_URL + TRANSLATOR_MODEL or ANTHROPIC_API_KEY).',
     );
     await app.close();
     process.exit(1);
   }
 
   console.log(
-    `Evaluando ${testCases.length} pruebas con ${config.provider} · ${config.model}` +
-      (pause ? ` (pausa de ${pause} ms entre llamadas)` : '') +
+    `Evaluating ${testCases.length} tests with ${config.provider} · ${config.model}` +
+      (pause ? ` (${pause} ms pause between calls)` : '') +
       '…',
   );
   const results: EvaluatedTest[] = [];
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
     if (i > 0 && pause > 0) await new Promise((r) => setTimeout(r, pause));
     try {
       const response = await translator.translate(
-        { text: testCase.spanish, direction: TranslationDirection.espanol_a_damana },
+        { text: testCase.spanish, direction: TranslationDirection.spanish_to_damana },
         { record: false },
       );
       const evaluated = evaluateTest(testCase, response);
@@ -114,18 +114,18 @@ async function main(): Promise<void> {
   fs.writeFileSync(`${base}.json`, JSON.stringify(report, null, 2), 'utf8');
   fs.writeFileSync(`${base}.md`, renderMarkdown(report), 'utf8');
 
-  console.log('\n=== Resultado por ámbito ===');
+  console.log('\n=== Results by scope ===');
   console.table(
     [...report.byScope, report.total].map((r) => ({
-      ambito: r.scope,
-      pruebas: r.tests,
-      'exactas %': r.exactPercent.toFixed(1),
-      'chrF medio': r.meanChrf.toFixed(3),
-      'sin equiv. %': r.withoutEquivalentPercent.toFixed(1),
-      errores: r.errors,
+      scope: r.scope,
+      tests: r.tests,
+      'exact %': r.exactPercent.toFixed(1),
+      'mean chrF': r.meanChrf.toFixed(3),
+      'no equiv. %': r.withoutEquivalentPercent.toFixed(1),
+      errors: r.errors,
     })),
   );
-  console.log(`\nInforme guardado en:\n  ${base}.md\n  ${base}.json`);
+  console.log(`\nReport saved to:\n  ${base}.md\n  ${base}.json`);
   await app.close();
 }
 

@@ -35,13 +35,13 @@ describe('Health (e2e, with authentication active)', () => {
 
   it('without a corpus it answers 503 (that deployment must not receive traffic)', async () => {
     const res = await request(app.getHttpServer()).get('/api/health').expect(503);
-    expect(res.body.status).toBe('sin_corpus');
+    expect(res.body.status).toBe('no_corpus');
   });
 
   it('with a corpus it answers 200 without a token', async () => {
     const db = app.get<Database>(DB_CONNECTION);
     db.prepare(
-      "INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente) VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')",
+      "INSERT INTO vocabulary (spanish, damana, category, notes, source) VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')",
     ).run();
     const res = await request(app.getHttpServer()).get('/api/health').expect(200);
     expect(res.body).toEqual({ status: 'ok' });

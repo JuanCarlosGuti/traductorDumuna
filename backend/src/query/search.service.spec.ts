@@ -13,23 +13,23 @@ describe('SearchService', () => {
     db = new Database(':memory:');
     runMigrations(db);
     db.prepare(
-      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
-       VALUES ('o1', 'Jehovága nʉnka kʉñingui gontka', 'Jehová hizo el agua', 'aprobado', 'lfb')`,
+      `INSERT INTO sentences (external_id, damana, spanish, status, source)
+       VALUES ('o1', 'Jehovága nʉnka kʉñingui gontka', 'Jehová hizo el agua', 'approved', 'lfb')`,
     ).run();
     db.prepare(
-      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente)
-       VALUES ('o2', 'ñingui tua ukurra', 'otra vez al monte', 'revisar', 'lfb')`,
+      `INSERT INTO sentences (external_id, damana, spanish, status, source)
+       VALUES ('o2', 'ñingui tua ukurra', 'otra vez al monte', 'review', 'lfb')`,
     ).run();
     db.prepare(
-      `INSERT INTO frases (fuente, damana, espanol, notas)
+      `INSERT INTO phrases (source, damana, spanish, notes)
        VALUES ('Prueba', '¿Zhinzhoma nʉnka nanu?', '¿Conoces el agua?', NULL)`,
     ).run();
     db.prepare(
-      `INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente)
+      `INSERT INTO vocabulary (spanish, damana, category, notes, source)
        VALUES ('agua', 'nʉnka', 'Otros', NULL, 'dic')`,
     ).run();
     db.prepare(
-      `INSERT INTO conjugaciones (damana, espanol, lema, fuente, notas)
+      `INSERT INTO conjugations (damana, spanish, lemma, source, notes)
        VALUES ('nʉnkanka', 'él fue', 'ser', 'doc', NULL)`,
     ).run();
     const repo = new CorpusRepository(db);
@@ -40,12 +40,12 @@ describe('SearchService', () => {
 
   it('finds in Damana across the four sources, with <mark> and ʉ intact', () => {
     const r = service.search({ q: 'nʉnka', language: Language.damana, limit: 100 });
-    expect(r.mode).toBe('concordancia');
+    expect(r.mode).toBe('concordance');
     expect(r.total).toBe(3); // sentence 1, phrase, vocabulary (nʉnkanka does NOT match nʉnka)
     expect(r.results.map((c) => c.source)).toEqual([
-      CorpusSource.oraciones,
-      CorpusSource.frases,
-      CorpusSource.vocabulario,
+      CorpusSource.sentences,
+      CorpusSource.phrases,
+      CorpusSource.vocabulary,
     ]);
     for (const c of r.results) {
       expect(c.fragment).toContain('<mark>nʉnka</mark>');
@@ -55,7 +55,7 @@ describe('SearchService', () => {
   it('conjugations are searchable with the reference «conjugación N (lema)»', () => {
     const r = service.search({ q: 'nʉnkanka', language: Language.damana, limit: 10 });
     expect(r.total).toBe(1);
-    expect(r.results[0].source).toBe(CorpusSource.conjugaciones);
+    expect(r.results[0].source).toBe(CorpusSource.conjugations);
     expect(r.results[0].reference).toBe('conjugación 1 (ser)');
     expect(r.results[0].parallelText).toBe('él fue');
   });
@@ -67,7 +67,7 @@ describe('SearchService', () => {
   });
 
   it('searches in Spanish without accents and returns the Damana as parallel', () => {
-    const r = service.search({ q: 'jehova', language: Language.espanol, limit: 10 });
+    const r = service.search({ q: 'jehova', language: Language.spanish, limit: 10 });
     expect(r.total).toBe(1);
     expect(r.results[0].fragment).toContain('<mark>Jehová</mark>');
     expect(r.results[0].parallelText).toContain('Jehovága');
@@ -77,7 +77,7 @@ describe('SearchService', () => {
     const r = service.search({
       q: 'nʉnka',
       language: Language.damana,
-      source: CorpusSource.frases,
+      source: CorpusSource.phrases,
       limit: 10,
     });
     expect(r.total).toBe(1);
@@ -102,7 +102,7 @@ describe('SearchService', () => {
         language: Language.damana,
         limit: 10,
       });
-      expect(r.mode).toBe('similitud');
+      expect(r.mode).toBe('similarity');
       expect(r.total).toBeGreaterThan(0);
       const firstItem = r.results[0];
       expect(firstItem.reference).toBe('oración 1');
@@ -116,10 +116,10 @@ describe('SearchService', () => {
     it('a Spanish phrase finds by similarity (accent-insensitive)', () => {
       const r = service.search({
         q: 'jehova hizo agua',
-        language: Language.espanol,
+        language: Language.spanish,
         limit: 10,
       });
-      expect(r.mode).toBe('similitud');
+      expect(r.mode).toBe('similarity');
       expect(r.results[0].reference).toBe('oración 1');
       expect(r.results[0].fragment).toContain('<mark>Jehová</mark>');
       expect(r.results[0].fragment).toContain('<mark>agua</mark>');
@@ -130,12 +130,12 @@ describe('SearchService', () => {
       const r = service.search({
         q: 'nʉnka nanu',
         language: Language.damana,
-        source: CorpusSource.frases,
+        source: CorpusSource.phrases,
         limit: 10,
       });
-      expect(r.mode).toBe('similitud');
+      expect(r.mode).toBe('similarity');
       for (const c of r.results) {
-        expect(c.source).toBe(CorpusSource.frases);
+        expect(c.source).toBe(CorpusSource.phrases);
       }
     });
 
@@ -145,7 +145,7 @@ describe('SearchService', () => {
         language: Language.damana,
         limit: 10,
       });
-      expect(r.mode).toBe('similitud');
+      expect(r.mode).toBe('similarity');
       expect(r.total).toBe(0);
       expect(r.results).toEqual([]);
     });

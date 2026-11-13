@@ -16,17 +16,17 @@ import { TranslationsRepository } from './translations.repository';
 import { extractJson, RETRIES_429, clock, TranslationService } from './translation.service';
 import { ValidatedRepository } from './validated.repository';
 
-const JSON_TRADUCCION = JSON.stringify({
-  traduccion: 'el agua',
-  glosa: [{ palabra_dm: 'nʉnka', segmento_es: 'el agua' }],
-  palabras_sin_equivalente: [],
-  reglas_aplicadas: [],
-  confianza: 0.8,
-  explicacion_breve: 'por el diccionario',
+const TRANSLATION_JSON = JSON.stringify({
+  translation: 'el agua',
+  gloss: [{ word_dm: 'nʉnka', segment_es: 'el agua' }],
+  words_without_equivalent: [],
+  applied_rules: [],
+  confidence: 0.8,
+  brief_explanation: 'por el diccionario',
 });
 
 describe('extractJson (tolerant parsing)', () => {
-  const expected = { traduccion: 'agua', palabras_sin_equivalente: [], explicacion_breve: 'x' };
+  const expected = { translation: 'agua', words_without_equivalent: [], brief_explanation: 'x' };
   const plainJson = JSON.stringify(expected);
 
   it('parses pure JSON', () => {
@@ -39,9 +39,9 @@ describe('extractJson (tolerant parsing)', () => {
   });
 
   it('keeps ʉ and ñ inside the JSON', () => {
-    const r = extractJson('{"traduccion": "nʉnka ñingui", "palabras_sin_equivalente": ["kʉnʉnka"]}');
-    expect(r.traduccion).toBe('nʉnka ñingui');
-    expect(r.palabras_sin_equivalente).toEqual(['kʉnʉnka']);
+    const r = extractJson('{"translation": "nʉnka ñingui", "words_without_equivalent": ["kʉnʉnka"]}');
+    expect(r.translation).toBe('nʉnka ñingui');
+    expect(r.words_without_equivalent).toEqual(['kʉnʉnka']);
   });
 
   it('throws if there is no JSON', () => {
@@ -52,15 +52,15 @@ describe('extractJson (tolerant parsing)', () => {
 describe('normalizeModelResponse', () => {
   it('accepts the gloss keys in both directions and clamps the confidence', () => {
     const r = normalizeModelResponse({
-      traduccion: 'Ranzhe abu dugwa [vecina]',
-      glosa: [
-        { palabra_es: 'mi', segmento_dm: 'Ranzhe' },
-        { origen: 'mamá', destino: 'abu' },
+      translation: 'Ranzhe abu dugwa [vecina]',
+      gloss: [
+        { word_es: 'mi', segment_dm: 'Ranzhe' },
+        { origin: 'mamá', target: 'abu' },
       ],
-      palabras_sin_equivalente: ['[vecina]'],
-      reglas_aplicadas: ['-nzhe (posesivo)'],
-      confianza: '1.7',
-      explicacion_breve: 'x',
+      words_without_equivalent: ['[vecina]'],
+      applied_rules: ['-nzhe (posesivo)'],
+      confidence: '1.7',
+      brief_explanation: 'x',
     });
     expect(r.gloss).toEqual([
       { origin: 'mi', target: 'Ranzhe' },
@@ -72,7 +72,7 @@ describe('normalizeModelResponse', () => {
 
   it('adds the words in square brackets to sin_equivalente even if the model does not list them', () => {
     expect(bracketedWords('abu [vecina] nuka [ñame]')).toEqual(['vecina', 'ñame']);
-    const r = normalizeModelResponse({ traduccion: 'abu [vecina]', palabras_sin_equivalente: [] });
+    const r = normalizeModelResponse({ translation: 'abu [vecina]', words_without_equivalent: [] });
     expect(r.wordsWithoutEquivalent).toEqual(['vecina']);
     expect(r.confidence).toBe(0);
     expect(r.gloss).toEqual([]);
@@ -84,7 +84,7 @@ const CONFIG_COMPATIBLE: TranslatorConfig = {
   provider: 'compatible',
   model: 'openai/gpt-oss-120b',
   baseUrl: 'https://api.groq.com/openai/v1',
-  apiKey: 'clave-prueba',
+  apiKey: 'test-key',
 };
 const EMPTY_CONFIG: TranslatorConfig = { provider: null, model: '' };
 
@@ -108,8 +108,8 @@ describe('TranslationService', () => {
     );
   }
 
-  const loggedRows = () => db.prepare('SELECT * FROM traducciones ORDER BY rowid').all() as any[];
-  const pendingItems = () => db.prepare('SELECT palabra, idioma, contexto, veces_pedida FROM pendientes ORDER BY palabra').all() as any[];
+  const loggedRows = () => db.prepare('SELECT * FROM translations ORDER BY rowid').all() as any[];
+  const pendingItems = () => db.prepare('SELECT word, language, context, times_requested FROM pending_items ORDER BY word').all() as any[];
 
   function fakeClient(
     responseText: string,
@@ -131,22 +131,22 @@ describe('TranslationService', () => {
   const systemOf = (params: any): string =>
     (params.system as { text: string }[]).map((b) => b.text).join('\n');
 
-  const dmToEs = (text: string) => ({ text: text, direction: TranslationDirection.damana_a_espanol });
-  const esADm = (text: string) => ({ text: text, direction: TranslationDirection.espanol_a_damana });
+  const dmToEs = (text: string) => ({ text: text, direction: TranslationDirection.damana_to_spanish });
+  const esADm = (text: string) => ({ text: text, direction: TranslationDirection.spanish_to_damana });
 
   beforeEach(() => {
     db = new Database(':memory:');
     runMigrations(db);
     db.prepare(
-      `INSERT INTO frases (fuente, damana, espanol, notas, dominio)
-       VALUES ('Prueba', 'nʉnka gontka', 'hizo el agua', NULL, 'cotidiano')`,
+      `INSERT INTO phrases (source, damana, spanish, notes, domain)
+       VALUES ('Prueba', 'nʉnka gontka', 'hizo el agua', NULL, 'everyday')`,
     ).run();
     db.prepare(
-      `INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente, dominio)
-       VALUES ('b1', 'Jehová nʉnka gontka kʉñingui', 'Jehová hizo el agua del cielo', 'aprobado', 'lfb', 'biblico')`,
+      `INSERT INTO sentences (external_id, damana, spanish, status, source, domain)
+       VALUES ('b1', 'Jehová nʉnka gontka kʉñingui', 'Jehová hizo el agua del cielo', 'approved', 'lfb', 'biblical')`,
     ).run();
     const insVocab = db.prepare(
-      'INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente) VALUES (?, ?, ?, NULL, ?)',
+      'INSERT INTO vocabulary (spanish, damana, category, notes, source) VALUES (?, ?, ?, NULL, ?)',
     );
     insVocab.run('agua', 'nʉnka', 'Otros', 'dic');
     insVocab.run('feliz', 'zen zhiguana', 'Sentimientos / estados', 'dic');
@@ -155,11 +155,11 @@ describe('TranslationService', () => {
     insVocab.run('Casa', 'Urraga', 'Casa / objetos / herramientas', 'dic');
     insVocab.run('No quiero', 'Nandunun', 'Sentimientos / estados', 'dic');
     db.prepare(
-      `INSERT INTO reglas (tipo, forma, significado, ejemplo_base, ejemplo_regla, traduccion_ejemplo, notas, disparador)
-       VALUES ('sufijo', '-nzhe', 'posesivo / "de"', 'Kunkujshina (Dios)', 'Kunkujshinanzhe', 'de Dios', NULL, 'posesivo')`,
+      `INSERT INTO rules (kind, form, meaning, base_example, rule_example, example_translation, notes, trigger_feature)
+       VALUES ('sufijo', '-nzhe', 'posesivo / "de"', 'Kunkujshina (Dios)', 'Kunkujshinanzhe', 'de Dios', NULL, 'possessive')`,
     ).run();
     db.prepare(
-      `INSERT INTO nombres_propios (damana, espanol, se_escribe_igual, otras_grafias, notas)
+      `INSERT INTO proper_names (damana, spanish, same_spelling, other_spellings, notes)
        VALUES ('Jehová', 'Jehová', 1, 'Jehova', NULL)`,
     ).run();
   });
@@ -177,7 +177,7 @@ describe('TranslationService', () => {
 
   describe('anthropic provider', () => {
     it('builds the prompt in sections with dictionary and examples, and requests structured output', async () => {
-      const client = fakeClient(JSON_TRADUCCION);
+      const client = fakeClient(TRANSLATION_JSON);
       const service = createService(client, CONFIG_ANTHROPIC);
       const r = await service.translate(dmToEs('nʉnka gontka'));
 
@@ -186,28 +186,28 @@ describe('TranslationService', () => {
       expect(r.confidence).toBe(0.8);
       expect(r.examples.length).toBeGreaterThan(0);
       expect(r.dictionary).toEqual([
-        expect.objectContaining({ word: 'nʉnka', spanish: 'agua', damana: 'nʉnka', match: 'exacta' }),
+        expect.objectContaining({ word: 'nʉnka', spanish: 'agua', damana: 'nʉnka', match: 'exact' }),
       ]);
 
       const params = client.messages.create.mock.calls[0][0];
       expect(params.model).toBe(CLAUDE_MODEL);
       expect(params.output_config.format.type).toBe('json_schema');
-      expect(params.output_config.format.schema.required).toContain('palabras_sin_equivalente');
+      expect(params.output_config.format.schema.required).toContain('words_without_equivalent');
       // claude-opus-5-5 rejects temperature with a 400: it is never sent. The
       // effort only goes if it was configured.
       expect(params.temperature).toBeUndefined();
       expect(params.output_config.effort).toBeUndefined();
-      expect(systemOf(params)).toContain('traductor');
-      expect(systemOf(params)).toContain('palabra_dm');
-      expect(systemOf(params)).toContain('artículos');
+      expect(systemOf(params)).toContain('translator');
+      expect(systemOf(params)).toContain('word_dm');
+      expect(systemOf(params)).toContain('articles');
       const user: string = params.messages[0].content;
       for (const section of [
-        '=== REGLAS GRAMATICALES ===',
-        '=== DICCIONARIO DE ESTA FRASE ===',
-        '=== EJEMPLOS COTIDIANOS ===',
-        '=== EJEMPLOS DE GRAMÁTICA ===',
-        '=== EJEMPLOS DEL CORPUS BÍBLICO ===',
-        '=== FRASE A TRADUCIR ===',
+        '=== GRAMMAR RULES ===',
+        '=== DICTIONARY FOR THIS SENTENCE ===',
+        '=== EVERYDAY EXAMPLES ===',
+        '=== GRAMMAR EXAMPLES ===',
+        '=== BIBLICAL CORPUS EXAMPLES ===',
+        '=== SENTENCE TO TRANSLATE ===',
       ]) {
         expect(user).toContain(section);
       }
@@ -219,59 +219,59 @@ describe('TranslationService', () => {
     it('Spanish → Damana: «mi mamá cocina en la casa» uses the dictionary, detects possessive and includes -nzhe', async () => {
       const client = fakeClient(
         JSON.stringify({
-          traduccion: 'Ranzhe abu urragamba dugwa',
-          glosa: [
-            { palabra_es: 'mi', segmento_dm: 'Ranzhe' },
-            { palabra_es: 'mamá', segmento_dm: 'abu' },
-            { palabra_es: 'en la casa', segmento_dm: 'urragamba' },
-            { palabra_es: 'cocina', segmento_dm: 'dugwa' },
+          translation: 'Ranzhe abu urragamba dugwa',
+          gloss: [
+            { word_es: 'mi', segment_dm: 'Ranzhe' },
+            { word_es: 'mamá', segment_dm: 'abu' },
+            { word_es: 'en la casa', segment_dm: 'urragamba' },
+            { word_es: 'cocina', segment_dm: 'dugwa' },
           ],
-          palabras_sin_equivalente: [],
-          reglas_aplicadas: ['-nzhe (posesivo)'],
-          confianza: 0.7,
-          explicacion_breve: 'diccionario + regla',
+          words_without_equivalent: [],
+          applied_rules: ['-nzhe (posesivo)'],
+          confidence: 0.7,
+          brief_explanation: 'diccionario + regla',
         }),
       );
       const service = createService(client, CONFIG_ANTHROPIC);
       const r = await service.translate(esADm('mi mamá cocina en la casa'));
 
-      expect(r.dictionary.find((a) => a.word === 'mamá')).toMatchObject({ damana: 'Abu', match: 'exacta' });
-      expect(r.dictionary.find((a) => a.word === 'cocina')).toMatchObject({ damana: 'Dugua', match: 'posible' });
+      expect(r.dictionary.find((a) => a.word === 'mamá')).toMatchObject({ damana: 'Abu', match: 'exact' });
+      expect(r.dictionary.find((a) => a.word === 'cocina')).toMatchObject({ damana: 'Dugua', match: 'possible' });
       expect(r.dictionary.find((a) => a.word === 'casa')).toMatchObject({ damana: 'Urraga' });
-      expect(r.triggers).toEqual(['posesivo']);
+      expect(r.triggers).toEqual(['possessive']);
       expect(r.rules).toEqual([
-        { form: '-nzhe', meaning: 'posesivo / "de"', example: 'Kunkujshina (Dios) → Kunkujshinanzhe = de Dios', trigger: 'posesivo' },
+        { form: '-nzhe', meaning: 'posesivo / "de"', example: 'Kunkujshina (Dios) → Kunkujshinanzhe = de Dios', trigger: 'possessive' },
       ]);
       expect(r.appliedRules).toEqual(['-nzhe (posesivo)']);
       expect(r.gloss[1]).toEqual({ origin: 'mamá', target: 'abu' });
 
       const params = client.messages.create.mock.calls[0][0];
-      expect(systemOf(params)).toContain('palabra_es');
+      expect(systemOf(params)).toContain('word_es');
       const user: string = params.messages[0].content;
-      expect(user).toContain('Rasgos detectados en la frase: posesivo');
+      expect(user).toContain('Features detected in the sentence: possessive');
       expect(user).toContain('- -nzhe — posesivo');
-      expect(user).toContain('- mamá → Abu (mamá) [exacta');
-      expect(user).toContain('Dirección: del español al damana.');
+      expect(user).toContain('- mamá → Abu (mamá) [exact');
+      expect(user).toContain('Direction: from Spanish to Damana.');
     });
 
     it('negation without a rule in the corpus: the prompt says so and offers the negative dictionary form only if there is a «no»', async () => {
-      const client = fakeClient(JSON_TRADUCCION);
+      const client = fakeClient(TRANSLATION_JSON);
       const r = await createService(client, CONFIG_ANTHROPIC).translate(esADm('no quiero agua'));
-      expect(r.triggers).toEqual(['negacion']);
+      expect(r.triggers).toEqual(['negation']);
       expect(r.rules).toEqual([]); // the test database only has -nzhe (possessive)
       expect(r.dictionary).toContainEqual(
-        expect.objectContaining({ word: 'No quiero', damana: 'Nandunun', match: 'frase' }),
+        expect.objectContaining({ word: 'No quiero', damana: 'Nandunun', match: 'phrase' }),
       );
       const params = client.messages.create.mock.calls[0][0];
-      expect(systemOf(params)).toContain('La negación');
+      expect(systemOf(params)).toContain('Negation');
       const user: string = params.messages[0].content;
-      expect(user).toContain('Rasgos detectados en la frase: negacion.');
-      expect(user).toContain('- negacion: rasgo detectado, pero el corpus no tiene regla registrada');
+      expect(user).toContain('Features detected in the sentence: negation.');
+      expect(user).toContain('- negation: feature detected, but the corpus has no rule recorded for it');
       expect(user).toContain('No quiero → Nandunun');
-      expect(user).not.toContain('(ninguna regla aplicable)');
+      expect(user).not.toContain('(no applicable rule)');
 
       // Affirmative: no feature, no warning, no negated form in the dictionary.
-      const client2 = fakeClient(JSON_TRADUCCION);
+      const client2 = fakeClient(TRANSLATION_JSON);
       const r2 = await createService(client2, CONFIG_ANTHROPIC).translate(esADm('quiero agua'));
       expect(r2.triggers).toEqual([]);
       expect(r2.dictionary.map((a) => a.damana)).not.toContain('Nandunun');
@@ -279,13 +279,13 @@ describe('TranslationService', () => {
     });
 
     it('marks the system prompt for the prompt cache (cache_control ephemeral)', async () => {
-      const client = fakeClient(JSON_TRADUCCION);
+      const client = fakeClient(TRANSLATION_JSON);
       await createService(client, CONFIG_ANTHROPIC).translate(dmToEs('nʉnka'));
       const params = client.messages.create.mock.calls[0][0];
       expect(params.system).toEqual([
         {
           type: 'text',
-          text: expect.stringContaining('traductor experto'),
+          text: expect.stringContaining('expert translator'),
           cache_control: { type: 'ephemeral' },
         },
       ]);
@@ -293,77 +293,77 @@ describe('TranslationService', () => {
       expect(typeof params.messages[0].content).toBe('string');
     });
 
-    it('with ANTHROPIC_ESFUERZO configured it sends output_config.effort', async () => {
-      const client = fakeClient(JSON_TRADUCCION);
+    it('with ANTHROPIC_EFFORT configured it sends output_config.effort', async () => {
+      const client = fakeClient(TRANSLATION_JSON);
       await createService(client, { ...CONFIG_ANTHROPIC, effort: 'low' }).translate(dmToEs('nʉnka'));
       expect(client.messages.create.mock.calls[0][0].output_config.effort).toBe('low');
     });
 
     it('proper names travel with the corpus spelling', async () => {
-      const client = fakeClient(JSON_TRADUCCION);
+      const client = fakeClient(TRANSLATION_JSON);
       const service = createService(client, CONFIG_ANTHROPIC);
       const r = await service.translate(esADm('Jehova hizo el agua'));
       expect(r.properNames).toEqual([{ inText: 'Jehova', spanish: 'Jehová', damana: 'Jehová' }]);
-      expect(client.messages.create.mock.calls[0][0].messages[0].content).toContain('Nombres propios:');
+      expect(client.messages.create.mock.calls[0][0].messages[0].content).toContain('Proper names:');
     });
 
     it('records each word without an equivalent as pending (with the context sentence) and accumulates requests', async () => {
       const response = JSON.stringify({
-        traduccion: 'Ranzhe [vecina] dugwa',
-        glosa: [],
-        palabras_sin_equivalente: ['vecina'],
-        reglas_aplicadas: [],
-        confianza: 0.4,
-        explicacion_breve: '',
+        translation: 'Ranzhe [vecina] dugwa',
+        gloss: [],
+        words_without_equivalent: ['vecina'],
+        applied_rules: [],
+        confidence: 0.4,
+        brief_explanation: '',
       });
       const service = createService(fakeClient(response), CONFIG_ANTHROPIC);
       const r = await service.translate(esADm('mi vecina cocina'));
       expect(r.wordsWithoutEquivalent).toEqual(['vecina']);
       await service.translate(esADm('la vecina llegó'));
       expect(pendingItems()).toEqual([
-        { palabra: 'vecina', idioma: 'espanol', contexto: 'mi vecina cocina', veces_pedida: 2 },
+        { word: 'vecina', language: 'spanish', context: 'mi vecina cocina', times_requested: 2 },
       ]);
     });
 
     it('in the Damana → Spanish direction pending items are stored as Damana words', async () => {
       const response = JSON.stringify({
-        traduccion: 'hizo [kʉzhigui]',
-        glosa: [],
-        palabras_sin_equivalente: ['kʉzhigui'],
-        reglas_aplicadas: [],
-        confianza: 0.3,
-        explicacion_breve: '',
+        translation: 'hizo [kʉzhigui]',
+        gloss: [],
+        words_without_equivalent: ['kʉzhigui'],
+        applied_rules: [],
+        confidence: 0.3,
+        brief_explanation: '',
       });
       const service = createService(fakeClient(response), CONFIG_ANTHROPIC);
       await service.translate(dmToEs('kʉzhigui gontka'));
       expect(pendingItems()).toEqual([
-        { palabra: 'kʉzhigui', idioma: 'damana', contexto: 'kʉzhigui gontka', veces_pedida: 1 },
+        { word: 'kʉzhigui', language: 'damana', context: 'kʉzhigui gontka', times_requested: 1 },
       ]);
     });
 
     it('articles and function words are shown but not recorded as pending', async () => {
       const response = JSON.stringify({
-        traduccion: '[La] lema [está] [cara]',
-        glosa: [],
-        palabras_sin_equivalente: ['La', 'está', 'cara'],
-        reglas_aplicadas: [],
-        confianza: 0.3,
-        explicacion_breve: '',
+        translation: '[La] lema [está] [cara]',
+        gloss: [],
+        words_without_equivalent: ['La', 'está', 'cara'],
+        applied_rules: [],
+        confidence: 0.3,
+        brief_explanation: '',
       });
       const service = createService(fakeClient(response), CONFIG_ANTHROPIC);
       const r = await service.translate(esADm('La carne está cara'));
       expect(r.wordsWithoutEquivalent).toEqual(['La', 'está', 'cara']);
-      expect(pendingItems().map((p) => p.palabra)).toEqual(['cara']);
+      expect(pendingItems().map((p) => p.word)).toEqual(['cara']);
     });
 
     it('with registrar: false it leaves no trace (neither translations nor pending items): evaluation mode', async () => {
       const response = JSON.stringify({
-        traduccion: '[vecina]',
-        glosa: [],
-        palabras_sin_equivalente: ['vecina'],
-        reglas_aplicadas: [],
-        confianza: 0.2,
-        explicacion_breve: '',
+        translation: '[vecina]',
+        gloss: [],
+        words_without_equivalent: ['vecina'],
+        applied_rules: [],
+        confidence: 0.2,
+        brief_explanation: '',
       });
       const service = createService(fakeClient(response), CONFIG_ANTHROPIC);
       await service.translate(esADm('mi vecina'), { record: false });
@@ -372,40 +372,40 @@ describe('TranslationService', () => {
     });
 
     it('returns the support level; without examples it flags «revisar»', async () => {
-      const service = createService(fakeClient(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      const service = createService(fakeClient(TRANSLATION_JSON), CONFIG_ANTHROPIC);
       const good = await service.translate(dmToEs('nʉnka gontka'));
-      expect(good.support.level).not.toBe('revisar');
+      expect(good.support.level).not.toBe('review');
       const bad = await service.translate(dmToEs('zzzz qqqq'));
-      expect(bad.support.level).toBe('revisar');
-      expect(bad.support.reasons).toContain('sin_ejemplos');
+      expect(bad.support.level).toBe('review');
+      expect(bad.support.reasons).toContain('no_examples');
     });
 
     it('logs the translation with support signals, confidence, rules and gloss (case with ʉ)', async () => {
-      const service = createService(fakeClient(JSON_TRADUCCION), CONFIG_ANTHROPIC);
+      const service = createService(fakeClient(TRANSLATION_JSON), CONFIG_ANTHROPIC);
       const r = await service.translate(dmToEs('nʉnka gontka'));
 
       const rows = loggedRows();
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
-        texto: 'nʉnka gontka',
-        traduccion: 'el agua',
-        direccion: 'damana_a_espanol',
-        modelo: CLAUDE_MODEL,
-        confianza: 0.8,
+        text: 'nʉnka gontka',
+        translation: 'el agua',
+        direction: 'damana_to_spanish',
+        model: CLAUDE_MODEL,
+        confidence: 0.8,
       });
-      expect(rows[0].ejemplos_recuperados).toBe(r.examples.length);
-      expect(rows[0].puntaje_top).toBeCloseTo(Math.max(...r.examples.map((e) => e.score)), 10);
-      expect(rows[0].puntaje_medio).toBeCloseTo(
+      expect(rows[0].retrieved_examples).toBe(r.examples.length);
+      expect(rows[0].top_score).toBeCloseTo(Math.max(...r.examples.map((e) => e.score)), 10);
+      expect(rows[0].mean_score).toBeCloseTo(
         r.examples.reduce((s, e) => s + e.score, 0) / r.examples.length,
         10,
       );
-      expect(JSON.parse(rows[0].vocabulario_usado)).toEqual([{ espanol: 'agua', damana: 'nʉnka' }]);
-      expect(JSON.parse(rows[0].glosa)).toEqual([{ origen: 'nʉnka', destino: 'el agua' }]);
-      expect(JSON.parse(rows[0].reglas_aplicadas)).toEqual([]);
+      expect(JSON.parse(rows[0].vocabulary_used)).toEqual([{ spanish: 'agua', damana: 'nʉnka' }]);
+      expect(JSON.parse(rows[0].gloss)).toEqual([{ origin: 'nʉnka', target: 'el agua' }]);
+      expect(JSON.parse(rows[0].applied_rules)).toEqual([]);
     });
 
     it('stores input, output and cache tokens and the duration; without usage they stay null', async () => {
-      const withUsage = fakeClient(JSON_TRADUCCION, 'end_turn', {
+      const withUsage = fakeClient(TRANSLATION_JSON, 'end_turn', {
         input_tokens: 1200,
         output_tokens: 300,
         cache_read_input_tokens: 700,
@@ -414,22 +414,22 @@ describe('TranslationService', () => {
       await createService(withUsage, CONFIG_ANTHROPIC).translate(dmToEs('nʉnka ñingui'));
       const [row] = loggedRows();
       expect(row).toMatchObject({
-        tokens_entrada: 1200,
-        tokens_salida: 300,
-        tokens_cache_leidos: 700,
-        tokens_cache_creados: 0,
+        input_tokens: 1200,
+        output_tokens: 300,
+        cache_read_tokens: 700,
+        cache_creation_tokens: 0,
       });
-      expect(row.duracion_ms).toBeGreaterThanOrEqual(0);
+      expect(row.duration_ms).toBeGreaterThanOrEqual(0);
 
-      await createService(fakeClient(JSON_TRADUCCION), CONFIG_ANTHROPIC).translate(dmToEs('nʉnka'));
+      await createService(fakeClient(TRANSLATION_JSON), CONFIG_ANTHROPIC).translate(dmToEs('nʉnka'));
       const [, withoutUsage] = loggedRows();
       expect(withoutUsage).toMatchObject({
-        tokens_entrada: null,
-        tokens_salida: null,
-        tokens_cache_leidos: null,
-        tokens_cache_creados: null,
+        input_tokens: null,
+        output_tokens: null,
+        cache_read_tokens: null,
+        cache_creation_tokens: null,
       });
-      expect(withoutUsage.duracion_ms).toBeGreaterThanOrEqual(0);
+      expect(withoutUsage.duration_ms).toBeGreaterThanOrEqual(0);
     });
 
     it('SAFETY: if logging fails, the translation is still delivered', async () => {
@@ -438,7 +438,7 @@ describe('TranslationService', () => {
           throw new Error('disco lleno');
         }),
       } as unknown as TranslationsRepository;
-      const service = createService(fakeClient(JSON_TRADUCCION), CONFIG_ANTHROPIC, brokenLog);
+      const service = createService(fakeClient(TRANSLATION_JSON), CONFIG_ANTHROPIC, brokenLog);
       const r = await service.translate(dmToEs('nʉnka gontka'));
       expect(r.translation).toBe('el agua');
       expect(brokenLog.record).toHaveBeenCalled();
@@ -447,7 +447,7 @@ describe('TranslationService', () => {
 
     it('tolerates the response wrapped in ```json', async () => {
       const service = createService(
-        fakeClient('Aquí está:\n```json\n' + JSON_TRADUCCION.replace('el agua', 'hizo ñingui') + '\n```'),
+        fakeClient('Aquí está:\n```json\n' + TRANSLATION_JSON.replace('el agua', 'hizo ñingui') + '\n```'),
         CONFIG_ANTHROPIC,
       );
       const r = await service.translate(dmToEs('gontka ñingui'));
@@ -495,23 +495,23 @@ describe('TranslationService', () => {
       const service = createService(null, EMPTY_CONFIG);
       const r1 = service.validate({
         text: 'mi mamá cocina',
-        direction: TranslationDirection.espanol_a_damana,
+        direction: TranslationDirection.spanish_to_damana,
         translation: 'Ranzhe abu dugwa',
-        origin: 'confirmada',
+        origin: 'confirmed',
         modelTranslation: 'Ranzhe abu dugwa',
       });
       const r2 = service.validate({
         text: 'nʉnka gontka',
-        direction: TranslationDirection.damana_a_espanol,
+        direction: TranslationDirection.damana_to_spanish,
         translation: 'hizo el agua',
-        origin: 'corregida',
+        origin: 'corrected',
         modelTranslation: 'el agua',
       });
       expect(r1).toEqual({ saved: true, total: 1 });
       expect(r2).toEqual({ saved: true, total: 2 });
-      expect(db.prepare('SELECT espanol, damana, origen, traduccion_modelo FROM validadas ORDER BY rowid').all()).toEqual([
-        { espanol: 'mi mamá cocina', damana: 'Ranzhe abu dugwa', origen: 'confirmada', traduccion_modelo: 'Ranzhe abu dugwa' },
-        { espanol: 'hizo el agua', damana: 'nʉnka gontka', origen: 'corregida', traduccion_modelo: 'el agua' },
+      expect(db.prepare('SELECT spanish, damana, origin, model_translation FROM validated_pairs ORDER BY rowid').all()).toEqual([
+        { spanish: 'mi mamá cocina', damana: 'Ranzhe abu dugwa', origin: 'confirmed', model_translation: 'Ranzhe abu dugwa' },
+        { spanish: 'hizo el agua', damana: 'nʉnka gontka', origin: 'corrected', model_translation: 'el agua' },
       ]);
     });
   });
@@ -527,33 +527,33 @@ describe('TranslationService', () => {
     });
 
     it('calls {base}/chat/completions with Bearer, system/user and response_format json_object', async () => {
-      const fakeFetch = jest.fn().mockResolvedValue(okResponse('```json\n' + JSON_TRADUCCION + '\n```'));
+      const fakeFetch = jest.fn().mockResolvedValue(okResponse('```json\n' + TRANSLATION_JSON + '\n```'));
       global.fetch = fakeFetch as unknown as typeof fetch;
 
       const r = await createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka gontka'));
       expect(r.translation).toBe('el agua');
       const [url, options] = fakeFetch.mock.calls[0];
       expect(url).toBe('https://api.groq.com/openai/v1/chat/completions');
-      expect(options.headers.authorization).toBe('Bearer clave-prueba');
+      expect(options.headers.authorization).toBe('Bearer test-key');
       const bodyData = JSON.parse(options.body);
       expect(bodyData.model).toBe('openai/gpt-oss-120b');
       expect(bodyData.response_format).toEqual({ type: 'json_object' });
       expect(bodyData.temperature).toBe(0.2); // low by default: same sentence, same translation
       expect(bodyData.messages[0].role).toBe('system');
       expect(bodyData.messages[1].role).toBe('user');
-      expect(bodyData.messages[1].content).toContain('=== FRASE A TRADUCIR ===');
+      expect(bodyData.messages[1].content).toContain('=== SENTENCE TO TRANSLATE ===');
       expect(bodyData.messages[1].content).toContain('nʉnka gontka');
       // OpenAI-style usage: prompt/completion; it does not report cache → null
       expect(loggedRows()[0]).toMatchObject({
-        tokens_entrada: 2500,
-        tokens_salida: 120,
-        tokens_cache_leidos: null,
-        tokens_cache_creados: null,
+        input_tokens: 2500,
+        output_tokens: 120,
+        cache_read_tokens: null,
+        cache_creation_tokens: null,
       });
     });
 
     it('the configured temperature is sent as is, even 0', async () => {
-      const fakeFetch = jest.fn().mockResolvedValue(okResponse(JSON_TRADUCCION));
+      const fakeFetch = jest.fn().mockResolvedValue(okResponse(TRANSLATION_JSON));
       global.fetch = fakeFetch as unknown as typeof fetch;
       await createService(null, { ...CONFIG_COMPATIBLE, temperature: 0 }).translate(dmToEs('ñingui'));
       expect(JSON.parse(fakeFetch.mock.calls[0][1].body).temperature).toBe(0);
@@ -563,7 +563,7 @@ describe('TranslationService', () => {
       const fakeFetch = jest
         .fn()
         .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({}) })
-        .mockResolvedValueOnce(okResponse(JSON_TRADUCCION));
+        .mockResolvedValueOnce(okResponse(TRANSLATION_JSON));
       global.fetch = fakeFetch as unknown as typeof fetch;
 
       const r = await createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'));
@@ -573,12 +573,12 @@ describe('TranslationService', () => {
     });
 
     it('on 429 it waits for what Retry-After asks and retries; if it persists it gives up with 429', async () => {
-      const sleep = jest.spyOn(clock, 'dormir').mockResolvedValue();
+      const sleep = jest.spyOn(clock, 'sleep').mockResolvedValue();
       try {
         const fakeFetch = jest
           .fn()
           .mockResolvedValueOnce({ ok: false, status: 429, headers: new Headers({ 'retry-after': '7' }), json: async () => ({}) })
-          .mockResolvedValueOnce(okResponse(JSON_TRADUCCION));
+          .mockResolvedValueOnce(okResponse(TRANSLATION_JSON));
         global.fetch = fakeFetch as unknown as typeof fetch;
         const r = await createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'));
         expect(r.translation).toBe('el agua');
@@ -597,15 +597,15 @@ describe('TranslationService', () => {
     });
 
     it('without apiKey it sends no authorization header (Ollama case)', async () => {
-      const fakeFetch = jest.fn().mockResolvedValue(okResponse(JSON_TRADUCCION));
+      const fakeFetch = jest.fn().mockResolvedValue(okResponse(TRANSLATION_JSON));
       global.fetch = fakeFetch as unknown as typeof fetch;
       await createService(null, { ...CONFIG_COMPATIBLE, apiKey: undefined }).translate(dmToEs('nʉnka'));
       expect(fakeFetch.mock.calls[0][1].headers.authorization).toBeUndefined();
     });
 
-    it('401 → 502 about TRADUCTOR_API_KEY; 404 → 502 mentioning the model', async () => {
+    it('401 → 502 about TRANSLATOR_API_KEY; 404 → 502 mentioning the model', async () => {
       global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({}) }) as unknown as typeof fetch;
-      await expect(createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'))).rejects.toThrow(/TRADUCTOR_API_KEY/);
+      await expect(createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'))).rejects.toThrow(/TRANSLATOR_API_KEY/);
       global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) }) as unknown as typeof fetch;
       await expect(createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'))).rejects.toThrow(/gpt-oss-120b/);
     });
@@ -613,7 +613,7 @@ describe('TranslationService', () => {
     it('connection refused → 504; response without choices → 502', async () => {
       global.fetch = jest.fn().mockRejectedValue(new TypeError('fetch failed')) as unknown as typeof fetch;
       await expect(createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'))).rejects.toThrow(GatewayTimeoutException);
-      global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ raro: true }) }) as unknown as typeof fetch;
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ rare: true }) }) as unknown as typeof fetch;
       await expect(createService(null, CONFIG_COMPATIBLE).translate(dmToEs('nʉnka'))).rejects.toThrow(BadGatewayException);
     });
   });

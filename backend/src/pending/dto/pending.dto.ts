@@ -1,26 +1,26 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class PendingItemDto {
-  @ApiProperty({ description: 'rowid en la tabla pendientes (el id exportado es pend_<rowid>)' })
+  @ApiProperty({ description: 'rowid in the pending_items table (the exported id is pend_<rowid>)' })
   id!: number;
 
   @ApiProperty({ example: 'vecina' })
   word!: string;
 
-  @ApiProperty({ enum: ['espanol', 'damana'], description: 'Idioma de la palabra que falta' })
-  language!: 'espanol' | 'damana';
+  @ApiProperty({ enum: ['spanish', 'damana'], description: 'Language of the missing word' })
+  language!: 'spanish' | 'damana';
 
-  @ApiProperty({ nullable: true, description: 'Frase original del usuario donde apareció' })
+  @ApiProperty({ nullable: true, description: 'Original user sentence where it appeared' })
   context!: string | null;
 
-  @ApiProperty({ description: 'Veces que el traductor la devolvió sin equivalente' })
+  @ApiProperty({ description: 'Times the translator returned it without an equivalent' })
   timesRequested!: number;
 
-  @ApiProperty({ enum: ['pendiente', 'exportada', 'resuelta'] })
-  status!: 'pendiente' | 'exportada' | 'resuelta';
+  @ApiProperty({ enum: ['pending', 'exported', 'resolved'] })
+  status!: 'pending' | 'exported' | 'resolved';
 
-  @ApiProperty({ enum: ['traductor', 'elicitacion'] })
-  origin!: 'traductor' | 'elicitacion';
+  @ApiProperty({ enum: ['translator', 'elicitation'] })
+  origin!: 'translator' | 'elicitation';
 
   @ApiProperty()
   createdAt!: string;

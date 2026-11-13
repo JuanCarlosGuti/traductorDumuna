@@ -7,7 +7,7 @@ import { FoundSense, DictionaryIndex } from './dictionary';
 import { ProperNameDto } from './dto/query.dto';
 import { Trigger, GrammarRule, selectRules } from './rules';
 
-export const K_FRAGMENTOS = 8;
+export const K_FRAGMENTS = 8;
 
 /**
  * Examples that appear only through verbal kinship (another person of the
@@ -37,7 +37,7 @@ export function isUntranslatedPair(damana: string, spanish: string): boolean {
   return damanaSide.length > 0 && damanaSide === normalize(spanish.trim());
 }
 
-/** Sentences with doubtful alignment (estado='revisar') take part in
+/** Sentences with doubtful alignment (status='review') take part in
  *  retrieval but with half the similarity score. */
 export const REVIEW_WEIGHT = 0.5;
 
@@ -58,9 +58,9 @@ export const CONTEXT_CANDIDATES = 60;
 export const ALMOST_EQUAL_THRESHOLD = 0.8;
 
 const RETRIEVAL_SOURCES: CorpusSource[] = [
-  CorpusSource.oraciones,
-  CorpusSource.frases,
-  CorpusSource.conjugaciones,
+  CorpusSource.sentences,
+  CorpusSource.phrases,
+  CorpusSource.conjugations,
 ];
 
 export interface CorpusFragment {
@@ -70,7 +70,7 @@ export interface CorpusFragment {
   reference: string;
   damana: string;
   spanish: string;
-  /** 1 for reliable fragments; REVIEW_WEIGHT for 'revisar' sentences. */
+  /** 1 for reliable fragments; REVIEW_WEIGHT for 'review' sentences. */
   weight: number;
 }
 
@@ -106,7 +106,7 @@ export interface RetrievedContext {
  */
 class TfIdfIndex {
   private readonly idf = new Map<string, number>();
-  private readonly vectors: { pesos: Map<string, number>; norma: number }[] = [];
+  private readonly vectors: { weights: Map<string, number>; norm: number }[] = [];
 
   constructor(tokensPerDocument: string[][]) {
     const n = tokensPerDocument.length;
@@ -123,7 +123,7 @@ class TfIdfIndex {
       const weights = this.vectorize(tokens);
       let sum = 0;
       for (const weight of weights.values()) sum += weight * weight;
-      this.vectors.push({ pesos: weights, norma: Math.sqrt(sum) });
+      this.vectors.push({ weights: weights, norm: Math.sqrt(sum) });
     }
   }
 
@@ -146,14 +146,14 @@ class TfIdfIndex {
     queryNorm = Math.sqrt(queryNorm);
     if (queryNorm === 0) return this.vectors.map(() => 0);
 
-    return this.vectors.map(({ pesos: weights, norma }) => {
-      if (norma === 0) return 0;
+    return this.vectors.map(({ weights: weights, norm }) => {
+      if (norm === 0) return 0;
       let product = 0;
       for (const [term, weight] of queryText) {
         const docWeight = weights.get(term);
         if (docWeight !== undefined) product += weight * docWeight;
       }
-      return product / (norma * queryNorm);
+      return product / (norm * queryNorm);
     });
   }
 }
@@ -210,11 +210,11 @@ export function splitByDomain(candidates: RetrievedFragment[]): RetrievedFragmen
   const del = (domain: CorpusDomain, quota: number) =>
     unique.filter((f) => f.domain === domain).slice(0, quota);
 
-  const everyday = del(CorpusDomain.cotidiano, EVERYDAY_QUOTA);
-  const grammar = del(CorpusDomain.gramatica, GRAMMAR_QUOTA);
+  const everyday = del(CorpusDomain.everyday, EVERYDAY_QUOTA);
+  const grammar = del(CorpusDomain.grammar, GRAMMAR_QUOTA);
   const biblicalQuota =
     everyday.length >= ENOUGH_EVERYDAY ? REDUCED_BIBLICAL_QUOTA : BIBLICAL_QUOTA;
-  const biblical = del(CorpusDomain.biblico, biblicalQuota);
+  const biblical = del(CorpusDomain.biblical, biblicalQuota);
   return [...everyday, ...grammar, ...biblical].slice(0, MAX_EXAMPLES);
 }
 
@@ -272,9 +272,9 @@ export class RetrievalService {
    * The K corpus fragments most similar to the text, by TF-IDF over
    * normalized tokens of the given language. Sources: sentences (pairs
    * aligned sentence by sentence), phrases and conjugations. Sentences with
-   * estado='revisar' take part with half the score.
+   * status='review' take part with half the score.
    */
-  similar(text: string, language: Language, k = K_FRAGMENTOS): RetrievedFragment[] {
+  similar(text: string, language: Language, k = K_FRAGMENTS): RetrievedFragment[] {
     const indexes = this.getIndexes();
     const tokens = normalizedTokenList(text);
     const direct = this.scoreAll(tokens, language, indexes);
@@ -342,7 +342,7 @@ export class RetrievalService {
   ): RetrievedFragment[] {
     return indexes.fragments.map((fragment, i) => {
       const lemmaScore =
-        fragment.source === CorpusSource.conjugaciones ? 0 : expanded[i] * LEMMA_WEIGHT;
+        fragment.source === CorpusSource.conjugations ? 0 : expanded[i] * LEMMA_WEIGHT;
       if (lemmaScore > direct[i]) {
         return {
           ...fragment,
@@ -386,7 +386,7 @@ export class RetrievalService {
     const lemmaOfForm = new Map<string, string>();
     const lemmaForms = new Map<string, string[]>();
 
-    for (const { lema: lemma, damana } of this.repo.formsByLemma()) {
+    for (const { lemma: lemma, damana } of this.repo.formsByLemma()) {
       for (const form of normalizedTokenList(damana)) {
         // The first word is enough: multi-word forms carry the
         // verbal marker at the start (e.g. «nujkunanún nanka»).
@@ -414,7 +414,7 @@ export class RetrievalService {
             reference: row.reference,
             damana: row.damanaText,
             spanish: row.spanishText,
-            weight: row.status === 'revisar' ? REVIEW_WEIGHT : 1,
+            weight: row.status === 'review' ? REVIEW_WEIGHT : 1,
           });
         }
       }
@@ -422,7 +422,7 @@ export class RetrievalService {
         fragments: fragments,
         byLanguage: {
           [Language.damana]: new TfIdfIndex(fragments.map((f) => normalizedTokenList(f.damana))),
-          [Language.espanol]: new TfIdfIndex(fragments.map((f) => normalizedTokenList(f.spanish))),
+          [Language.spanish]: new TfIdfIndex(fragments.map((f) => normalizedTokenList(f.spanish))),
         },
         ...this.buildLemmaIndex(fragments),
       };

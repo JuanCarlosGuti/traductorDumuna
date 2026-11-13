@@ -28,14 +28,14 @@ describe('Pending items (e2e)', () => {
 
   it('lists the recorded pending items, most requested first', async () => {
     const repo = app.get(PendingRepository);
-    repo.recordRequested('vecina', 'espanol', 'mi vecina cocina');
-    repo.recordRequested('vecina', 'espanol', null);
-    repo.recordRequested('ñame', 'espanol', 'quiero ñame');
+    repo.recordRequested('vecina', 'spanish', 'mi vecina cocina');
+    repo.recordRequested('vecina', 'spanish', null);
+    repo.recordRequested('ñame', 'spanish', 'quiero ñame');
 
     const res = await request(app.getHttpServer()).get('/api/pending').expect(200);
     expect(res.body.map((p: any) => [p.word, p.timesRequested, p.status])).toEqual([
-      ['vecina', 2, 'pendiente'],
-      ['ñame', 1, 'pendiente'],
+      ['vecina', 2, 'pending'],
+      ['ñame', 1, 'pending'],
     ]);
   });
 
@@ -52,7 +52,7 @@ describe('Pending items (e2e)', () => {
 
     expect(res.headers['content-type']).toContain('spreadsheetml');
     expect(res.headers['content-disposition']).toMatch(/formato_elicitacion_pendientes_\d{4}-\d{2}-\d{2}\.xlsx/);
-    expect(res.headers['x-filas-exportadas']).toBe('2');
+    expect(res.headers['x-exported-rows']).toBe('2');
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(res.body as ExcelJS.Buffer);
@@ -61,6 +61,6 @@ describe('Pending items (e2e)', () => {
     expect(sheet.getRow(3).getCell(3).value).toBe('ñame');
 
     const after = await request(app.getHttpServer()).get('/api/pending').expect(200);
-    expect(after.body.every((p: any) => p.status === 'exportada')).toBe(true);
+    expect(after.body.every((p: any) => p.status === 'exported')).toBe(true);
   });
 });

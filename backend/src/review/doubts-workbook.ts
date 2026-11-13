@@ -5,12 +5,12 @@ import { DoubtsReport } from './doubts.service';
 
 /** Sheet names, in the order in which they should be filled in. */
 export const DOUBT_SHEETS = {
-  instrucciones: 'leer primero',
-  escritura: '1 escritura',
-  sinonimos: '2 mismo significado',
-  polisemia: '3 varios significados',
-  dudosas: '4 por aclarar',
-  terminaciones: '5 terminaciones',
+  instructions: 'leer primero',
+  spelling: '1 escritura',
+  synonyms: '2 mismo significado',
+  polysemy: '3 varios significados',
+  doubtful: '4 por aclarar',
+  endings: '5 terminaciones',
 } as const;
 
 const HEADER_BLUE = 'FFDCE8F0';
@@ -72,7 +72,7 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
   const workbook = new ExcelJS.Workbook();
   const day = date.toISOString().slice(0, 10);
 
-  const instructions = workbook.addWorksheet(DOUBT_SHEETS.instrucciones);
+  const instructions = workbook.addWorksheet(DOUBT_SHEETS.instructions);
   instructions.getColumn(1).width = 28;
   instructions.getColumn(2).width = 12;
   instructions.getColumn(3).width = 30;
@@ -86,11 +86,11 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
     ['Si las dos formas son correctas, o si significan cosas distintas, escríbanlo: eso también nos sirve.'],
     [],
     ['Hoja', 'Filas', 'Quién la llena', 'Qué se pregunta'],
-    [DOUBT_SHEETS.escritura, report.spelling.length, 'Cualquier hablante', 'La misma palabra aparece escrita de varias maneras. ¿Cuál es la correcta?'],
-    [DOUBT_SHEETS.sinonimos, report.synonyms.reduce((s, g) => s + g.options.length, 0), 'Revisor con experiencia', 'Una palabra del español tiene varias en damana. ¿Significan lo mismo? ¿Cuándo se usa cada una?'],
-    [DOUBT_SHEETS.polisemia, report.polysemy.reduce((s, g) => s + g.senses.length, 0), 'Revisor con experiencia', 'Una palabra damana tiene varios significados anotados. ¿Están todos bien? Incluye las que solo cambian por la tilde.'],
-    [DOUBT_SHEETS.dudosas, report.doubtful.length, 'Revisor con experiencia', 'Entradas que no quedaron claras: iguales al español, con varias formas en una casilla o con notas confusas.'],
-    [DOUBT_SHEETS.terminaciones, report.endings.reduce((s, t) => s + t.examples.length, 0), 'Revisor con experiencia', 'Terminaciones que se repiten en muchas palabras (-mba, -win, -ga…). ¿Qué le agregan a la palabra?'],
+    [DOUBT_SHEETS.spelling, report.spelling.length, 'Cualquier hablante', 'La misma palabra aparece escrita de varias maneras. ¿Cuál es la correcta?'],
+    [DOUBT_SHEETS.synonyms, report.synonyms.reduce((s, g) => s + g.options.length, 0), 'Revisor con experiencia', 'Una palabra del español tiene varias en damana. ¿Significan lo mismo? ¿Cuándo se usa cada una?'],
+    [DOUBT_SHEETS.polysemy, report.polysemy.reduce((s, g) => s + g.senses.length, 0), 'Revisor con experiencia', 'Una palabra damana tiene varios significados anotados. ¿Están todos bien? Incluye las que solo cambian por la tilde.'],
+    [DOUBT_SHEETS.doubtful, report.doubtful.length, 'Revisor con experiencia', 'Entradas que no quedaron claras: iguales al español, con varias formas en una casilla o con notas confusas.'],
+    [DOUBT_SHEETS.endings, report.endings.reduce((s, t) => s + t.examples.length, 0), 'Revisor con experiencia', 'Terminaciones que se repiten en muchas palabras (-mba, -win, -ga…). ¿Qué le agregan a la palabra?'],
   ].forEach((line) => instructions.addRow(line));
   instructions.getRow(1).font = { bold: true, size: 13 };
   instructions.getRow(8).font = { bold: true };
@@ -107,7 +107,7 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
   }
   addSheet(
     workbook,
-    DOUBT_SHEETS.escritura,
+    DOUBT_SHEETS.spelling,
     [
       { title: 'n.º', width: 6 },
       { title: 'qué cambia', width: 18 },
@@ -145,7 +145,7 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
   // 2. One Spanish word, several in Damana
   addSheet(
     workbook,
-    DOUBT_SHEETS.sinonimos,
+    DOUBT_SHEETS.synonyms,
     [
       { title: 'grupo', width: 7 },
       { title: 'español', width: 24 },
@@ -175,7 +175,7 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
   // 3. One Damana form, several meanings
   addSheet(
     workbook,
-    DOUBT_SHEETS.polisemia,
+    DOUBT_SHEETS.polysemy,
     [
       { title: 'grupo', width: 7 },
       { title: 'damana (como está escrita)', width: 26 },
@@ -201,7 +201,7 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
   // 4. Entries to clarify
   addSheet(
     workbook,
-    DOUBT_SHEETS.dudosas,
+    DOUBT_SHEETS.doubtful,
     [
       { title: 'español', width: 24 },
       { title: 'damana', width: 26 },
@@ -225,7 +225,7 @@ export function buildDoubtsWorkbook(report: DoubtsReport, date: Date): ExcelJS.W
   // 5. Endings
   addSheet(
     workbook,
-    DOUBT_SHEETS.terminaciones,
+    DOUBT_SHEETS.endings,
     [
       { title: 'terminación', width: 13 },
       { title: 'en cuántas palabras aparece', width: 11 },

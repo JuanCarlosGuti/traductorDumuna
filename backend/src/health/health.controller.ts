@@ -31,22 +31,22 @@ export class HealthController {
   @Public()
   @Get()
   @ApiOperation({
-    summary: 'Salud del servicio (sin sesión)',
-    description: '200 si la base tiene corpus; 503 si está vacía o no responde.',
+    summary: 'Service health (no session required)',
+    description: '200 if the database has a corpus; 503 if it is empty or not responding.',
   })
   @ApiOkResponse({ type: HealthStatusDto })
-  @ApiServiceUnavailableResponse({ description: 'La base no tiene corpus (estado: sin_corpus)' })
+  @ApiServiceUnavailableResponse({ description: 'The database has no corpus (status: no_corpus)' })
   status(): HealthStatusDto {
     let words = 0;
     try {
-      words = (this.db.prepare('SELECT COUNT(*) AS n FROM vocabulario').get() as { n: number }).n;
+      words = (this.db.prepare('SELECT COUNT(*) AS n FROM vocabulary').get() as { n: number }).n;
     } catch {
       words = 0;
     }
     if (words === 0) {
       throw new ServiceUnavailableException({
-        status: 'sin_corpus',
-        message: 'La base no tiene corpus: falta npm run importar.',
+        status: 'no_corpus',
+        message: 'The database has no corpus: run npm run import:corpus.',
       });
     }
     return { status: 'ok' };

@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { readEnv } from '../common/env';
 
 export const CONFIG_AUTH = Symbol('CONFIG_AUTH');
 
@@ -23,7 +24,7 @@ const DEFAULT_DAYS = 30;
 export function readAuthConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): ConfigAuth {
-  const user = (env.AUTH_USUARIO ?? '').trim();
+  const user = (readEnv('AUTH_USERNAME', env) ?? '').trim();
   const password = env.AUTH_PASSWORD ?? '';
   const secret = env.AUTH_JWT_SECRET ?? '';
   // RENDER is set by the platform itself. It is checked in addition to NODE_ENV because
@@ -35,18 +36,18 @@ export function readAuthConfig(
   if (production) {
     if (!active) {
       throw new Error(
-        'Faltan AUTH_USUARIO y/o AUTH_PASSWORD. En producción la API no ' +
-          'puede quedar abierta: configúralas en el panel de Render.',
+        'AUTH_USERNAME and/or AUTH_PASSWORD are missing. In production the API ' +
+          'cannot be left open: set them in the deployment environment.',
       );
     }
     if (secret.length === 0) {
       throw new Error(
-        'Falta AUTH_JWT_SECRET: sin él no se pueden firmar las sesiones.',
+        'AUTH_JWT_SECRET is missing: without it sessions cannot be signed.',
       );
     }
   } else if (!active) {
     new Logger('Auth').warn(
-      'Sin AUTH_USUARIO/AUTH_PASSWORD: la API queda ABIERTA (desarrollo local).',
+      'No AUTH_USERNAME/AUTH_PASSWORD: the API is OPEN (local development).',
     );
   }
 
@@ -57,6 +58,6 @@ export function readAuthConfig(
     // Locally it is generated on the fly: sessions do not survive a restart,
     // which does not matter for development.
     secret: secret || randomBytes(32).toString('hex'),
-    durationDays: Number(env.AUTH_DIAS_SESION) || DEFAULT_DAYS,
+    durationDays: Number(readEnv('AUTH_SESSION_DAYS', env)) || DEFAULT_DAYS,
   };
 }

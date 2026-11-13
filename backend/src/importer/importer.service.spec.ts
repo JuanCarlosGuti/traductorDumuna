@@ -12,25 +12,25 @@ import { readTests } from './tests-csv';
 const BOM = String.fromCharCode(0xfeff);
 const U_DIAERESIS = String.fromCharCode(0x00fc); // ü — Word workaround for ʉ
 
-const CSV_ORACIONES =
+const CSV_SENTENCES =
   BOM +
   'id,damana,espanol,estado,fuente\n' +
   'o1,"nʉnka kʉñingui gontka\nñingui tua ukurra",Dios hizo el agua,aprobado,lfb oraciones\n' +
   'o2,¿Zhinzhoma nanu? 42,¿Conoces? cuarenta y dos,revisar,lfb oraciones\n';
 
-const CSV_FRASES =
+const CSV_PHRASES =
   BOM +
   'fuente,damana,espanol,notas\n' +
   "Prueba,shke'ta ukurra,anda ligero,\n" +
   `Prueba,bug${U_DIAERESIS}i we ugunga,en la casa de arriba,\n`;
 
-const CSV_VOCABULARIO =
+const CSV_VOCABULARY =
   BOM +
   'espanol,damana,categoria,notas,fuente\n' +
   'agua,nʉnka,Otros,,diccionario wiwa\n' +
   'año,ñandua,Tiempo / días / clima,con ñ,diccionario wiwa\n';
 
-const CSV_CONJUGACIONES =
+const CSV_CONJUGATIONS =
   BOM +
   'damana,espanol,lema,fuente,notas\n' +
   'nujkunʉnanka,yo tuve,tener,VERBO TENER.docx,\n' +
@@ -44,46 +44,46 @@ const ELICITATION_HEADERS = [
 // does not depend on which specific ids fall in the 10% reserved for tests.
 const IDS = Array.from({ length: 300 }, (_, i) => String(i + 1));
 const TEST_ID = IDS.find(isTestRow)!;
-const [ID_AGUA, ID_VECINA, ID_PINGUINO, ID_HOLA, ID_ANOS] = IDS.filter((id) => !isTestRow(id));
+const [ID_WATER, ID_NEIGHBOR, ID_PENGUIN, ID_HELLO, ID_YEARS] = IDS.filter((id) => !isTestRow(id));
 
 const BATCH_1 = [
-  [ID_AGUA, 'naturaleza', 'agua', `n${U_DIAERESIS}nka`, 'El agua está fría.', `nu+nka se n${U_DIAERESIS}ka`, '', ''],
-  [ID_VECINA, 'familia', 'vecina', '', 'Mi vecina cocina.', '', '', 'registrado antes: ? (confirmar)'],
-  [ID_PINGUINO, 'otro', 'pingüino', 'pingüino', 'El pingüino nada.', 'pingüino senu', '', ''],
+  [ID_WATER, 'naturaleza', 'agua', `n${U_DIAERESIS}nka`, 'El agua está fría.', `nu+nka se n${U_DIAERESIS}ka`, '', ''],
+  [ID_NEIGHBOR, 'familia', 'vecina', '', 'Mi vecina cocina.', '', '', 'registrado antes: ? (confirmar)'],
+  [ID_PENGUIN, 'otro', 'pingüino', 'pingüino', 'El pingüino nada.', 'pingüino senu', '', ''],
   [TEST_ID, 'casa', 'casa', 'Urraga', 'Mi casa es grande.', 'Ranzhe urraga aikuia', '', ''],
-  [ID_HOLA, 'saludos', 'hola', 'Zungui', 'Hola, ¿cómo estás?', '', 'pregunta', ''],
+  [ID_HELLO, 'saludos', 'hola', 'Zungui', 'Hola, ¿cómo estás?', '', 'pregunta', ''],
   // Unfilled, but the vocabulary already has «año»: it must not be requested.
-  [ID_ANOS, 'tiempo', 'años', '', 'Pasaron dos años.', '', '', ''],
+  [ID_YEARS, 'tiempo', 'años', '', 'Pasaron dos años.', '', '', ''],
 ];
 
 const BATCH_2 = [
-  [ID_VECINA, 'familia', 'vecina', 'anzhirru', 'Mi vecina cocina.', 'ranzhe anzhirru duzhi', '', ''],
+  [ID_NEIGHBOR, 'familia', 'vecina', 'anzhirru', 'Mi vecina cocina.', 'ranzhe anzhirru duzhi', '', ''],
 ];
 
 async function writeExcel(
   filePath: string,
-  sheets: { nombre: string; filas: (string | number)[][] }[],
+  sheets: { name: string; rows: (string | number)[][] }[],
 ): Promise<void> {
   const workbook = new ExcelJS.Workbook();
   for (const sheet of sheets) {
-    const ws = workbook.addWorksheet(sheet.nombre);
-    sheet.filas.forEach((row) => ws.addRow(row));
+    const ws = workbook.addWorksheet(sheet.name);
+    sheet.rows.forEach((row) => ws.addRow(row));
   }
   await workbook.xlsx.writeFile(filePath);
 }
 
 function writeCsvs(dir: string): void {
-  fs.writeFileSync(path.join(dir, 'corpus_oraciones.csv'), CSV_ORACIONES, 'utf8');
-  fs.writeFileSync(path.join(dir, 'corpus_frases_v2.csv'), CSV_FRASES, 'utf8');
-  fs.writeFileSync(path.join(dir, 'corpus_vocabulario_v3.csv'), CSV_VOCABULARIO, 'utf8');
-  fs.writeFileSync(path.join(dir, 'corpus_conjugaciones.csv'), CSV_CONJUGACIONES, 'utf8');
+  fs.writeFileSync(path.join(dir, 'corpus_oraciones.csv'), CSV_SENTENCES, 'utf8');
+  fs.writeFileSync(path.join(dir, 'corpus_frases_v2.csv'), CSV_PHRASES, 'utf8');
+  fs.writeFileSync(path.join(dir, 'corpus_vocabulario_v3.csv'), CSV_VOCABULARY, 'utf8');
+  fs.writeFileSync(path.join(dir, 'corpus_conjugaciones.csv'), CSV_CONJUGATIONS, 'utf8');
 }
 
 async function writeRules(dir: string): Promise<void> {
   await writeExcel(path.join(dir, 'reglas_damana.xlsx'), [
     {
-      nombre: 'reglas',
-      filas: [
+      name: 'reglas',
+      rows: [
         ['tipo de regla', 'forma (sufijo/partícula)', 'qué hace / significado', 'ejemplo: palabra base', 'ejemplo: palabra con la regla', 'traducción del ejemplo', 'notas'],
         ['sufijo', '-ndzina', 'pluraliza sustantivos', 'terrua (hombre)', 'terruandzina', 'hombres', ''],
         ['sufijo', '-nzhe', 'posesivo / "de"', 'Kunkujshina (Dios)', 'Kunkujshinanzhe', 'de Dios', 'confirmar'],
@@ -91,8 +91,8 @@ async function writeRules(dir: string): Promise<void> {
       ],
     },
     {
-      nombre: 'nombres propios',
-      filas: [
+      name: 'nombres propios',
+      rows: [
         ['como aparece en damana', 'nombre en español', '¿se escribe igual? (sí/no)', 'otras grafías vistas', 'notas'],
         ['Jehová', 'Jehová', 'sí', 'Jehova', ''],
         ['faraón', 'faraón', 'sí', 'Faraón', ''],
@@ -103,8 +103,8 @@ async function writeRules(dir: string): Promise<void> {
 
 async function writeBatch(dir: string, name: string, rows: string[][]): Promise<void> {
   await writeExcel(path.join(dir, name), [
-    { nombre: 'instrucciones', filas: [['LOTE DE PRUEBA'], ['Solo se llenan las columnas amarillas.']] },
-    { nombre: 'elicitacion', filas: [ELICITATION_HEADERS, ...rows] },
+    { name: 'instrucciones', rows: [['LOTE DE PRUEBA'], ['Solo se llenan las columnas amarillas.']] },
+    { name: 'elicitacion', rows: [ELICITATION_HEADERS, ...rows] },
   ]);
 }
 
@@ -155,7 +155,7 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
       tests: 1,
       pending: 1, // vecina (nothing filled in)
       resolved: 3, // agua, pingüino, casa
-      // hola already has palabra_dm in the batch itself and «años» is in the CSV
+      // hola already has word_dm in the batch itself and «años» is in the CSV
       // as «año»: the speakers are not asked for them.
       coveredByVocabulary: 2,
       closedByVocabulary: 0,
@@ -167,45 +167,45 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
 
   it('fixes the Word ü to ʉ in the Damana of the CSVs and in the tokens', async () => {
     await service.importAll(dirTmp);
-    const row = db.prepare('SELECT damana FROM frases WHERE rowid = 2').get() as { damana: string };
+    const row = db.prepare('SELECT damana FROM phrases WHERE rowid = 2').get() as { damana: string };
     expect(row.damana).toBe('bugʉi we ugunga');
-    const words = rows('SELECT DISTINCT palabra_normalizada AS p FROM tokens_damana').map((f) => f.p);
+    const words = rows('SELECT DISTINCT normalized_word AS p FROM damana_tokens').map((f) => f.p);
     expect(words).toContain('bugʉi');
     expect(words).not.toContain('bugui');
   });
 
   it('in elicitation it converts ü and u+ to ʉ, but respects pingüino', async () => {
     await service.importAll(dirTmp);
-    const agua = db.prepare("SELECT damana, categoria, fuente FROM vocabulario WHERE espanol = 'agua' AND fuente = 'elicitacion'").get() as any;
-    expect(agua).toMatchObject({ damana: 'nʉnka', categoria: 'naturaleza' });
-    const sentence = db.prepare(`SELECT damana, espanol, fuente, dominio, estado FROM oraciones WHERE id_externo = ?`).get(`elic_${ID_AGUA}`) as any;
+    const agua = db.prepare("SELECT damana, category, source FROM vocabulary WHERE spanish = 'agua' AND source = 'elicitation'").get() as any;
+    expect(agua).toMatchObject({ damana: 'nʉnka', category: 'naturaleza' });
+    const sentence = db.prepare(`SELECT damana, spanish, source, domain, status FROM sentences WHERE external_id = ?`).get(`elic_${ID_WATER}`) as any;
     expect(sentence).toMatchObject({
       damana: 'nʉnka se nʉka',
-      espanol: 'El agua está fría.',
-      fuente: 'elicitacion',
-      dominio: 'cotidiano',
-      estado: 'aprobado',
+      spanish: 'El agua está fría.',
+      source: 'elicitation',
+      domain: 'everyday',
+      status: 'approved',
     });
-    const pinguino = db.prepare("SELECT damana FROM vocabulario WHERE espanol = 'pingüino'").get() as any;
+    const pinguino = db.prepare("SELECT damana FROM vocabulary WHERE spanish = 'pingüino'").get() as any;
     expect(pinguino.damana).toBe('pingüino');
   });
 
   it('marks the domain: lfb → biblico, phrases and elicitation → cotidiano', async () => {
     await service.importAll(dirTmp);
-    expect(rows("SELECT dominio FROM oraciones WHERE fuente LIKE 'lfb%'").map((f) => f.dominio)).toEqual(['biblico', 'biblico']);
-    expect(rows("SELECT dominio FROM oraciones WHERE fuente = 'elicitacion'").map((f) => f.dominio)).toEqual(['cotidiano', 'cotidiano']);
-    expect(rows('SELECT dominio FROM frases').map((f) => f.dominio)).toEqual(['cotidiano', 'cotidiano']);
+    expect(rows("SELECT domain FROM sentences WHERE source LIKE 'lfb%'").map((f) => f.domain)).toEqual(['biblical', 'biblical']);
+    expect(rows("SELECT domain FROM sentences WHERE source = 'elicitation'").map((f) => f.domain)).toEqual(['everyday', 'everyday']);
+    expect(rows('SELECT domain FROM phrases').map((f) => f.domain)).toEqual(['everyday', 'everyday']);
   });
 
   it('imports the rules with their trigger and the proper names with their spellings', async () => {
     await service.importAll(dirTmp);
-    expect(rows('SELECT forma, significado, disparador, ejemplo_regla FROM reglas ORDER BY rowid')).toEqual([
-      { forma: '-ndzina', significado: 'pluraliza sustantivos', disparador: 'plural', ejemplo_regla: 'terruandzina' },
-      { forma: '-nzhe', significado: 'posesivo / "de"', disparador: 'posesivo', ejemplo_regla: 'Kunkujshinanzhe' },
+    expect(rows('SELECT form, meaning, trigger_feature, rule_example FROM rules ORDER BY rowid')).toEqual([
+      { form: '-ndzina', meaning: 'pluraliza sustantivos', trigger_feature: 'plural', rule_example: 'terruandzina' },
+      { form: '-nzhe', meaning: 'posesivo / "de"', trigger_feature: 'possessive', rule_example: 'Kunkujshinanzhe' },
     ]);
-    expect(rows('SELECT damana, espanol, se_escribe_igual, otras_grafias FROM nombres_propios ORDER BY rowid')).toEqual([
-      { damana: 'Jehová', espanol: 'Jehová', se_escribe_igual: 1, otras_grafias: 'Jehova' },
-      { damana: 'faraón', espanol: 'faraón', se_escribe_igual: 1, otras_grafias: 'Faraón' },
+    expect(rows('SELECT damana, spanish, same_spelling, other_spellings FROM proper_names ORDER BY rowid')).toEqual([
+      { damana: 'Jehová', spanish: 'Jehová', same_spelling: 1, other_spellings: 'Jehova' },
+      { damana: 'faraón', spanish: 'faraón', same_spelling: 1, other_spellings: 'Faraón' },
     ]);
   });
 
@@ -214,9 +214,9 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
     expect(readTests(dirTmp)).toEqual([
       { spanish: 'Mi casa es grande.', expectedDamana: 'Ranzhe urraga aikuia', scope: 'casa' },
     ]);
-    expect(rows("SELECT 1 FROM oraciones WHERE damana = 'Ranzhe urraga aikuia'")).toHaveLength(0);
+    expect(rows("SELECT 1 FROM sentences WHERE damana = 'Ranzhe urraga aikuia'")).toHaveLength(0);
     // the word does go into the dictionary: the test measures composition, not lexicon
-    expect(rows("SELECT damana FROM vocabulario WHERE espanol = 'casa'")).toEqual([{ damana: 'Urraga' }]);
+    expect(rows("SELECT damana FROM vocabulary WHERE spanish = 'casa'")).toEqual([{ damana: 'Urraga' }]);
     // and the file carries a BOM and CRLF like the rest of the project's CSVs
     const rawText = fs.readFileSync(path.join(dirTmp, 'pruebas_traduccion.csv'), 'utf8');
     expect(rawText.charCodeAt(0)).toBe(0xfeff);
@@ -226,10 +226,10 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
   it('unfilled rows stay as pending elicitation items, without duplicating on re-import', async () => {
     await service.importAll(dirTmp);
     await service.importAll(dirTmp);
-    // hola carries palabra_dm in the batch itself and «años» is already in the
+    // hola carries word_dm in the batch itself and «años» is already in the
     // vocabulary as «año»: the speakers are asked for neither.
-    expect(rows('SELECT palabra, estado, origen, contexto, veces_pedida FROM pendientes ORDER BY palabra')).toEqual([
-      { palabra: 'vecina', estado: 'pendiente', origen: 'elicitacion', contexto: 'Mi vecina cocina.', veces_pedida: 1 },
+    expect(rows('SELECT word, status, origin, context, times_requested FROM pending_items ORDER BY word')).toEqual([
+      { word: 'vecina', status: 'pending', origin: 'elicitation', context: 'Mi vecina cocina.', times_requested: 1 },
     ]);
   });
 
@@ -242,9 +242,9 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
       expect(stats.elicitation.repeatedIds).toBe(1);
       expect(stats.elicitation.pending).toBe(0); // vecina has arrived; hola and años are covered
       expect(stats.elicitation.coveredByVocabulary).toBe(2);
-      expect(db.prepare("SELECT estado FROM pendientes WHERE palabra = 'vecina'").get()).toEqual({ estado: 'resuelta' });
-      expect(rows("SELECT damana FROM vocabulario WHERE espanol = 'vecina'")).toEqual([{ damana: 'anzhirru' }]);
-      expect(rows(`SELECT damana FROM oraciones WHERE id_externo = ?`, `elic_${ID_VECINA}`)).toEqual([{ damana: 'ranzhe anzhirru duzhi' }]);
+      expect(db.prepare("SELECT status FROM pending_items WHERE word = 'vecina'").get()).toEqual({ status: 'resolved' });
+      expect(rows("SELECT damana FROM vocabulary WHERE spanish = 'vecina'")).toEqual([{ damana: 'anzhirru' }]);
+      expect(rows(`SELECT damana FROM sentences WHERE external_id = ?`, `elic_${ID_NEIGHBOR}`)).toEqual([{ damana: 'ranzhe anzhirru duzhi' }]);
     } finally {
       fs.rmSync(path.join(dirTmp, 'formato_elicitacion_lote2.xlsx'), { force: true });
     }
@@ -267,18 +267,18 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
 
   it('stores id_externo and estado of the sentences (multi-line cells intact)', async () => {
     await service.importAll(dirTmp);
-    const csv = rows('SELECT id_externo, damana, estado FROM oraciones WHERE id_externo LIKE ? ORDER BY rowid', 'o%');
-    expect(csv[0].id_externo).toBe('o1');
-    expect(csv[0].estado).toBe('aprobado');
+    const csv = rows('SELECT external_id, damana, status FROM sentences WHERE external_id LIKE ? ORDER BY rowid', 'o%');
+    expect(csv[0].external_id).toBe('o1');
+    expect(csv[0].status).toBe('approved');
     expect(csv[0].damana).toContain('\n');
-    expect(csv[1].estado).toBe('revisar');
+    expect(csv[1].status).toBe('review');
   });
 
   it('tokenizes all sources keeping ʉ and ñ', async () => {
     await service.importAll(dirTmp);
-    const origins = rows('SELECT DISTINCT tabla_origen AS t FROM tokens_damana ORDER BY t').map((f) => f.t);
-    expect(origins).toEqual(['conjugaciones', 'frases', 'oraciones', 'vocabulario']);
-    const words = rows('SELECT DISTINCT palabra_normalizada AS p FROM tokens_damana').map((f) => f.p);
+    const origins = rows('SELECT DISTINCT source_table AS t FROM damana_tokens ORDER BY t').map((f) => f.t);
+    expect(origins).toEqual(['conjugations', 'phrases', 'sentences', 'vocabulary']);
+    const words = rows('SELECT DISTINCT normalized_word AS p FROM damana_tokens').map((f) => f.p);
     expect(words).toContain('nʉnka');
     expect(words).toContain('ñingui');
     expect(words).not.toContain('nunka');
@@ -293,46 +293,46 @@ describe('ImporterService (corpus v3 + rules + elicitation)', () => {
 
   it('does not touch translations, SRS progress, validated pairs or translator pending items on re-import', async () => {
     db.prepare(
-      `INSERT INTO traducciones
-         (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
-          fuente_top, ejemplos_recuperados, palabras_dudosas, vocabulario_usado, modelo)
-       VALUES ('2026-07-20T10:00:00.000Z', 'nʉnka', 'es', 'damana_a_espanol',
-               0.9, 0.4, 'oraciones', 8, '[]', '[]', 'modelo-prueba')`,
+      `INSERT INTO translations
+         (created_at, text, translation, direction, top_score, mean_score,
+          top_source, retrieved_examples, doubtful_words, vocabulary_used, model)
+       VALUES ('2026-07-20T10:00:00.000Z', 'nʉnka', 'es', 'damana_to_spanish',
+               0.9, 0.4, 'sentences', 8, '[]', '[]', 'test-model')`,
     ).run();
     db.prepare(
-      `INSERT INTO progreso_srs (palabra, repeticiones, factor_facilidad, intervalo_dias, proxima_revision, actualizado_en)
+      `INSERT INTO srs_progress (word, repetitions, ease_factor, interval_days, next_review, updated_at)
        VALUES ('nʉnka', 2, 2.5, 6, '2026-07-01T00:00:00.000Z', '2026-06-25T00:00:00.000Z')`,
     ).run();
     db.prepare(
-      `INSERT INTO validadas (creado_en, espanol, damana, direccion, origen, traduccion_modelo)
-       VALUES ('2026-10-01T00:00:00.000Z', 'el agua', 'nʉnka', 'espanol_a_damana', 'confirmada', 'nʉnka')`,
+      `INSERT INTO validated_pairs (created_at, spanish, damana, direction, origin, model_translation)
+       VALUES ('2026-10-01T00:00:00.000Z', 'el agua', 'nʉnka', 'spanish_to_damana', 'confirmed', 'nʉnka')`,
     ).run();
-    new PendingRepository(db).recordRequested('ñame', 'espanol', 'quiero ñame');
+    new PendingRepository(db).recordRequested('ñame', 'spanish', 'quiero ñame');
 
     await service.importAll(dirTmp);
 
-    expect(db.prepare('SELECT texto FROM traducciones').get()).toEqual({ texto: 'nʉnka' });
-    expect(db.prepare("SELECT repeticiones FROM progreso_srs WHERE palabra = 'nʉnka'").get()).toEqual({ repeticiones: 2 });
-    expect(db.prepare('SELECT COUNT(*) AS n FROM validadas').get()).toEqual({ n: 1 });
-    expect(db.prepare("SELECT veces_pedida, origen FROM pendientes WHERE palabra = 'ñame'").get()).toEqual({ veces_pedida: 1, origen: 'traductor' });
+    expect(db.prepare('SELECT text FROM translations').get()).toEqual({ text: 'nʉnka' });
+    expect(db.prepare("SELECT repetitions FROM srs_progress WHERE word = 'nʉnka'").get()).toEqual({ repetitions: 2 });
+    expect(db.prepare('SELECT COUNT(*) AS n FROM validated_pairs').get()).toEqual({ n: 1 });
+    expect(db.prepare("SELECT times_requested, origin FROM pending_items WHERE word = 'ñame'").get()).toEqual({ times_requested: 1, origin: 'translator' });
   });
 
   it('closes open pending items the vocabulary already covers (Spanish and Damana) and leaves the rest', async () => {
     const repo = new PendingRepository(db);
-    repo.recordRequested('aguas', 'espanol', 'las aguas del río'); // plural of «agua», which is in the CSV
-    repo.recordRequested('ñame', 'espanol', 'quiero ñame'); // not anywhere
+    repo.recordRequested('aguas', 'spanish', 'las aguas del río'); // plural of «agua», which is in the CSV
+    repo.recordRequested('ñame', 'spanish', 'quiero ñame'); // not anywhere
     repo.recordRequested('nʉnka', 'damana', 'nʉnka gontka'); // the Damana form of «agua»
     repo.recordRequested('nunka', 'damana', 'nunka'); // u ≠ ʉ: not the same word
 
     const stats = await service.importAll(dirTmp);
 
     expect(stats.elicitation.closedByVocabulary).toBe(2);
-    const status = (p: string) => (db.prepare('SELECT estado FROM pendientes WHERE palabra = ?').get(p) as { estado: string }).estado;
-    expect(status('aguas')).toBe('resuelta');
-    expect(status('nʉnka')).toBe('resuelta');
-    expect(status('ñame')).toBe('pendiente');
-    expect(status('nunka')).toBe('pendiente');
+    const status = (p: string) => (db.prepare('SELECT status FROM pending_items WHERE word = ?').get(p) as { status: string }).status;
+    expect(status('aguas')).toBe('resolved');
+    expect(status('nʉnka')).toBe('resolved');
+    expect(status('ñame')).toBe('pending');
+    expect(status('nunka')).toBe('pending');
     // and the «años» row of the batch was never recorded
-    expect(db.prepare("SELECT COUNT(*) AS n FROM pendientes WHERE palabra = 'años'").get()).toEqual({ n: 0 });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM pending_items WHERE word = 'años'").get()).toEqual({ n: 0 });
   });
 });

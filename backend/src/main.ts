@@ -16,8 +16,8 @@ async function bootstrap(): Promise<void> {
   const config = new DocumentBuilder()
     .setTitle('Corpus Damana API')
     .setDescription(
-      'API de consulta del corpus damana (dʉmʉna) — concordancias, fichas de palabra, frecuencias y listados. ' +
-        'Salvo /auth/estado y /auth/login, todo exige cabecera Authorization: Bearer <token>.',
+      'Query API for the Damana (dʉmʉna) corpus — concordances, word cards, frequencies and listings. ' +
+        'Except /auth/status and /auth/login, everything requires the header Authorization: Bearer <token>.',
     )
     .setVersion('0.1.0')
     .addBearerAuth()
@@ -28,7 +28,7 @@ async function bootstrap(): Promise<void> {
   // project using 3000) and for deployments where the platform assigns the port.
   const port = Number(process.env.PORT) || 3000;
   await app.listen(port);
-  console.log(`Backend escuchando en http://localhost:${port} (docs en /api/docs)`);
+  console.log(`Backend listening on http://localhost:${port} (docs at /api/docs)`);
 }
 
 void bootstrap();

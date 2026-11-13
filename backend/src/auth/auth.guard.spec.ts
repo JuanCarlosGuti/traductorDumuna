@@ -9,7 +9,7 @@ import { PUBLIC_KEY } from './public.decorator';
 const config: ConfigAuth = {
   active: true,
   user: 'juan',
-  password: 'clave',
+  password: 'lookup_key',
   secret: 'secreto-de-prueba-suficientemente-largo',
   durationDays: 30,
 };
@@ -18,8 +18,8 @@ const config: ConfigAuth = {
 const contextWith = (request: RequestWithSession): ExecutionContext =>
   ({
     switchToHttp: () => ({ getRequest: () => request }),
-    getHandler: () => function manejador() {},
-    getClass: () => class Controlador {},
+    getHandler: () => function handler() {},
+    getClass: () => class Controller {},
   }) as unknown as ExecutionContext;
 
 describe('AuthGuard', () => {

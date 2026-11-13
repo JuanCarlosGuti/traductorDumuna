@@ -31,22 +31,22 @@ async function main(): Promise<void> {
   const doubtsPath = path.join(dataDir, doubtsFile(today));
   await buildDoubtsWorkbook(report, today).xlsx.writeFile(doubtsPath);
 
-  console.log('\n=== Dudas para aclarar con hablantes ===');
-  console.log(`1 escritura (misma palabra, varias grafías):   ${report.spelling.length} grupos`);
-  console.log(`2 mismo significado (español → varias damana): ${report.synonyms.length} grupos`);
-  console.log(`3 varios significados (damana → varios):       ${report.polysemy.length} grupos`);
-  console.log(`     de ellos, solo cambia la tilde:           ${report.polysemy.filter((g) => g.accentOnly).length}`);
-  console.log(`4 entradas por aclarar:                        ${report.doubtful.length}`);
-  console.log(`5 terminaciones frecuentes:                    ${report.endings.length}`);
+  console.log('\n=== Doubts to clear up with the native speakers ===');
+  console.log(`1 spelling (same word, several spellings):     ${report.spelling.length} groups`);
+  console.log(`2 same meaning (Spanish → several Damana):     ${report.synonyms.length} groups`);
+  console.log(`3 several meanings (Damana → several):        ${report.polysemy.length} groups`);
+  console.log(`     of which only the accent changes:        ${report.polysemy.filter((g) => g.accentOnly).length}`);
+  console.log(`4 entries to clear up:                         ${report.doubtful.length}`);
+  console.log(`5 frequent endings:                            ${report.endings.length}`);
   console.log(`\nDocumento: ${doubtsPath}`);
 
   // The grammar batch is not regenerated if it already exists: it may be filled in.
   const paradigmsPath = path.join(dataDir, PARADIGMS_FILE);
   if (fs.existsSync(paradigmsPath)) {
-    console.log(`Lote de gramática: ya existe y no se toca (${paradigmsPath})`);
+    console.log(`Grammar batch: already exists and is left untouched (${paradigmsPath})`);
   } else {
     await buildParadigmsWorkbook().xlsx.writeFile(paradigmsPath);
-    console.log(`Lote de gramática: ${PARADIGMS.length} oraciones en ${paradigmsPath}`);
+    console.log(`Grammar batch: ${PARADIGMS.length} sentences in ${paradigmsPath}`);
   }
 
   await app.close();

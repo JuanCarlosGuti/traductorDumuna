@@ -32,9 +32,9 @@ export class QueryController {
 
   @Get('search')
   @ApiOperation({
-    summary: 'Concordancia de una palabra',
+    summary: 'Concordance of a word',
     description:
-      'Cada ocurrencia con su fragmento de contexto (±120 caracteres, cortando en límite de palabra, la palabra en <mark>), el texto paralelo del otro idioma y la referencia. ʉ ≠ u y ñ ≠ n; tildes y mayúsculas se ignoran.',
+      'Each occurrence with its context fragment (±120 characters, cut at a word boundary, the word in <mark>), the parallel text in the other language and the reference. ʉ ≠ u and ñ ≠ n; accents and case are ignored.',
   })
   @ApiOkResponse({ type: SearchResponseDto })
   search(@Query() query: SearchQueryDto): SearchResponseDto {
@@ -48,22 +48,22 @@ export class QueryController {
 
   @Get('word/:token')
   @ApiOperation({
-    summary: 'Ficha de una palabra damana',
+    summary: 'Card for a Damana word',
     description:
-      'Frecuencia total y por fuente, primeras 10 concordancias y las 10 palabras españolas que más co-ocurren en los textos paralelos (traducciones candidatas, sin stopwords).',
+      'Total frequency and by source, first 10 concordances and the 10 Spanish words that co-occur most in the parallel texts (candidate translations, without stopwords).',
   })
   @ApiParam({ name: 'token', example: 'nʉnka' })
   @ApiOkResponse({ type: WordCardDto })
-  @ApiNotFoundResponse({ description: 'La palabra no aparece en el corpus' })
+  @ApiNotFoundResponse({ description: 'The word does not appear in the corpus' })
   buildWordCard(@Param('token') token: string): WordCardDto {
     return this.word.wordCard(token);
   }
 
   @Get('frequencies')
   @ApiOperation({
-    summary: 'Palabras damana por frecuencia descendente',
+    summary: 'Damana words by descending frequency',
     description:
-      'Excluye probables nombres propios (heurística: tokens que solo aparecen con mayúscula inicial en los originales).',
+      'Excludes probable proper names (heuristic: tokens that only appear with an initial capital in the originals).',
   })
   @ApiOkResponse({ type: [FrequencyDto] })
   listFrequencies(@Query() query: FrequenciesQueryDto): FrequencyDto[] {
@@ -71,14 +71,14 @@ export class QueryController {
   }
 
   @Get('vocabulary')
-  @ApiOperation({ summary: 'Listado completo del vocabulario' })
+  @ApiOperation({ summary: 'Full vocabulary listing' })
   @ApiOkResponse({ type: [VocabularyDto] })
   listVocabulary(): VocabularyDto[] {
     return this.repo.listVocabulary();
   }
 
   @Get('phrases')
-  @ApiOperation({ summary: 'Listado completo de las frases' })
+  @ApiOperation({ summary: 'Full phrase listing' })
   @ApiOkResponse({ type: [PhraseDto] })
   listPhrases(): PhraseDto[] {
     return this.repo.listPhrases();

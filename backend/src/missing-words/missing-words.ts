@@ -100,13 +100,13 @@ async function main(): Promise<void> {
   );
 
   const priority1 = spanish.filter((f) => f.priority === 1).length;
-  console.log('\n=== Listas de trabajo generadas ===');
-  console.log(`${SPANISH_FILE}: ${spanish.length} palabras españolas sin equivalente damana`);
-  console.log(`   (${priority1} de traducciones tuyas con poco apoyo, el resto del corpus)`);
-  console.log(`${DAMANA_FILE}:  ${damana.length} palabras damana sin traducción`);
+  console.log('\n=== Work lists generated ===');
+  console.log(`${SPANISH_FILE}: ${spanish.length} Spanish words without a Damana equivalent`);
+  console.log(`   (${priority1} from your poorly supported translations, the rest from the corpus)`);
+  console.log(`${DAMANA_FILE}:  ${damana.length} Damana words without a translation`);
   console.log(`\nCarpeta: ${dataDir}`);
-  console.log('\nRellena la columna vacía de cada archivo y luego ejecuta:');
-  console.log('   npm run necesito:aplicar');
+  console.log('\nFill in the empty column of each file and then run:');
+  console.log('   npm run missing-words:apply');
 
   await app.close();
 }

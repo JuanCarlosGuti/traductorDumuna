@@ -132,17 +132,17 @@ export function renderMarkdown(report: Report): string {
     .join('\n');
   const detail = report.tests
     .map((p) => {
-      const status = p.error ? `ERROR: ${p.error}` : p.exact ? 'exacta' : `chrF ${p.chrf.toFixed(3)}`;
-      const missing = p.withoutEquivalent.length ? ` · sin equivalente: ${p.withoutEquivalent.join(', ')}` : '';
-      return `- **${p.spanish}** (${p.scope})\n  - esperado: ${p.expected}\n  - obtenido: ${p.obtained || '—'}\n  - ${status}${missing}`;
+      const status = p.error ? `ERROR: ${p.error}` : p.exact ? 'exact' : `chrF ${p.chrf.toFixed(3)}`;
+      const missing = p.withoutEquivalent.length ? ` · without equivalent: ${p.withoutEquivalent.join(', ')}` : '';
+      return `- **${p.spanish}** (${p.scope})\n  - expected: ${p.expected}\n  - obtained: ${p.obtained || '—'}\n  - ${status}${missing}`;
     })
     .join('\n');
   return (
-    `# Evaluación del traductor — ${report.date.slice(0, 16).replace('T', ' ')}\n\n` +
-    `Motor: ${report.provider ?? '—'} · modelo: ${report.model ?? '—'} · pruebas: ${report.total.tests}\n\n` +
-    '| ámbito | pruebas | exactas | chrF medio | sin equivalente | errores |\n' +
+    `# Translator evaluation — ${report.date.slice(0, 16).replace('T', ' ')}\n\n` +
+    `Engine: ${report.provider ?? '—'} · model: ${report.model ?? '—'} · tests: ${report.total.tests}\n\n` +
+    '| scope | tests | exact | mean chrF | without equivalent | errors |\n' +
     '|---|---:|---:|---:|---:|---:|\n' +
-    `${rows}\n\n## Detalle\n\n${detail}\n`
+    `${rows}\n\n## Details\n\n${detail}\n`
   );
 }
 
@@ -150,6 +150,6 @@ export function renderMarkdown(report: Report): string {
 export function reportBaseName(date: Date, model: string | null): string {
   const iso = date.toISOString();
   const mark = `${iso.slice(0, 10)}_${iso.slice(11, 13)}${iso.slice(14, 16)}`;
-  const cleaned = (model ?? 'sin-modelo').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const cleaned = (model ?? 'no-model').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return `${mark}_${cleaned}`;
 }

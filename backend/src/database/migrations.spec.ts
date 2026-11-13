@@ -10,29 +10,50 @@ const CURRENT_VERSION = 7;
  */
 function rollBackTo(db: Database.Database, version: 4 | 5 | 6): void {
   db.exec(`
-    ALTER TABLE traducciones DROP COLUMN tokens_entrada;
-    ALTER TABLE traducciones DROP COLUMN tokens_salida;
-    ALTER TABLE traducciones DROP COLUMN tokens_cache_leidos;
-    ALTER TABLE traducciones DROP COLUMN tokens_cache_creados;
-    ALTER TABLE traducciones DROP COLUMN duracion_ms;
+    ALTER TABLE translations DROP COLUMN input_tokens;
+    ALTER TABLE translations DROP COLUMN output_tokens;
+    ALTER TABLE translations DROP COLUMN cache_read_tokens;
+    ALTER TABLE translations DROP COLUMN cache_creation_tokens;
+    ALTER TABLE translations DROP COLUMN duration_ms;
   `);
   if (version <= 5) {
     db.exec(`
-      DROP TABLE reglas; DROP TABLE nombres_propios; DROP TABLE pendientes; DROP TABLE validadas;
-      ALTER TABLE oraciones DROP COLUMN dominio;
-      ALTER TABLE frases DROP COLUMN dominio;
-      ALTER TABLE traducciones DROP COLUMN confianza;
-      ALTER TABLE traducciones DROP COLUMN reglas_aplicadas;
-      ALTER TABLE traducciones DROP COLUMN glosa;
+      DROP TABLE rules; DROP TABLE proper_names; DROP TABLE pending_items; DROP TABLE validated_pairs;
+      ALTER TABLE sentences DROP COLUMN domain;
+      ALTER TABLE phrases DROP COLUMN domain;
+      ALTER TABLE translations DROP COLUMN confidence;
+      ALTER TABLE translations DROP COLUMN applied_rules;
+      ALTER TABLE translations DROP COLUMN gloss;
     `);
   }
   if (version === 4) {
-    db.exec('ALTER TABLE traducciones DROP COLUMN ejemplos_en_contexto');
+    db.exec('ALTER TABLE translations DROP COLUMN examples_in_context');
   }
   db.pragma(`user_version = ${version}`);
 }
 
 describe('runMigrations', () => {
+  it('drops a database with the legacy Spanish schema and rebuilds it in English', () => {
+    const db = new Database(':memory:');
+    db.exec(
+      "CREATE TABLE oraciones (damana TEXT); CREATE TABLE progreso_srs (palabra TEXT); INSERT INTO oraciones VALUES ('nʉnka');",
+    );
+    db.pragma('user_version = 7');
+
+    runMigrations(db);
+
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+      .all()
+      .map((f: any) => f.name);
+    expect(tables).not.toContain('oraciones');
+    expect(tables).not.toContain('progreso_srs');
+    expect(tables).toContain('sentences');
+    expect(db.pragma('user_version', { simple: true })).toBe(CURRENT_VERSION);
+    db.close();
+  });
+
+
   it('creates the corpus tables (v3 + v6) and the indexes', () => {
     const db = new Database(':memory:');
     runMigrations(db);
@@ -42,25 +63,25 @@ describe('runMigrations', () => {
       .all()
       .map((f: any) => f.name);
     expect(tables).toEqual([
-      'conjugaciones',
-      'frases',
-      'nombres_propios',
-      'oraciones',
-      'pendientes',
-      'progreso_srs',
-      'reglas',
-      'tokens_damana',
-      'traducciones',
-      'validadas',
-      'vocabulario',
+      'conjugations',
+      'damana_tokens',
+      'pending_items',
+      'phrases',
+      'proper_names',
+      'rules',
+      'sentences',
+      'srs_progress',
+      'translations',
+      'validated_pairs',
+      'vocabulary',
     ]);
 
     const indexes = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'index'")
       .all()
       .map((f: any) => f.name);
-    expect(indexes).toContain('idx_tokens_palabra');
-    expect(indexes).toContain('idx_conjugaciones_lema');
+    expect(indexes).toContain('idx_tokens_word');
+    expect(indexes).toContain('idx_conjugations_lemma');
     db.close();
   });
 
@@ -77,22 +98,22 @@ describe('runMigrations', () => {
     runMigrations(db);
     rollBackTo(db, 4);
     db.prepare(
-      `INSERT INTO traducciones
-         (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
-          fuente_top, ejemplos_recuperados, palabras_dudosas, vocabulario_usado, modelo)
+      `INSERT INTO translations
+         (created_at, text, translation, direction, top_score, mean_score,
+          top_source, retrieved_examples, doubtful_words, vocabulary_used, model)
        VALUES ('2026-07-01T00:00:00.000Z', 'nʉjkasheshisha ñingui', 'me lee otra vez',
-               'damana_a_espanol', 0.9, 0.4, 'conjugaciones', 3, '[]', '[]', 'groq')`,
+               'damana_to_spanish', 0.9, 0.4, 'conjugations', 3, '[]', '[]', 'groq')`,
     ).run();
 
     runMigrations(db);
 
     expect(db.pragma('user_version', { simple: true })).toBe(CURRENT_VERSION);
     const row = db
-      .prepare('SELECT texto, ejemplos_en_contexto, confianza FROM traducciones')
-      .get() as { texto: string; ejemplos_en_contexto: number | null; confianza: number | null };
-    expect(row.texto).toBe('nʉjkasheshisha ñingui'); // ʉ and ñ intact
-    expect(row.ejemplos_en_contexto).toBeNull();
-    expect(row.confianza).toBeNull();
+      .prepare('SELECT text, examples_in_context, confidence FROM translations')
+      .get() as { text: string; examples_in_context: number | null; confidence: number | null };
+    expect(row.text).toBe('nʉjkasheshisha ñingui'); // ʉ and ñ intact
+    expect(row.examples_in_context).toBeNull();
+    expect(row.confidence).toBeNull();
     db.close();
   });
 
@@ -101,21 +122,21 @@ describe('runMigrations', () => {
     runMigrations(db);
     rollBackTo(db, 5);
     db.prepare(
-      "INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente) VALUES ('o1', 'nʉnka', 'agua', 'aprobado', 'lfb')",
+      "INSERT INTO sentences (external_id, damana, spanish, status, source) VALUES ('o1', 'nʉnka', 'agua', 'approved', 'lfb')",
     ).run();
     db.prepare(
-      "INSERT INTO frases (fuente, damana, espanol, notas) VALUES ('Prueba', 'ñingui', 'otra vez', NULL)",
+      "INSERT INTO phrases (source, damana, spanish, notes) VALUES ('Prueba', 'ñingui', 'otra vez', NULL)",
     ).run();
 
     runMigrations(db);
 
     expect(db.pragma('user_version', { simple: true })).toBe(CURRENT_VERSION);
-    expect(db.prepare('SELECT dominio FROM oraciones').get()).toEqual({ dominio: 'biblico' });
-    expect(db.prepare('SELECT dominio FROM frases').get()).toEqual({ dominio: 'cotidiano' });
+    expect(db.prepare('SELECT domain FROM sentences').get()).toEqual({ domain: 'biblical' });
+    expect(db.prepare('SELECT domain FROM phrases').get()).toEqual({ domain: 'everyday' });
     expect(() =>
       db
         .prepare(
-          "INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente, dominio) VALUES ('o2', 'x', 'y', 'aprobado', 'p', 'poesia')",
+          "INSERT INTO sentences (external_id, damana, spanish, status, source, domain) VALUES ('o2', 'x', 'y', 'approved', 'p', 'poesia')",
         )
         .run(),
     ).toThrow();
@@ -127,23 +148,23 @@ describe('runMigrations', () => {
     runMigrations(db);
     rollBackTo(db, 6);
     db.prepare(
-      `INSERT INTO traducciones
-         (creado_en, texto, traduccion, direccion, puntaje_top, puntaje_medio,
-          fuente_top, ejemplos_recuperados, palabras_dudosas, vocabulario_usado, modelo)
+      `INSERT INTO translations
+         (created_at, text, translation, direction, top_score, mean_score,
+          top_source, retrieved_examples, doubtful_words, vocabulary_used, model)
        VALUES ('2026-10-01T00:00:00.000Z', 'nʉnka ñingui', 'agua otra vez',
-               'damana_a_espanol', 0.9, 0.4, 'frases', 3, '[]', '[]', 'claude-opus-5-5')`,
+               'damana_to_spanish', 0.9, 0.4, 'phrases', 3, '[]', '[]', 'claude-opus-5-5')`,
     ).run();
 
     runMigrations(db);
 
     expect(db.pragma('user_version', { simple: true })).toBe(CURRENT_VERSION);
     const row = db
-      .prepare('SELECT texto, tokens_entrada, tokens_cache_leidos, duracion_ms FROM traducciones')
-      .get() as { texto: string; tokens_entrada: number | null; tokens_cache_leidos: number | null; duracion_ms: number | null };
-    expect(row.texto).toBe('nʉnka ñingui'); // ʉ and ñ intact
-    expect(row.tokens_entrada).toBeNull();
-    expect(row.tokens_cache_leidos).toBeNull();
-    expect(row.duracion_ms).toBeNull();
+      .prepare('SELECT text, input_tokens, cache_read_tokens, duration_ms FROM translations')
+      .get() as { text: string; input_tokens: number | null; cache_read_tokens: number | null; duration_ms: number | null };
+    expect(row.text).toBe('nʉnka ñingui'); // ʉ and ñ intact
+    expect(row.input_tokens).toBeNull();
+    expect(row.cache_read_tokens).toBeNull();
+    expect(row.duration_ms).toBeNull();
     db.close();
   });
 
@@ -153,16 +174,16 @@ describe('runMigrations', () => {
     const pendingItem = (status: string) =>
       db
         .prepare(
-          `INSERT INTO pendientes (clave, palabra, idioma, veces_pedida, estado, origen, creado_en, actualizado_en)
-           VALUES (?, 'x', 'espanol', 1, ?, 'traductor', 't', 't')`,
+          `INSERT INTO pending_items (lookup_key, word, language, times_requested, status, origin, created_at, updated_at)
+           VALUES (?, 'x', 'spanish', 1, ?, 'translator', 't', 't')`,
         )
         .run(`clave-${status}`, status);
-    expect(() => pendingItem('pendiente')).not.toThrow();
+    expect(() => pendingItem('pending')).not.toThrow();
     expect(() => pendingItem('perdida')).toThrow();
     expect(() =>
       db
         .prepare(
-          "INSERT INTO validadas (creado_en, espanol, damana, direccion, origen) VALUES ('t', 'a', 'b', 'espanol_a_damana', 'inventada')",
+          "INSERT INTO validated_pairs (created_at, spanish, damana, direction, origin) VALUES ('t', 'a', 'b', 'spanish_to_damana', 'inventada')",
         )
         .run(),
     ).toThrow();
@@ -173,14 +194,14 @@ describe('runMigrations', () => {
     const db = new Database(':memory:');
     runMigrations(db);
     db.prepare(
-      `INSERT INTO progreso_srs (palabra, repeticiones, factor_facilidad, intervalo_dias, proxima_revision, actualizado_en)
+      `INSERT INTO srs_progress (word, repetitions, ease_factor, interval_days, next_review, updated_at)
        VALUES ('nʉnka', 3, 2.5, 15, '2026-07-01T00:00:00.000Z', '2026-06-16T00:00:00.000Z')`,
     ).run();
     runMigrations(db);
     const row = db
-      .prepare('SELECT repeticiones FROM progreso_srs WHERE palabra = ?')
-      .get('nʉnka') as { repeticiones: number };
-    expect(row.repeticiones).toBe(3);
+      .prepare('SELECT repetitions FROM srs_progress WHERE word = ?')
+      .get('nʉnka') as { repetitions: number };
+    expect(row.repetitions).toBe(3);
     db.close();
   });
 
@@ -188,14 +209,14 @@ describe('runMigrations', () => {
     const db = new Database(':memory:');
     runMigrations(db);
     db.prepare(
-      'INSERT INTO vocabulario (espanol, damana, categoria, notas, fuente) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO vocabulary (spanish, damana, category, notes, source) VALUES (?, ?, ?, ?, ?)',
     ).run('tiene', 'kʉnʉnka', 'Verbos', 'con ñ: ñingui', 'diccionario wiwa');
     const row = db
-      .prepare('SELECT rowid AS id, damana, categoria, notas FROM vocabulario')
+      .prepare('SELECT rowid AS id, damana, category, notes FROM vocabulary')
       .get() as any;
     expect(row.damana).toBe('kʉnʉnka');
-    expect(row.categoria).toBe('Verbos');
-    expect(row.notas).toContain('ñingui');
+    expect(row.category).toBe('Verbos');
+    expect(row.notes).toContain('ñingui');
     expect(row.id).toBe(1);
     db.close();
   });
@@ -206,11 +227,11 @@ describe('runMigrations', () => {
     const insert = (status: string) =>
       db
         .prepare(
-          'INSERT INTO oraciones (id_externo, damana, espanol, estado, fuente) VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO sentences (external_id, damana, spanish, status, source) VALUES (?, ?, ?, ?, ?)',
         )
         .run('x1', 'nʉnka', 'es', status, 'prueba');
-    expect(() => insert('aprobado')).not.toThrow();
-    expect(() => insert('revisar')).not.toThrow();
+    expect(() => insert('approved')).not.toThrow();
+    expect(() => insert('review')).not.toThrow();
     expect(() => insert('dudoso')).toThrow();
     db.close();
   });
