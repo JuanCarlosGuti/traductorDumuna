@@ -1,4 +1,4 @@
-> Versión original en español del README. La versión vigente es [README.md](../README.md) (inglés). Desde nov 2026 el corpus real ya no está en este repositorio (ver [DATA.md](../DATA.md)); las rutas a `datos/` y `material-externo/` de este documento se refieren al repositorio privado de datos.
+> Versión original en español del README. La versión vigente es [README.md](../README.md) (inglés). Desde nov 2026 el corpus real ya no está en este repositorio (ver [DATA.md](../DATA.md)); las rutas a `data/` y `material-externo/` de este documento se refieren al repositorio privado de datos.
 
 # Corpus Damana
 
@@ -24,7 +24,7 @@ IA apoyado en el corpus y ciclo de pendientes con las hablantes nativas.
 
 ```bash
 npm install          # instala backend y frontend (workspaces)
-npm run importar     # crea datos/corpus.db desde los CSV y Excel de /datos
+npm run import:corpus     # crea data/corpus.db desde los CSV y Excel de /data
 npm run build        # compila el frontend hacia backend/public
 npm start            # backend en modo desarrollo (sirve también la web)
 ```
@@ -55,14 +55,14 @@ setx ANTHROPIC_API_KEY "sk-ant-..."
 # OJO: setx no afecta la terminal abierta; abre una NUEVA terminal.
 ```
 
-Si está definida **tiene prioridad** sobre las variables TRADUCTOR_*.
+Si está definida **tiene prioridad** sobre las variables TRANSLATOR_*.
 Tarda entre 5 y 15 s por traducción. Modelo por defecto `claude-opus-5-5`;
-se cambia con `ANTHROPIC_MODELO`. Opcional: `ANTHROPIC_ESFUERZO` (low,
+se cambia con `ANTHROPIC_MODEL`. Opcional: `ANTHROPIC_EFFORT` (low,
 medium, high, xhigh o max) regula cuánto razona el modelo; si falta se usa
 el valor de la API. A Claude no se le fija temperatura (el modelo la
 rechaza). El prompt de sistema queda en la caché de Anthropic 5 minutos,
 así que traducir en racha sale más barato. Cada traducción deja en el log
-del backend y en la tabla `traducciones` los tokens usados y lo que tardó.
+del backend y en la tabla `translations` los tokens usados y lo que tardó.
 
 ### Respaldo: Groq (gratis, ~2 s por traducción)
 
@@ -71,12 +71,12 @@ solo si falta `ANTHROPIC_API_KEY`. Clave gratis sin tarjeta en
 https://console.groq.com (API Keys → Create):
 
 ```powershell
-setx TRADUCTOR_BASE_URL "https://api.groq.com/openai/v1"
-setx TRADUCTOR_MODELO "openai/gpt-oss-120b"
-setx TRADUCTOR_API_KEY "gsk_..."
+setx TRANSLATOR_BASE_URL "https://api.groq.com/openai/v1"
+setx TRANSLATOR_MODEL "openai/gpt-oss-120b"
+setx TRANSLATOR_API_KEY "gsk_..."
 ```
 
-`TRADUCTOR_TEMPERATURA` (0.2 por defecto) fija la temperatura: baja para
+`TRANSLATOR_TEMPERATURE` (0.2 por defecto) fija la temperatura: baja para
 que la misma frase dé la misma traducción. El plan gratuito devuelve 429
 a la cuarta traducción por minuto; el backend espera lo que pida
 `Retry-After` y reintenta dos veces.
@@ -84,8 +84,8 @@ a la cuarta traducción por minuto; el backend espera lo que pida
 ### Alternativas (mismo mecanismo, otras variables)
 
 - **Cualquier API compatible con OpenAI**: Google Gemini, el router de
-  Hugging Face, Ollama local (`TRADUCTOR_BASE_URL=http://localhost:11434/v1`,
-  `TRADUCTOR_MODELO=qwen2.5:7b`, `TRADUCTOR_TIMEOUT_MS=300000`; lento).
+  Hugging Face, Ollama local (`TRANSLATOR_BASE_URL=http://localhost:11434/v1`,
+  `TRANSLATOR_MODEL=qwen2.5:7b`, `TRANSLATOR_TIMEOUT_MS=300000`; lento).
 
 Sin motor configurado, la vista Traductor lo explica y el resto de la
 app sigue funcionando.
@@ -113,7 +113,7 @@ palabra**, las **palabras sin equivalente** (van entre corchetes y se
 anotan en Pendientes), las reglas aplicadas, una confianza y una
 explicación. La vista muestra todo eso y permite marcar **«esta
 traducción es correcta»** o **corregirla**: los pares validados se
-acumulan en la tabla `validadas`.
+acumulan en la tabla `validated_pairs`.
 
 Si la frase trae un rasgo gramatical para el que el corpus todavía no
 tiene regla (hoy solo hay reglas de plural y posesivo; faltan negación,
@@ -132,14 +132,14 @@ del formato de elicitación y las celdas por llenar en amarillo. Cuando el
 archivo vuelve lleno:
 
 ```bash
-# dejarlo en datos/ con nombre formato_elicitacion_<lo que sea>.xlsx
-npm run importar      # lo absorbe: vocabulario + oraciones cotidianas
+# dejarlo en data/ con nombre formato_elicitacion_<lo que sea>.xlsx
+npm run import:corpus      # lo absorbe: vocabulario + oraciones cotidianas
 ```
 
 ### Dudas para las hablantes
 
 ```bash
-npm run dudas         # no corrige nada: escribe datos/dudas_para_hablantes_<fecha>.xlsx
+npm run doubts         # no corrige nada: escribe data/dudas_para_hablantes_<fecha>.xlsx
 ```
 
 Junta en un Excel lo que no está claro en los datos, una hoja por tipo de
@@ -153,8 +153,8 @@ oraciones mínimas para sacar las reglas de la gramática.
 ### Evaluación medible
 
 ```bash
-npm run evaluar       # traduce datos/pruebas_traduccion.csv y escribe
-                      # evaluaciones/<fecha>_<modelo>.{json,md}
+npm run evaluate       # traduce data/pruebas_traduccion.csv y escribe
+                      # evaluations/<fecha>_<modelo>.{json,md}
 ```
 
 Reporta por ámbito la coincidencia exacta, el chrF (implementación
@@ -165,8 +165,8 @@ retrieval. También se pueden añadir filas a mano (`espanol,
 damana_esperado, ambito`); nunca se borran.
 
 ```bash
-npm run pruebas:desde-validadas   # añade al CSV los pares validados en el
-                                  # Traductor (tabla validadas), ámbito «validadas»
+npm run tests:from-validated   # añade al CSV los pares validados en el
+                                  # Traductor (tabla validated_pairs), ámbito «validadas»
 ```
 
 Es idempotente: no repite pares ni borra pruebas existentes.
@@ -179,12 +179,12 @@ gratuito de Render que construye y publica todo automáticamente en
 
 - **Cada `git push` a `main` redespliega solo** (build ~5-10 min):
   `npm ci` en la raíz → `npm run build` (Angular → `backend/public` +
-  Nest) → `npm run importar` (regenera `datos/corpus.db`) →
+  Nest) → `npm run import:corpus` (regenera `data/corpus.db`) →
   `npm run start:prod`.
-- Los secretos (`TRADUCTOR_API_KEY`, `AUTH_USUARIO`, `AUTH_PASSWORD`) se
-  configuran en el dashboard de Render, nunca en el repo. Las demás (`TRADUCTOR_BASE_URL`,
-  `TRADUCTOR_MODELO`, `NODE_VERSION`) viven en el `render.yaml`.
-- Acceso con usuario único: sin `AUTH_USUARIO` y `AUTH_PASSWORD` el servicio
+- Los secretos (`TRANSLATOR_API_KEY`, `AUTH_USERNAME`, `AUTH_PASSWORD`) se
+  configuran en el dashboard de Render, nunca en el repo. Las demás (`TRANSLATOR_BASE_URL`,
+  `TRANSLATOR_MODEL`, `NODE_VERSION`) viven en el `render.yaml`.
+- Acceso con usuario único: sin `AUTH_USERNAME` y `AUTH_PASSWORD` el servicio
   no arranca en producción, a propósito. `AUTH_JWT_SECRET` lo genera Render.
 - Lecciones aprendidas (no repetir): Render necesita
   `NODE_VERSION >= 24.15.0`, y al ser un monorepo con **npm workspaces**
@@ -208,7 +208,7 @@ versión lleve una semana estable; los dos sirven el mismo `main`.
 - **Cómo se despliega:** cada push a `main` corre
   [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): pruebas
   (Jest, API, Vitest), construcción de la imagen con el corpus horneado
-  dentro (`npm run importar` en el [`Dockerfile`](Dockerfile)) y
+  dentro (`npm run import:corpus` en el [`Dockerfile`](Dockerfile)) y
   `kamal deploy`. La imagen se publica en GHCR como
   `ghcr.io/juancarlosguti/corpus-damana`.
 - **Lo que necesita (hecho el 21 oct 2026):** en Cloudflare, registro A `damana` →
@@ -216,7 +216,7 @@ versión lleve una semana estable; los dos sirven el mismo `main`.
   Let's Encrypt no puede emitir el certificado. Y en GitHub → Settings →
   Secrets and variables → Actions: `SSH_PRIVATE_KEY`, `SERVER_IP`,
   `ANTHROPIC_API_KEY` (si faltara, el servidor propio traduce con Groq),
-  `TRADUCTOR_API_KEY`, `AUTH_USUARIO`,
+  `TRANSLATOR_API_KEY`, `AUTH_USERNAME`,
   `AUTH_PASSWORD`, `AUTH_JWT_SECRET`. `KAMAL_REGISTRY_PASSWORD` no se
   crea: es el `GITHUB_TOKEN`.
 - **Verificar:** `curl -sI https://damana.crearcodecesar.com/` → 200 con
@@ -228,12 +228,12 @@ versión lleve una semana estable; los dos sirven el mismo `main`.
   pierde en cada deploy, igual que en Render. El siguiente paso es un
   volumen de Kamal con una base de estado aparte.
 - **Probar la imagen en local:** `docker build -t corpus-damana .` y luego
-  `docker run --rm -p 3000:3000 -e NODE_ENV=production -e AUTH_USUARIO=… -e AUTH_PASSWORD=… -e AUTH_JWT_SECRET=… -e ANTHROPIC_API_KEY=… -e TRADUCTOR_API_KEY=… corpus-damana`.
+  `docker run --rm -p 3000:3000 -e NODE_ENV=production -e AUTH_USERNAME=… -e AUTH_PASSWORD=… -e AUTH_JWT_SECRET=… -e ANTHROPIC_API_KEY=… -e TRANSLATOR_API_KEY=… corpus-damana`.
 
 ## Actualizar el corpus
 
 **Este es el flujo de trabajo habitual.** Los archivos fuente viven en
-[`datos/`](datos/) (CSV en UTF-8 con BOM; estructura de columnas en
+[`data/`](data/) (CSV en UTF-8 con BOM; estructura de columnas en
 [CLAUDE.md](CLAUDE.md)) — `corpus.db` nunca se edita a mano, es
 regenerable y está fuera de git.
 
@@ -244,12 +244,12 @@ regenerable y está fuera de git.
    propios) o dejar un nuevo `formato_elicitacion_*.xlsx` lleno.
 2. Regenerar la base y probar en local:
    ```bash
-   npm run importar
+   npm run import:corpus
    npm start        # revisar en http://localhost:3000 que lo nuevo aparezca
    ```
 3. Publicar:
    ```bash
-   git add datos/
+   git add data/
    git commit -m "Corpus: <qué se agregó>"
    git push
    ```
@@ -267,14 +267,14 @@ CLAUDE.md).
 npm test                 # unitarios del backend (Jest)
 npm run test:e2e         # API del backend (SQLite en memoria + supertest)
 npm run test:front       # frontend (Vitest)
-npm run test:navegador   # Playwright: navegador real contra el build
+npm run test:browser   # Playwright: navegador real contra el build
 ```
 
 ## Estructura
 
-- `datos/` — fuentes del corpus (CSV y Excel) y `corpus.db`
+- `data/` — fuentes del corpus (CSV y Excel) y `corpus.db`
   (regenerable, fuera de git)
-- `evaluaciones/` — informes de `npm run evaluar`, uno por fecha y modelo
+- `evaluations/` — informes de `npm run evaluate`, uno por fecha y modelo
 - `backend/` — NestJS 11: importador, API de consulta, SRS, traductor,
   pendientes, evaluación
 - `frontend/` — Angular (standalone + señales); su build sale a

@@ -1,294 +1,320 @@
 # Corpus Damana App
 
-Aplicación de estudio del damana (dʉmʉna), lengua del pueblo Wiwa
-(Sierra Nevada de Santa Marta, Colombia). Usuario: desarrollador con
-experiencia en TypeScript/Angular y backend.
+Study app for Damana (dʉmʉna), the language of the Wiwa people
+(Sierra Nevada de Santa Marta, Colombia). User: developer experienced
+with TypeScript/Angular and backend work.
 
-## Estado del despliegue (oct 2026) — leer antes de tocar infra
+The codebase, docs and tooling are in English. What Spanish-speaking users
+and the native speakers see stays in Spanish: the UI text, user-facing error
+messages, the corpus data and the Excel files exchanged with the speakers
+(their sheet names and column headers are part of that data contract).
 
-- **EN PRODUCCIÓN: https://corpus-damana.onrender.com** — Render plan
-  gratuito vía [`render.yaml`](render.yaml) (blueprint). Cada push a
-  `main` redespliega automáticamente; el build regenera `corpus.db`
-  desde los CSV y Excel de `/datos` (por eso agregar corpus = editar los
-  archivos de `/datos` + `npm run importar` para probar en local + push).
-- **También EN PRODUCCIÓN desde el 21 oct 2026: servidor propio con Kamal 2** →
-  `damana.crearcodecesar.com` (VPS netcup <SERVER_IP>, usuario
-  `deploy`, mismo patrón que cesar-travel y board-checkup: referencias en
-  `C:\dev\proyectos\cesar-travel` y `C:\dev\proyectos\infra-servidor\RUNBOOK.md`;
-  la llave privada `infra-servidor\llaves\id_crearcode` NO se abre ni se
-  imprime). Archivos: `Dockerfile`, `config/deploy.yml`, `.kamal/secrets`,
-  `.github/workflows/deploy.yml`. El corpus se hornea en la imagen
-  (`npm run importar` en el build, por eso reglas_damana.xlsx y los
-  formato_elicitacion*.xlsx NO van en .dockerignore). `GET /api/health`
-  (público) es el healthcheck de kamal-proxy: 503 si la base no tiene
-  corpus. Primer deploy el 21 oct 2026 (secretos de Actions creados con
-  `gh secret set`; registro A `damana` en Cloudflare con nube gris).
-  Render no se cancela hasta una semana estable; ambos sirven el mismo
-  `main`, y sus bases de runtime son independientes.
-- **Acceso con contraseña, un solo usuario.** El dueño pidió quitarla el
-  3 oct 2026 y restaurarla el 5 («que tenga solo acceso yo»); nunca llegó
-  a subirse sin ella. AUTH_USUARIO y AUTH_PASSWORD son secretos del panel
-  de Render. No quitar la autenticación sin que lo pida.
-- **Motor de traducción vigente: Claude** `claude-opus-5-5` vía
-  `ANTHROPIC_API_KEY` (tiene prioridad en el código; 5-15 s por
-  traducción). Se paga con los créditos API mensuales del plan Max de
-  claude.ai (org «Juan's Individual Org» en console.anthropic.com, clave
-  llamada «corpus-damana»; los créditos se renuevan el 5 de cada mes y no
-  se acumulan). Render ya la tiene como secreto del servicio (desde el
-  commit 7a05483). No cambiar el modelo por defecto sin que lo pida;
-  `ANTHROPIC_MODELO` lo sobreescribe por entorno.
-- **Respaldo: Groq** `openai/gpt-oss-120b` (~2 s/traducción, gratis):
-  sigue configurado en Render y en Kamal (TRADUCTOR_BASE_URL +
-  TRADUCTOR_MODELO + TRADUCTOR_API_KEY) y el código lo usa solo si falta
-  la clave de Anthropic. Ollama quedó abandonado por lentitud (~29 s con
-  qwen2.5:7b), aunque el soporte por variables sigue existiendo. En local
-  ambas claves son variables de usuario de Windows.
-- El secreto `ANTHROPIC_API_KEY` de GitHub Actions (para Kamal) ya existe
-  (lo creó Juan el 21 oct 2026). Si algún día faltara, el workflow lo
-  exporta vacío y el servidor propio traduciría con Groq.
-- Trampas ya sufridas en Render (no repetir): exige
-  `NODE_VERSION >= 24.15.0` (la CLI de Angular rechaza menores) y,
-  por ser monorepo con npm workspaces (lock único en la raíz), TODO
-  se instala/construye desde la raíz — `npm ci` por subcarpeta deja
-  `node_modules` donde el runtime no resuelve (`Cannot find module`).
-  No poner NODE_ENV=production en Render: `npm ci` omitiría las
-  devDependencies y no habría con qué construir.
-- El filesystem de Render es efímero: `corpus.db` se regenera en cada
-  deploy (bien: es solo-lectura en runtime) y las tablas que se escriben
-  en runtime (`progreso_srs`, `traducciones`, `pendientes`, `validadas`)
-  NO persisten en producción, solo en local.
-- `main.ts` acepta `PORT` (en local se usa 3001 cuando otro proyecto
-  ocupa el 3000). Demo puntual sin Render:
-  `cloudflared tunnel --url http://localhost:<puerto>`.
+## Deployment status (Oct 2026) — read before touching infra
 
-## Stack (todo TypeScript)
-- Monorepo con npm workspaces: /backend y /frontend.
-- Backend: NestJS 11, better-sqlite3 (acceso síncrono, sin ORM;
-  capa de repositorios propia estilo puertos y adaptadores),
-  csv-parse para importación, exceljs para los Excel (reglas,
-  elicitación, exportar pendientes), @nestjs/swagger para documentar.
-- Frontend: Angular standalone components con señales. Vistas: Buscar,
-  Diccionario (+ficha), Gramática, Flashcards, Traductor, Pendientes.
-- Producción: un solo proceso; NestJS sirve el build de Angular con
+- **IN PRODUCTION: https://corpus-damana.onrender.com** — Render free plan
+  via [`render.yaml`](render.yaml) (blueprint). Every push to `main`
+  redeploys automatically; the build regenerates `corpus.db` from the CSV
+  and Excel files in `/data` (so adding corpus = editing the files in
+  `/data` + `npm run import:corpus` to test locally + push).
+- **Also IN PRODUCTION since Oct 21, 2026: own server with Kamal 2** →
+  `damana.crearcodecesar.com` (netcup VPS <SERVER_IP>, user `deploy`, same
+  pattern as cesar-travel and board-checkup: references in
+  `C:\dev\proyectos\cesar-travel` and `C:\dev\proyectos\infra-servidor\RUNBOOK.md`;
+  the private key `infra-servidor\llaves\id_crearcode` is NOT opened or
+  printed). Files: `Dockerfile`, `config/deploy.yml`, `.kamal/secrets`,
+  `.github/workflows/deploy.yml`. The corpus is baked into the image
+  (`npm run import:corpus` during the build, which is why reglas_damana.xlsx
+  and the formato_elicitacion*.xlsx files are NOT in .dockerignore).
+  `GET /api/health` (public) is the kamal-proxy healthcheck: 503 if the
+  database has no corpus. First deploy on Oct 21, 2026 (Actions secrets
+  created with `gh secret set`; A record `damana` in Cloudflare, grey
+  cloud). Render is not cancelled until a stable week has passed; both
+  serve the same `main`, and their runtime databases are independent.
+- **Password access, single user.** The owner asked to remove it on
+  Oct 3, 2026 and to restore it on Oct 5 ("only I should have access"); it
+  was never deployed without it. AUTH_USERNAME and AUTH_PASSWORD are
+  secrets in the Render dashboard. Do not remove authentication unless asked.
+- **Current translation engine: Claude** `claude-opus-5-5` via
+  `ANTHROPIC_API_KEY` (it takes priority in the code; 5-15 s per
+  translation). Paid with the monthly API credits of the claude.ai Max
+  plan (org "Juan's Individual Org" on console.anthropic.com, key named
+  "corpus-damana"; credits renew on the 5th of each month and do not
+  roll over). Render already has it as a service secret (since commit
+  7a05483). Do not change the default model unless asked; `ANTHROPIC_MODEL`
+  overrides it through the environment.
+- **Fallback: Groq** `openai/gpt-oss-120b` (~2 s/translation, free): still
+  configured on Render and Kamal (TRANSLATOR_BASE_URL + TRANSLATOR_MODEL +
+  TRANSLATOR_API_KEY) and the code only uses it when the Anthropic key is
+  missing. Ollama was dropped for being slow (~29 s with qwen2.5:7b),
+  although support through the variables still exists. Locally both keys
+  are Windows user variables.
+- **Legacy Spanish environment names** (TRADUCTOR_*, AUTH_USUARIO,
+  AUTH_DIAS_SESION, ANTHROPIC_MODELO, ANTHROPIC_ESFUERZO, CORPUS_DATOS_*)
+  are still read as a fallback (`backend/src/common/env.ts`,
+  `scripts/fetch-data.mjs`), and the workflow falls back to the old GitHub
+  secret names, so existing Render variables and secrets keep working.
+  Renaming them is optional.
+- The GitHub Actions secret `ANTHROPIC_API_KEY` (for Kamal) already exists
+  (Juan created it on Oct 21, 2026). If it were ever missing, the workflow
+  exports it empty and the own server would translate with Groq.
+- Render pitfalls already hit (do not repeat): it requires
+  `NODE_VERSION >= 24.15.0` (the Angular CLI rejects lower versions) and,
+  being a monorepo with npm workspaces (single lock at the root),
+  EVERYTHING is installed/built from the root — `npm ci` per subfolder
+  leaves `node_modules` where the runtime cannot resolve them
+  (`Cannot find module`). Do not set NODE_ENV=production on Render: `npm ci`
+  would skip the devDependencies and there would be nothing to build with.
+- Render's filesystem is ephemeral: `corpus.db` is regenerated on every
+  deploy (fine: it is read-only at runtime) and the tables written at
+  runtime (`srs_progress`, `translations`, `pending_items`,
+  `validated_pairs`) do NOT persist in production, only locally.
+- `main.ts` accepts `PORT` (locally 3001 is used when another project
+  holds 3000). One-off demo without Render:
+  `cloudflared tunnel --url http://localhost:<port>`.
+
+## Stack (all TypeScript)
+- Monorepo with npm workspaces: /backend and /frontend.
+- Backend: NestJS 11, better-sqlite3 (synchronous access, no ORM; own
+  repository layer in a ports-and-adapters style), csv-parse for import,
+  exceljs for the Excel files (rules, elicitation, pending export),
+  @nestjs/swagger for documentation.
+- Frontend: Angular standalone components with signals. Views: Search,
+  Dictionary (+entry), Grammar, Flashcards, Translator, Pending.
+- Production: a single process; NestJS serves the Angular build with
   @nestjs/serve-static.
-- Autenticación: usuario único (AUTH_USUARIO + AUTH_PASSWORD) con token
-  firmado (@nestjs/jwt, AUTH_JWT_SECRET, 30 días). Guard global sobre todo
-  /api salvo lo marcado con @Publico(): /api/auth/status y /api/auth/login.
-  Los estáticos del frontend NO pasan por el guard —la SPA debe cargar para
-  pintar el login y Render hace el health check contra «/»—. Sin credenciales
-  configuradas la auth queda desactivada (desarrollo local, con aviso al
-  arrancar), PERO en producción falta = el arranque falla a propósito: una
-  API abierta por descuido no se nota, un deploy roto sí. «Producción» se
-  detecta con RENDER=true, no con NODE_ENV.
-- Tests, cuatro capas (todas deben pasar antes de subir):
-  - `npm test` — Jest, backend. Unitarios puros (texto, sm2, apoyo,
-    reglas, diccionario, chrF, elicitación) e integración con SQLite en
-    memoria (servicios + repositorios; el importador genera sus Excel de
-    prueba con exceljs en un directorio temporal).
-  - `npm run test:e2e` — Jest + supertest. Rutas HTTP con Nest levantado en
-    memoria. Ojo con el nombre: es prueba de API, no e2e de navegador.
-  - `npm run test:front` — Vitest. Componentes con TestBed y HttpClient
-    simulado. En zoneless, `fixture.whenStable()` NO espera las promesas del
-    componente: usar `settle()` de shared/testing.ts o se lee el DOM a medias.
-  - `npm run test:navegador` — Playwright, Chromium real contra el backend
-    sirviendo el build de Angular con la auth activa. Es la ÚNICA capa que
-    comprueba que frontend y backend se entienden. Usa su propio corpus en e2e/datos (no
-    toca /datos) y arranca SIN motor de traducción (vacía TRADUCTOR_* y
-    ANTHROPIC_API_KEY) para no gastar llamadas reales.
-- Groq gratuito devuelve 429 a la cuarta traducción por minuto: el
-  proveedor compatible espera Retry-After (acotado a 30 s) y reintenta 2
-  veces; `npm run evaluar --pausa 15000` espacia las llamadas.
-- Traductor asistido: Claude vía @anthropic-ai/sdk (ANTHROPIC_API_KEY,
-  prioridad; salida estructurada con `output_config.format` json_schema)
-  o cualquier API compatible OpenAI (TRADUCTOR_BASE_URL +
-  TRADUCTOR_MODELO [+ TRADUCTOR_API_KEY]; se pide `response_format
-  json_object` y si el proveedor lo rechaza con 400 se reintenta sin él).
-- Ajustes del motor por entorno: `TRADUCTOR_TEMPERATURA` (solo proveedor
-  compatible; 0.2 por defecto, acotada a 0-2: misma frase, misma
-  traducción) y `ANTHROPIC_ESFUERZO` (solo Claude: low | medium | high |
-  xhigh | max; si falta, vale el de la API). A Claude NO se le envía
-  temperature: claude-opus-5-5 la rechaza con 400 (pensamiento
-  adaptativo). El prompt de sistema va como bloque con `cache_control:
-  ephemeral` (claude-opus-5-5 cachea prefijos desde 512 tokens y este
-  prompt ronda los 750; la caché dura 5 min, así que solo ahorra en
-  rachas). Cada traducción deja una línea de log y guarda en
-  `traducciones` (v7: tokens_entrada, tokens_salida, tokens_cache_leidos,
-  tokens_cache_creados, duracion_ms) el consumo que informó el proveedor.
+- Authentication: single user (AUTH_USERNAME + AUTH_PASSWORD) with a
+  signed token (@nestjs/jwt, AUTH_JWT_SECRET, 30 days). Global guard over
+  all of /api except what is marked with @Public(): /api/auth/status and
+  /api/auth/login. The frontend static files do NOT go through the guard —
+  the SPA must load to show the login and Render runs the health check
+  against "/". Without configured credentials auth is disabled (local
+  development, with a warning at startup), BUT in production missing
+  credentials = startup fails on purpose: an API left open by accident goes
+  unnoticed, a broken deploy does not. "Production" is detected with
+  RENDER=true, not with NODE_ENV.
+- Tests, four layers (all must pass before pushing):
+  - `npm test` — Jest, backend. Pure unit tests (text, sm2, support,
+    rules, dictionary, chrF, elicitation) and integration with in-memory
+    SQLite (services + repositories; the importer generates its test Excel
+    files with exceljs in a temporary directory).
+  - `npm run test:e2e` — Jest + supertest. HTTP routes with Nest running in
+    memory. Mind the name: it is an API test, not a browser e2e.
+  - `npm run test:front` — Vitest. Components with TestBed and a mocked
+    HttpClient. In zoneless mode, `fixture.whenStable()` does NOT wait for
+    the component's promises: use `settle()` from shared/testing.ts or the
+    DOM is read half-rendered.
+  - `npm run test:browser` — Playwright, real Chromium against the backend
+    serving the Angular build with auth enabled. It is the ONLY layer that
+    checks that frontend and backend understand each other. It uses its own
+    corpus in e2e/data (it does not touch /data) and starts WITHOUT a
+    translation engine (it clears TRANSLATOR_* and ANTHROPIC_API_KEY) so no
+    real calls are spent.
+- Free Groq returns 429 on the fourth translation per minute: the
+  compatible provider waits for Retry-After (capped at 30 s) and retries
+  twice; `npm run evaluate -- --pause 15000` spaces out the calls.
+- Assisted translator: Claude via @anthropic-ai/sdk (ANTHROPIC_API_KEY,
+  priority; structured output with `output_config.format` json_schema) or
+  any OpenAI-compatible API (TRANSLATOR_BASE_URL + TRANSLATOR_MODEL
+  [+ TRANSLATOR_API_KEY]; `response_format json_object` is requested and if
+  the provider rejects it with 400 the call is retried without it).
+- Engine settings through the environment: `TRANSLATOR_TEMPERATURE`
+  (compatible provider only; 0.2 by default, clamped to 0-2: same sentence,
+  same translation) and `ANTHROPIC_EFFORT` (Claude only: low | medium |
+  high | xhigh | max; if missing, the API default applies). Claude is NOT
+  sent a temperature: claude-opus-5-5 rejects it with 400 (adaptive
+  thinking). The system prompt goes as a block with `cache_control:
+  ephemeral` (claude-opus-5-5 caches prefixes from 512 tokens and this
+  prompt is around 750; the cache lasts 5 min, so it only saves during
+  bursts). Every translation writes one log line and stores in
+  `translations` (v7: input_tokens, output_tokens, cache_read_tokens,
+  cache_creation_tokens, duration_ms) the usage reported by the provider.
 
-## Traductor de propósito general (oct 2026) — cómo funciona
-- El corpus bíblico (lfb) sigue siendo la fuente principal de gramática
-  y morfología, pero ya NO la fuente principal de ejemplos.
-- Retrieval (`query/retrieval.service.ts`, `retrieveContext`), en
-  este orden: (a) diccionario palabra por palabra
-  (`query/dictionary.ts`: exacta → sin tildes → sinónimo coloquial
-  del español (mamá→madre, lista corta SINONIMOS_ES) → singular → prefijo
-  de 5 letras marcado «posible»; las entradas de varias palabras entran
-  si todas sus palabras están en la frase), (b) nombres propios con la
-  grafía de la tabla, (c) reglas aplicables (`query/rules.ts`:
-  disparadores plural/posesivo/negacion/pregunta/pasado/futuro por
-  heurísticas en español y por sufijo en damana; el disparador de cada
-  regla se infiere al importar del «tipo» + «qué hace»), (d) ejemplos
-  TF-IDF repartidos por dominio: ≤6 cotidianos, ≤4 gramática, ≤4
-  bíblicos (2 si hay ≥4 cotidianos), ≤14 en total, sin casi-duplicados.
-- Negación (diagnóstico oct 2026): reglas_damana.xlsx solo trae -ndzina
-  (plural, dos filas) y -nzhe (posesivo). NO hay regla de negación,
-  pregunta, pasado ni futuro. Cuando la frase trae un rasgo sin regla, el
-  prompt lo dice tal cual («rasgo detectado, pero el corpus no tiene regla
-  registrada, pendiente de confirmar con las hablantes») y, para la
-  negación, remite a las formas negativas del diccionario (No quiero →
-  Nandunun, No hay → Nanún…) y de las conjugaciones (-nún/-nuñí). Las
-  negaciones del español (`isSpanishNegation`, common/text/stopwords-es.ts)
-  cuentan como contenido al indexar entradas de varias palabras: «No
-  quiero» solo entra si la frase trae «no» (antes salía también para la
-  afirmativa). La regla la deben dar las hablantes (el lote 2 de gramática
-  ya pide los pares negativos); no inventarla.
-- Prompt (`translation/prompt.ts`) con secciones fijas: REGLAS
-  GRAMATICALES, DICCIONARIO DE ESTA FRASE, EJEMPLOS COTIDIANOS, EJEMPLOS
-  DE GRAMÁTICA, EJEMPLOS DEL CORPUS BÍBLICO, FRASE A TRADUCIR. Respuesta
-  JSON: traduccion, glosa, palabras_sin_equivalente, reglas_aplicadas,
-  confianza, explicacion_breve. Lo que no está en el corpus va entre
-  corchetes `[palabra]` y se registra en `pendientes`.
-- Las hablantes cobran por palabra: el importador NO registra como
-  pendiente una fila de elicitación sin llenar cuya palabra ya está en el
-  vocabulario (incluida la que trae el mismo lote), y cierra las pendientes
-  abiertas que el vocabulario cubre (`importer/vocabulary-coverage.ts`:
-  alternativas del español, paréntesis, singular; ʉ ≠ u, ñ ≠ n). El 21 oct
-  2026 eso cerró 277 de las 515 del lote 1 que el corpus ya sabía, y otras
-  tantas al cargar vocabulario externo. Una pendiente resuelta que el
-  traductor vuelve a pedir se reabre sola.
-- Ciclo con las hablantes: vista /pendientes → «exportar lote» genera
-  `formato_elicitacion_pendientes_<fecha>.xlsx` (columnas del formato de
-  elicitación, celdas por llenar en amarillo). El lote vuelto lleno se
-  deja en /datos y `npm run importar` lo absorbe (idempotente por id).
-- Botones «esta traducción es correcta» / «corregir» guardan en
-  `validadas` (futura fuente cotidiana; aún no entra al retrieval).
-- `npm run evaluar`: traduce `datos/pruebas_traduccion.csv` (español →
-  damana) y guarda en `/evaluaciones/<fecha>_<modelo>.{json,md}` la
-  coincidencia exacta, el chrF (propio, `evaluation/chrf.ts`) y el % de
-  palabras sin equivalente por ámbito. No registra traducciones ni
-  pendientes. Las pruebas salen del importador: 1 de cada 10 filas de
-  elicitación completas, elegida por hash estable del id (no por
-  posición) para que una prueba no pase a ser ejemplo en el lote
-  siguiente; también se pueden añadir filas a mano (nunca se borran).
-- `npm run pruebas:desde-validadas`: vuelca los pares de `validadas` a
-  `datos/pruebas_traduccion.csv` con ámbito «validadas» (idempotente:
-  funde por pareja normalizada y nunca borra filas), para que `npm run
-  evaluar` los mida aparte.
+## General-purpose translator (Oct 2026) — how it works
+- The biblical corpus (lfb) is still the main source of grammar and
+  morphology, but NO longer the main source of examples.
+- Retrieval (`query/retrieval.service.ts`, `retrieveContext`), in this
+  order: (a) word-by-word dictionary (`query/dictionary.ts`: exact →
+  without accents → colloquial Spanish synonym (mamá→madre, short list
+  SYNONYMS_ES) → singular → 5-letter prefix marked "possible"; multi-word
+  entries are included if all their words are in the sentence), (b) proper
+  names with the table's spelling, (c) applicable rules (`query/rules.ts`:
+  plural/possessive/negation/question/past/future triggers from heuristics
+  in Spanish and by suffix in Damana; each rule's trigger is inferred at
+  import time from its "tipo" + "qué hace"), (d) TF-IDF examples spread by
+  domain: ≤6 everyday, ≤4 grammar, ≤4 biblical (2 if there are ≥4
+  everyday), ≤14 in total, without near-duplicates.
+- Negation (diagnosis Oct 2026): reglas_damana.xlsx only has -ndzina
+  (plural, two rows) and -nzhe (possessive). There is NO rule for
+  negation, questions, past or future. When the sentence has a feature
+  without a rule, the prompt says so plainly ("feature detected, but the
+  corpus has no recorded rule; pending confirmation with the speakers")
+  and, for negation, points to the negative forms in the dictionary
+  (No quiero → Nandunun, No hay → Nanún…) and in the conjugations
+  (-nún/-nuñí). Spanish negations (`isSpanishNegation`,
+  common/text/stopwords-es.ts) count as content when indexing multi-word
+  entries: "No quiero" is only included if the sentence has "no" (it used
+  to show up for the affirmative too). The rule must come from the
+  speakers (grammar batch 2 already asks for the negative pairs); do not
+  invent it.
+- Prompt (`translation/prompt.ts`) with fixed sections: GRAMMAR RULES,
+  DICTIONARY FOR THIS SENTENCE, EVERYDAY EXAMPLES, GRAMMAR EXAMPLES,
+  BIBLICAL CORPUS EXAMPLES, SENTENCE TO TRANSLATE. JSON response:
+  translation, gloss, words_without_equivalent, applied_rules, confidence,
+  brief_explanation. Whatever is not in the corpus goes in brackets
+  `[word]` and is recorded in `pending_items`.
+- The speakers are paid per word: the importer does NOT record as pending
+  an unfilled elicitation row whose word is already in the vocabulary
+  (including one brought by the same batch), and it closes open pending
+  items that the vocabulary covers (`importer/vocabulary-coverage.ts`:
+  Spanish alternatives, parentheses, singular; ʉ ≠ u, ñ ≠ n). On Oct 21,
+  2026 that closed 277 of the 515 items in batch 1 that the corpus already
+  knew, and about as many more when external vocabulary was loaded. A
+  resolved pending item that the translator asks for again reopens by
+  itself.
+- Cycle with the speakers: /pendientes view → "exportar lote" generates
+  `formato_elicitacion_pendientes_<date>.xlsx` (columns of the elicitation
+  format, cells to fill in yellow). The batch that comes back filled is
+  placed in /data and `npm run import:corpus` absorbs it (idempotent by id).
+- The "esta traducción es correcta" / "corregir" buttons save to
+  `validated_pairs` (a future everyday source; not yet used by retrieval).
+- `npm run evaluate`: translates `data/pruebas_traduccion.csv` (Spanish →
+  Damana) and saves in `/evaluations/<date>_<model>.{json,md}` the exact
+  match, chrF (own implementation, `evaluation/chrf.ts`) and the % of words
+  without equivalent per scope. It does not record translations or pending
+  items. The tests come from the importer: 1 out of every 10 complete
+  elicitation rows, chosen by a stable hash of the id (not by position) so
+  a test never becomes an example in the next batch; rows can also be
+  added by hand (they are never deleted).
+- `npm run tests:from-validated`: dumps the pairs in `validated_pairs` into
+  `data/pruebas_traduccion.csv` with scope "validadas" (idempotent: merges
+  by normalized pair and never deletes rows), so that `npm run evaluate`
+  measures them separately.
 
-## Normalización con hablantes (oct 2026) — decisiones del dueño
-- Objetivo: normalizar los datos aunque implique borrar o corregir, y
-  recaudar lo que falta para un traductor multipropósito. El damana tiene
-  poco vocabulario y una gramática muy distinta: lo que más falta es
-  gramática. El lenguaje religioso no está prohibido (es lo que más hay);
-  solo no debe ser lo único que el traductor sepa decir.
-- Flujo de trabajo: muchas hablantes sin experiencia hacen la primera
-  pasada (son más baratas) y UNA persona con experiencia en traducción de
-  publicaciones revisa. Lo validado en la app entra al retrieval solo
-  tras esa revisión. Trabajan en un portátil con Excel.
-- `npm run dudas` (`backend/src/review/`) NO corrige nada: genera
-  `datos/dudas_para_hablantes_<fecha>.xlsx` con lo que no está claro, una
-  hoja por tipo de pregunta y las respuestas en amarillo: 1 escritura
-  (misma palabra con varias grafías: u/ʉ, w/u, y/i, ndzina/nyina, h/j),
-  2 una palabra española con varias damana, 3 una forma damana con varios
-  significados (incluye las que solo cambian la tilde: Ako «córtelo» /
-  Akó «lo cortó»), 4 entradas por aclarar (iguales al español, varias
-  formas en una casilla, notas corridas de fila), 5 terminaciones que se
-  repiten (-mba, -win, -ga…). La hoja 1 es para cualquier hablante; las
-  demás, para el revisor.
-- `spellingSkeleton()` (common/text/skeleton.ts) junta u con ʉ SOLO
-  para detectar esas dudas; no usarlo para buscar, indexar ni corregir.
-- `formato_elicitacion_lote2_gramatica.xlsx`: oraciones mínimas que
-  cambian una sola cosa (persona, tiempo, negación, pregunta) para sacar
-  reglas. Sale de `review/paradigms.ts`, lista de SOLO AÑADIR (el id
-  es la posición). El importador lo absorbe como cualquier lote.
-- Pendiente de decidir por el dueño: disco persistente de Render (es de
-  pago) para que pendientes y validadas sobrevivan a los deploys.
+## Normalization with the speakers (Oct 2026) — owner decisions
+- Goal: normalize the data even if that means deleting or correcting, and
+  collect what is missing for a multi-purpose translator. Damana has little
+  vocabulary and a very different grammar: grammar is what is missing the
+  most. Religious language is not forbidden (it is what there is most of);
+  it just must not be the only thing the translator can say.
+- Workflow: many inexperienced speakers do the first pass (they are
+  cheaper) and ONE person experienced in translating publications reviews.
+  What is validated in the app only enters retrieval after that review.
+  They work on a laptop with Excel.
+- `npm run doubts` (`backend/src/review/`) does NOT correct anything: it
+  generates `data/dudas_para_hablantes_<date>.xlsx` with whatever is
+  unclear, one sheet per question type and the answers in yellow:
+  1 spelling (same word with several spellings: u/ʉ, w/u, y/i,
+  ndzina/nyina, h/j), 2 a Spanish word with several Damana words, 3 a
+  Damana form with several meanings (including those that only differ by
+  the accent: Ako "córtelo" / Akó "lo cortó"), 4 entries to clarify (same
+  as the Spanish, several forms in one cell, notes shifted across rows),
+  5 repeated endings (-mba, -win, -ga…). Sheet 1 is for any speaker; the
+  rest are for the reviewer.
+- `spellingSkeleton()` (common/text/skeleton.ts) merges u with ʉ ONLY to
+  detect those doubts; do not use it to search, index or correct.
+- `formato_elicitacion_lote2_gramatica.xlsx`: minimal sentences that change
+  just one thing (person, tense, negation, question) to extract rules. It
+  comes from `review/paradigms.ts`, an APPEND-ONLY list (the id is the
+  position). The importer absorbs it like any other batch.
+- Pending owner decision: Render persistent disk (paid) so that pending
+  items and validated pairs survive deploys.
 
-## Material externo (oct 2026)
-- `material-externo/`: fuentes externas sobre el damana (Living Dictionary,
-  SIL 1973/74/1990/2012, Trillos 2004-05, Wiwa Gago). Inventario en
-  `FUENTES.md`, lectura en `INFORME-LECTURA.md`, resultado en
-  `INFORME-INTEGRACION.md`, salidas en `salida/` (vocabulario_nuevo,
-  divergencias y coincidencias de vocabulario, frases_nuevas,
-  reglas_propuestas, preguntas_hablantes.xlsx). `pdf/` y `texto/` quedan
-  fuera de git (el repo es público y Hoppe 1973/74 tiene reserva de
-  derechos) y de la imagen Docker. NADA entra a /datos sin pasar por el
-  cruce (`herramientas/cruzar_vocabulario.js`) y sin aprobación del dueño;
-  lo dudoso va a las hablantes. Ojo: los PDF extraídos traen ᵾ (U+1D7E)
-  por ʉ; las herramientas lo normalizan, el importador todavía no.
-- Para añadir otra fuente: PDF en `pdf/`, texto en `texto/`, una fila en
-  FUENTES.md, sus palabras en `salida/fuentes/<fuente>.csv` y volver a
-  correr el cruce; las NUEVAS aprobadas se añaden a
-  corpus_vocabulario_v3.csv con su `fuente`.
+## External material (Oct 2026)
+- `material-externo/`: external sources about Damana (Living Dictionary,
+  SIL 1973/74/1990/2012, Trillos 2004-05, Wiwa Gago). Inventory in
+  `FUENTES.md`, reading notes in `INFORME-LECTURA.md`, result in
+  `INFORME-INTEGRACION.md`, outputs in `salida/` (vocabulario_nuevo,
+  vocabulary divergences and matches, frases_nuevas, reglas_propuestas,
+  preguntas_hablantes.xlsx). `pdf/` and `texto/` are kept out of git (the
+  repo is public and Hoppe 1973/74 is copyrighted) and out of the Docker
+  image. NOTHING goes into /data without going through the cross-check
+  (`herramientas/cruzar_vocabulario.js`) and without the owner's approval;
+  anything doubtful goes to the speakers. Watch out: the extracted PDFs
+  have ᵾ (U+1D7E) instead of ʉ; the tools normalize it, the importer does
+  not yet.
+- To add another source: PDF in `pdf/`, text in `texto/`, a row in
+  FUENTES.md, its words in `salida/fuentes/<source>.csv` and run the
+  cross-check again; the approved NEW ones are added to
+  corpus_vocabulario_v3.csv with their `fuente`.
 
-## Datos — carpeta /datos (CSV en UTF-8 con BOM)
-- corpus_oraciones.csv: id, damana, espanol, estado, fuente (~2.800
-  pares; estado = "aprobado" ~1.957 o "revisar" ~843). Dominio bíblico.
-- corpus_frases_v2.csv: fuente, damana, espanol, notas (~131 frases de
-  reuniones/preguntas). Dominio cotidiano.
+## Data — /data folder (UTF-8 CSV with BOM)
+The file names and column headers below are the shared data format (also
+used by the private data repo and by the speakers), so they stay in
+Spanish. The importer maps the CSV headers to English names when reading.
+- corpus_oraciones.csv: id, damana, espanol, estado, fuente (~2,800
+  pairs; estado = "aprobado" ~1,957 or "revisar" ~843, stored as
+  `approved` / `review`). Biblical domain.
+- corpus_frases_v2.csv: fuente, damana, espanol, notas (~131 phrases from
+  meetings/questions). Everyday domain.
 - corpus_vocabulario_v3.csv: espanol, damana, categoria, notas, fuente
-  (1.508 entradas; reemplazó a la v2 en oct 2026: 918 del diccionario
-  wiwa + 590 «nativas 2026-10»).
+  (1,508 entries; it replaced v2 in Oct 2026: 918 from the Wiwa dictionary
+  + 590 "nativas 2026-10").
 - corpus_conjugaciones.csv: damana, espanol, lema, fuente, notas
-  (~267 formas verbales de 23 lemas). Dominio gramática.
-- reglas_damana.xlsx: hoja «reglas» (tipo, forma, qué hace, ejemplo base,
-  ejemplo con la regla, traducción, notas) y hoja «nombres propios».
-- formato_elicitacion*.xlsx: lotes llenados por hablantes nativas, hoja
-  «elicitacion» (id, ambito, palabra_es, palabra_dm, ejemplo_es,
-  ejemplo_dm, variante, notas). Cada fila da una entrada de vocabulario y
-  una oración cotidiana; lo que falte queda en `pendientes`. La ʉ puede
-  venir como «ü» o «u+» (se normaliza, protegiendo vergüenza/pingüino…).
-  El lote 1 (514 filas) está en /datos SIN llenar: por eso hay 514
-  pendientes de origen elicitación.
-- pruebas_traduccion.csv: espanol, damana_esperado, ambito (lo escribe el
-  importador; se puede ampliar a mano).
-- corpus.db (gitignored) se regenera con `npm run importar`.
+  (~267 verb forms of 23 lemmas). Grammar domain.
+- reglas_damana.xlsx: sheet "reglas" (tipo, forma, qué hace, ejemplo base,
+  ejemplo con la regla, traducción, notas) and sheet "nombres propios".
+- formato_elicitacion*.xlsx: batches filled in by native speakers, sheet
+  "elicitacion" (id, ambito, palabra_es, palabra_dm, ejemplo_es,
+  ejemplo_dm, variante, notas). Each row yields one vocabulary entry and
+  one everyday sentence; whatever is missing stays in `pending_items`. The
+  ʉ may come as "ü" or "u+" (it is normalized, protecting
+  vergüenza/pingüino…). Batch 1 (514 rows) is in /data UNFILLED: that is
+  why there are 514 pending items of elicitation origin.
+- pruebas_traduccion.csv: espanol, damana_esperado, ambito (written by the
+  importer; can be extended by hand).
+- corpus.db (gitignored) is regenerated with `npm run import:corpus`.
 
-## Reglas del dominio (verificadas)
-- ʉ (U+0289) es letra plena del alfabeto damana. Búsqueda, tokenización
-  y orden la tratan como letra; ʉ ≠ u SIEMPRE.
-- ñ también es letra plena (en damana: ñingui, kʉñingui; en español
-  año ≠ ano); ñ ≠ n SIEMPRE.
-- Normalizar con normalizar() de backend/src/common/text/normalizer.ts:
-  minúsculas + NFD, recomponer n + U+0303 → ñ (preservarla) y después
-  quitar las marcas combinantes U+0300–U+036F. Quita tildes (á→a), NO
-  toca la ʉ (no se descompone en NFD) y NO degrada ñ→n. Ojo: quitar
-  las marcas sin recomponer antes SÍ convertiría ñ→n (NFD descompone
-  ñ en n + tilde combinante); la recomposición previa es obligatoria.
-- Tokenizar damana con /[^\p{L}ʉ']+/u (separar por todo lo que no sea
-  letra Unicode, ʉ o apóstrofe interno).
-- El importador corrige ü/Ü → ʉ/Ʉ en las columnas damana (la ü no existe
-  en damana; algunas fuentes Word la usan como apaño para ʉ). Ver
-  corregirOrtografiaDamana() en backend/src/common/text/spelling.ts;
-  para la elicitación, normalizarDamanaEscrito() añade «u+» → ʉ y
-  protege las palabras españolas con ü. La u simple NUNCA se convierte
-  (u y ʉ son letras distintas) y las comillas tipográficas «' '» se
-  conservan. Los archivos fuente no se modifican.
-- Leer CSV con csv-parse: { columns: true, bom: true }.
-- Las oraciones estado="revisar" participan en el retrieval del
-  traductor con la mitad del puntaje (PESO_REVISAR = 0.5).
-- Decisión del dueño (21 oct 2026): cuando la misma palabra aparece en una
-  fuente con ʉ y en otra con u en la misma posición, **prevalece la forma
-  con ʉ**, sea la fuente vieja o nueva; quitarla es un error porque cambia
-  el sonido (la ʉ suena «medio gutural», aproximadamente; la u como en
-  español). La ʉ fue una mejora de la escritura y los textos antiguos,
-  incluido el folleto bíblico, a veces escriben u donde va ʉ: al LEER texto
-  viejo hay que admitir que una u pueda ser ʉ, pero lo que se conserva y se
-  escribe es la forma con ʉ. No se le pregunta a nadie, salvo cuando la
-  variante con u podría ser OTRA palabra (p. ej. «duma» frente a «dʉma»):
-  eso lo decide el revisor con
-  `material-externo/herramientas/variantes_u_en_corpus.js`. El cruce de
-  material externo la aplica solo (`correcciones_u_partida.csv`); al
-  resolver la hoja 1 del documento de dudas (u/ʉ) vale la misma regla. Ya
-  aplicada: Sal «Nungu» → «Nʉngu» en el vocabulario y en las dos oraciones
-  lfb de p033. Esto NO cambia que u ≠ ʉ en búsqueda e indexación: es solo
-  para decidir cuál de dos variantes se conserva.
+## Domain rules (verified)
+- ʉ (U+0289) is a full letter of the Damana alphabet. Search, tokenization
+  and sorting treat it as a letter; ʉ ≠ u ALWAYS.
+- ñ is also a full letter (in Damana: ñingui, kʉñingui; in Spanish
+  año ≠ ano); ñ ≠ n ALWAYS.
+- Normalize with normalize() from backend/src/common/text/normalizer.ts:
+  lowercase + NFD, recompose n + U+0303 → ñ (preserve it) and then strip
+  the combining marks U+0300–U+036F. It strips accents (á→a), does NOT
+  touch ʉ (it does not decompose in NFD) and does NOT degrade ñ→n. Careful:
+  stripping the marks without recomposing first WOULD turn ñ→n (NFD
+  decomposes ñ into n + combining tilde); the prior recomposition is
+  mandatory.
+- Tokenize Damana with /[^\p{L}ʉ']+/u (split on everything that is not a
+  Unicode letter, ʉ or an internal apostrophe).
+- The importer turns ü/Ü → ʉ/Ʉ in the Damana columns (ü does not exist in
+  Damana; some Word sources use it as a workaround for ʉ). See
+  fixDamanaSpelling() in backend/src/common/text/spelling.ts; for
+  elicitation, normalizeWrittenDamana() adds "u+" → ʉ and protects Spanish
+  words with ü. A plain u is NEVER converted (u and ʉ are different
+  letters) and typographic quotes are kept. The source files are not
+  modified.
+- Read CSVs with csv-parse: { bom: true } and header mapping to English
+  column names (`CSV_COLUMNS` in importer.service.ts).
+- Sentences with status `review` take part in the translator's retrieval
+  with half the score (REVIEW_WEIGHT = 0.5).
+- Owner decision (Oct 21, 2026): when the same word appears in one source
+  with ʉ and in another with u in the same position, **the form with ʉ
+  prevails**, whether the source is old or new; dropping it is an error
+  because it changes the sound (ʉ sounds roughly "half guttural"; u as in
+  Spanish). The ʉ was an improvement in the writing system and old texts,
+  including the Bible booklet, sometimes write u where ʉ belongs: when
+  READING old text one must allow that a u may be ʉ, but what is kept and
+  written is the form with ʉ. Nobody is asked, except when the variant
+  with u could be ANOTHER word (e.g. "duma" versus "dʉma"): the reviewer
+  decides that with `material-externo/herramientas/variantes_u_en_corpus.js`.
+  The external-material cross-check applies it on its own
+  (`correcciones_u_partida.csv`); the same rule applies when resolving
+  sheet 1 of the doubts document (u/ʉ). Already applied: Sal "Nungu" →
+  "Nʉngu" in the vocabulary and in the two lfb sentences of p033. This
+  does NOT change that u ≠ ʉ in search and indexing: it is only for
+  deciding which of two variants is kept.
 
-## Convenciones
-- Cada servicio con tests; incluir siempre un caso con ʉ y uno con ñ.
-- Commits pequeños por funcionalidad, mensajes en español.
-- La base SQLite (datos/corpus.db) va en .gitignore; se regenera con
-  el importador. Las tablas progreso_srs, traducciones, validadas y
-  pendientes sobreviven a reimportaciones y migraciones (nunca
-  borrarlas; el importador solo añade pendientes de elicitación y cierra
-  las que vuelven completas).
+## Conventions
+- Every service has tests; always include one case with ʉ and one with ñ.
+- Small commits per feature, messages in English.
+- Code, comments, docs and tooling in English; UI text, user-facing error
+  messages and speaker-facing files in Spanish.
+- The SQLite database (data/corpus.db) is in .gitignore; it is regenerated
+  with the importer. The tables srs_progress, translations,
+  validated_pairs and pending_items survive re-imports and migrations
+  (never drop them; the importer only adds elicitation pending items and
+  closes the ones that come back complete). Exception: a database still on
+  the old Spanish schema (table `oraciones`) is dropped and rebuilt once by
+  `runMigrations`.

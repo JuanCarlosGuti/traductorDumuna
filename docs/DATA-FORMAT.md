@@ -1,6 +1,6 @@
 # Data format
 
-The importer (`npm run importar`) reads the files below from the data folder (`datos/` by default, or `CORPUS_DATOS_DIR`) and rebuilds `corpus.db` (SQLite, git-ignored). All CSV files are UTF-8 **with BOM** and are read with `csv-parse` (`columns: true, bom: true`). Column names are in Spanish because the source material is Spanish–Damana.
+The importer (`npm run import:corpus`) reads the files below from the data folder (`data/` by default, or `CORPUS_DATA_DIR`) and rebuilds `corpus.db` (SQLite, git-ignored). All CSV files are UTF-8 **with BOM** and are read with `csv-parse` (`bom: true`). Column names, sheet names and values are in Spanish because the source material is Spanish–Damana and the files are shared with Spanish-speaking native speakers; the importer maps the CSV headers to English column names when reading (`CSV_COLUMNS` in `backend/src/importer/importer.service.ts`) and stores `aprobado`/`revisar` as `approved`/`review`.
 
 ## Files
 
@@ -12,7 +12,7 @@ The importer (`npm run importar`) reads the files below from the data folder (`d
 | `corpus_conjugaciones.csv` | `damana, espanol, lema, fuente, notas` — conjugated verb forms. | yes |
 | `reglas_damana.xlsx` | Sheet `reglas` (type, form, what it does, base example, example with the rule, translation, notes) and sheet `nombres propios` (proper names). | no (a warning is logged) |
 | `formato_elicitacion*.xlsx` | Sheet `elicitacion`: `id, ambito, palabra_es, palabra_dm, ejemplo_es, ejemplo_dm, variante, notas`. Batches filled in by native speakers; each row yields a dictionary entry and an everyday sentence, and unfilled rows become "pending" items. | no |
-| `pruebas_traduccion.csv` | `espanol, damana_esperado, ambito` — test set for `npm run evaluar`. | no |
+| `pruebas_traduccion.csv` | `espanol, damana_esperado, ambito` — test set for `npm run evaluate`. | no |
 
 ## Orthography rules
 

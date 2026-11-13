@@ -32,7 +32,7 @@ The repository is an npm-workspaces monorepo (`backend/`, `frontend/`) with a si
 
 ```bash
 npm install          # installs backend and frontend (workspaces)
-npm run importar     # builds datos/corpus.db from the CSV files in /datos
+npm run import:corpus # builds data/corpus.db from the CSV files in /data
 npm run build        # compiles the frontend into backend/public
 npm start            # backend in dev mode (also serves the web app)
 ```
@@ -45,7 +45,7 @@ Production: `npm run build` then `npm run start:prod`.
 
 ### Data
 
-The app needs CSV files in `datos/` (UTF-8 with BOM). This repository ships a **very small sample corpus** so everything runs out of the box; the full Wiwa corpus is maintained separately with the speaker community and is not part of this repository (see [DATA.md](DATA.md)). The live demo runs on the full corpus.
+The app needs CSV files in `data/` (UTF-8 with BOM). This repository ships a **very small sample corpus** so everything runs out of the box; the full Wiwa corpus is maintained separately with the speaker community and is not part of this repository (see [DATA.md](DATA.md)). The live demo runs on the full corpus.
 
 Column layout and normalization rules (ʉ and ñ are full letters; ü→ʉ is auto-corrected on import) are documented in [docs/DATA-FORMAT.md](docs/DATA-FORMAT.md).
 
@@ -55,9 +55,9 @@ The first views work with no configuration. The **Translator** needs an LLM prov
 
 ```bash
 # Any OpenAI-compatible API (example: Groq, free tier)
-TRADUCTOR_BASE_URL=https://api.groq.com/openai/v1
-TRADUCTOR_MODELO=openai/gpt-oss-120b
-TRADUCTOR_API_KEY=your_key_here
+TRANSLATOR_BASE_URL=https://api.groq.com/openai/v1
+TRANSLATOR_MODEL=openai/gpt-oss-120b
+TRANSLATOR_API_KEY=your_key_here
 
 # Or the Anthropic API (takes priority if set)
 ANTHROPIC_API_KEY=your_key_here
@@ -67,7 +67,7 @@ Copy `.env.example` to `.env` and fill in your own keys. Without a provider the 
 
 ### Authentication
 
-Production runs behind a single-user login. Set `AUTH_USUARIO`, `AUTH_PASSWORD` and `AUTH_JWT_SECRET`; in production the service refuses to start without them.
+Production runs behind a single-user login. Set `AUTH_USERNAME`, `AUTH_PASSWORD` and `AUTH_JWT_SECRET`; in production the service refuses to start without them.
 
 ## Tests
 
@@ -75,18 +75,19 @@ Production runs behind a single-user login. Set `AUTH_USUARIO`, `AUTH_PASSWORD` 
 npm test             # backend unit tests (Jest)
 npm run test:e2e     # backend e2e (in-memory SQLite + supertest)
 npm run test:front   # frontend (Vitest)
-npm run test:navegador   # browser e2e (Playwright)
+npm run test:browser # browser e2e (Playwright)
 ```
 
 ## Project structure
 
 ```
-datos/        sample corpus CSVs + corpus.db (generated, git-ignored)
+data/         sample corpus CSVs + corpus.db (generated, git-ignored)
 scripts/      build helpers (fetch the private corpus in CI)
 docs/         data format, original Spanish README (docs/LEEME.es.md)
 backend/      NestJS: importer, query API, SRS, translator, review tools
 frontend/     Angular app; builds into backend/public
 e2e/          Playwright browser tests and their fixture corpus
+evaluations/  translator evaluation reports (npm run evaluate)
 ```
 
 ## Roadmap
@@ -95,11 +96,11 @@ See [ROADMAP.md](ROADMAP.md) for the work planned next: turning the dictionary i
 
 ## Deployment
 
-The app ships as a single Docker image deployed with Kamal 2 from GitHub Actions (`.github/workflows/deploy.yml`, `config/deploy.yml`); `render.yaml` is an alternative blueprint for Render. Server address, credentials and the private corpus are supplied through secrets. Details (in Spanish) are in [docs/LEEME.es.md](docs/LEEME.es.md).
+The app ships as a single Docker image deployed with Kamal 2 from GitHub Actions (`.github/workflows/deploy.yml`, `config/deploy.yml`); `render.yaml` is an alternative blueprint for Render. Server address, credentials and the private corpus are supplied through secrets. Operational notes are in [CLAUDE.md](CLAUDE.md); a Spanish version of this README for Spanish-speaking readers is in [docs/LEEME.es.md](docs/LEEME.es.md). Environment variables and GitHub secrets created under the earlier Spanish names (`TRADUCTOR_*`, `AUTH_USUARIO`, `CORPUS_DATOS_*`) are still accepted as a fallback.
 
 ## Contributing and language policy
 
-Issues and pull requests are welcome. The code, tests, comments and the HTTP API are in English. Database columns, CSV/Excel headers, stored values and the user interface stay in Spanish on purpose: they are language data shared with the speakers. New code and all documentation should be written in English. The Damana data itself stays in Damana and Spanish.
+Issues and pull requests are welcome. The code, database schema, tests, comments, tooling, documentation and the HTTP API are in English. The user interface, user-facing error messages, the corpus data and the CSV/Excel files exchanged with the speakers (their headers and sheet names) stay in Spanish on purpose: the app is used by Spanish speakers and those files are a data contract with the speaker community. New code and all documentation should be written in English. The Damana data itself stays in Damana and Spanish.
 
 ## License
 
