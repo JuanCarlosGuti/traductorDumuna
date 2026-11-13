@@ -10,11 +10,11 @@ import * as path from 'path';
 const PORT = 3100;
 
 // Small corpus of its own: the tests neither depend on the real data in
-// /datos nor touch it.
-const DATA_DIR = path.join(__dirname, 'e2e', 'datos');
+// /data nor touch it.
+const DATA_DIR = path.join(__dirname, 'e2e', 'data');
 
 export const CREDENTIALS = {
-  usuario: 'juan',
+  username: 'juan',
   password: 'ñandú-ʉnkua-2026',
 };
 
@@ -30,20 +30,20 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     // Builds Angular, regenerates the test corpus database and starts up.
-    command: 'npm run build && npm run importar && npm run start:prod',
+    command: 'npm run build && npm run import:corpus && npm run start:prod',
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
     env: {
       PORT: String(PORT),
-      CORPUS_DATOS_DIR: DATA_DIR,
-      AUTH_USUARIO: CREDENTIALS.usuario,
+      CORPUS_DATA_DIR: DATA_DIR,
+      AUTH_USERNAME: CREDENTIALS.username,
       AUTH_PASSWORD: CREDENTIALS.password,
       AUTH_JWT_SECRET: 'secreto-solo-para-los-tests-e2e',
       // No translation engine: tests must not spend real calls
-      // even if the machine has TRADUCTOR_* or ANTHROPIC_API_KEY set.
-      TRADUCTOR_BASE_URL: '',
-      TRADUCTOR_MODELO: '',
+      // even if the machine has TRANSLATOR_* or ANTHROPIC_API_KEY set.
+      TRANSLATOR_BASE_URL: '',
+      TRANSLATOR_MODEL: '',
       ANTHROPIC_API_KEY: '',
     },
   },

@@ -2,7 +2,7 @@
   "name": "corpus-damana-app",
   "version": "0.1.0",
   "private": true,
-  "description": "Aplicación local de estudio del damana (dʉmʉna), lengua del pueblo Wiwa",
+  "description": "Study app for Damana (dʉmʉna), the language of the Wiwa people",
   "workspaces": [
     "backend",
     "frontend"
@@ -10,18 +10,18 @@
   "scripts": {
     "start": "npm run start:dev -w backend",
     "front": "npm run start -w frontend",
-    "importar": "npm run importar -w backend",
-    "necesito": "npm run necesito -w backend",
-    "necesito:aplicar": "npm run necesito:aplicar -w backend",
+    "import:corpus": "npm run import:corpus -w backend",
+    "missing-words": "npm run missing-words -w backend",
+    "missing-words:apply": "npm run missing-words:apply -w backend",
     "build": "npm run build -w frontend && npm run build -w backend",
     "start:prod": "npm run start:prod -w backend",
     "test": "npm test -w backend",
     "test:e2e": "npm run test:e2e -w backend",
     "test:front": "npm run test -w frontend",
-    "test:navegador": "playwright test",
-    "evaluar": "npm run evaluar -w backend",
-    "dudas": "npm run dudas -w backend",
-    "pruebas:desde-validadas": "npm run pruebas:desde-validadas -w backend"
+    "test:browser": "playwright test",
+    "evaluate": "npm run evaluate -w backend",
+    "doubts": "npm run doubts -w backend",
+    "tests:from-validated": "npm run tests:from-validated -w backend"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1"

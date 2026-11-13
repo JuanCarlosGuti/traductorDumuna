@@ -3,16 +3,16 @@
 # The project is a monorepo with npm workspaces (single package-lock at the root), so
 # EVERYTHING runs from the root with the root package.json scripts:
 #   - build:      compiles Angular (→ backend/public) and the Nest backend
-#   - importar:   regenerates datos/corpus.db from the CSVs (corpus.db is not versioned; the
-#                 runtime reads it read-only → Render's ephemeral filesystem is fine)
-#   - start:prod: node dist/main.js with cwd in backend/ (so '../datos' resolves properly)
+#   - import:corpus: regenerates data/corpus.db from the CSVs (corpus.db is not versioned; the
+#                    runtime reads it read-only → Render's ephemeral filesystem is fine)
+#   - start:prod: node dist/main.js with cwd in backend/ (so '../data' resolves properly)
 #
 # Translation engine: Claude (ANTHROPIC_API_KEY, priority; claude-opus-5-5 by default,
 # with the Max plan API credits). Groq stays as a fallback: it is only used if the
 # Anthropic key is missing. Keys are requested when creating the service (sync: false = secret,
 # never in the repo).
 #
-# Authentication: single user. AUTH_USUARIO and AUTH_PASSWORD are secrets
+# Authentication: single user. AUTH_USERNAME and AUTH_PASSWORD are secrets
 # entered in the dashboard; WITHOUT THEM THE SERVICE DOES NOT START in production, on purpose
 # (an API left open by accident goes unnoticed; a failed startup does not).
 #
@@ -24,10 +24,10 @@ services:
     name: corpus-damana
     runtime: node
     plan: free
-    # traer-datos copies the real corpus from the private repo if both
-    # CORPUS_DATOS_* variables are set; without them the service ships with the repo's
+    # fetch-data copies the real corpus from the private repo if both
+    # CORPUS_DATA_* variables are set; without them the service ships with the repo's
     # sample corpus (see DATA.md).
-    buildCommand: npm ci && node scripts/traer-datos.mjs && npm run build && npm run importar
+    buildCommand: npm ci && node scripts/fetch-data.mjs && npm run build && npm run import:corpus
     startCommand: npm run start:prod
     healthCheckPath: /
     envVars:
@@ -41,21 +41,21 @@ services:
       # (backend/src/translation/translator-config.provider.ts).
       # Private repo with the real corpus ("owner/repo") and a read-only
       # token for it. Optional: without them the sample corpus is used.
-      - key: CORPUS_DATOS_REPO
+      - key: CORPUS_DATA_REPO
         sync: false
-      - key: CORPUS_DATOS_TOKEN
+      - key: CORPUS_DATA_TOKEN
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
       # Fallback: Groq, OpenAI-compatible API. It only kicks in if
       # ANTHROPIC_API_KEY is missing.
-      - key: TRADUCTOR_BASE_URL
+      - key: TRANSLATOR_BASE_URL
         value: https://api.groq.com/openai/v1
-      - key: TRADUCTOR_MODELO
+      - key: TRANSLATOR_MODEL
         value: openai/gpt-oss-120b
-      - key: TRADUCTOR_API_KEY
+      - key: TRANSLATOR_API_KEY
         sync: false
-      - key: AUTH_USUARIO
+      - key: AUTH_USERNAME
         sync: false
       - key: AUTH_PASSWORD
         sync: false

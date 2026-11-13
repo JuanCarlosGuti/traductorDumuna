@@ -3,7 +3,7 @@ import { CREDENTIALS } from '../playwright.config';
 
 const signIn = async (page: import('@playwright/test').Page) => {
   await page.goto('/entrar');
-  await page.getByLabel('Usuario').fill(CREDENTIALS.usuario);
+  await page.getByLabel('Usuario').fill(CREDENTIALS.username);
   await page.getByLabel('Contraseña').fill(CREDENTIALS.password);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await expect(page).toHaveURL(/\/buscar/);
@@ -18,7 +18,7 @@ test.describe('Session', () => {
 
   test('wrong credentials: warns and does not let in', async ({ page }) => {
     await page.goto('/entrar');
-    await page.getByLabel('Usuario').fill(CREDENTIALS.usuario);
+    await page.getByLabel('Usuario').fill(CREDENTIALS.username);
     // u instead of ʉ, n instead of ñ: they are different letters, it must not get in
     await page.getByLabel('Contraseña').fill('nandu-unkua-2026');
     await page.getByRole('button', { name: 'Entrar' }).click();
@@ -29,7 +29,7 @@ test.describe('Session', () => {
 
   test('correct credentials: logs in and shows the user', async ({ page }) => {
     await signIn(page);
-    await expect(page.locator('.sesion')).toContainText(CREDENTIALS.usuario);
+    await expect(page.locator('.session')).toContainText(CREDENTIALS.username);
     await expect(page.getByRole('link', { name: 'Traductor' })).toBeVisible();
   });
 
@@ -37,7 +37,7 @@ test.describe('Session', () => {
     await signIn(page);
     await page.reload();
     await expect(page).toHaveURL(/\/buscar/);
-    await expect(page.locator('.sesion')).toContainText(CREDENTIALS.usuario);
+    await expect(page.locator('.session')).toContainText(CREDENTIALS.username);
   });
 
   test('«Salir» logs out and returns to login', async ({ page }) => {

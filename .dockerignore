@@ -1,6 +1,6 @@
 # What does NOT go into the build context.
 #
-# CAREFUL with /datos: the Dockerfile runs `npm run importar`, which needs the CSVs,
+# CAREFUL with /data: the Dockerfile runs `npm run import:corpus`, which needs the CSVs,
 # reglas_damana.xlsx and the formato_elicitacion*.xlsx files. Only the database
 # (regenerated inside) and the working Excel files nobody reads at build time are excluded.
 node_modules
@@ -14,13 +14,13 @@ backend/public
 e2e
 test-results
 playwright-report
-evaluaciones
+evaluations
 coverage
-datos/corpus.db
-datos/corpus.db-shm
-datos/corpus.db-wal
-datos/por_traducir_*.xlsx
-datos/dudas_para_hablantes_*.xlsx
+data/corpus.db
+data/corpus.db-shm
+data/corpus.db-wal
+data/por_traducir_*.xlsx
+data/dudas_para_hablantes_*.xlsx
 .env
 .env.*
 **/.env

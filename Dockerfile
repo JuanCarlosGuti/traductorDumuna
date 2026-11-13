@@ -7,8 +7,8 @@
 # written down in render.yaml). NestJS serves the Angular build from
 # backend/public, so there is one process, one port and one origin.
 #
-# The SQLite database is BAKED into the image: `npm run importar` regenerates it from
-# the CSVs and Excel files in /datos during the build stage. What the app writes at
+# The SQLite database is BAKED into the image: `npm run import:corpus` regenerates it from
+# the CSVs and Excel files in /data during the build stage. What the app writes at
 # runtime (pending items, validated ones, translations, flashcard progress) lives in
 # that same database and is lost on every deployment, just like on Render today.
 
@@ -33,34 +33,34 @@ RUN npm ci
 COPY . .
 
 # 1) `npm run build`: Angular → backend/public, Nest → backend/dist.
-# 2) `npm run importar`: regenerates datos/corpus.db from datos/ (CSVs, rules and
+# 2) `npm run import:corpus`: regenerates data/corpus.db from data/ (CSVs, rules and
 #    elicitation batches). It goes BEFORE the prune because it uses ts-node.
 # 3) `npm prune --omit=dev` leaves only production dependencies (before the rm:
 #    npm needs to see the workspaces in order to prune them).
-# 4) Whatever the runtime does not read is deleted: sources, tests, and from datos/ everything except
+# 4) Whatever the runtime does not read is deleted: sources, tests, and from data/ everything except
 #    the database (the CSVs and Excel files are already inside corpus.db).
 RUN npm run build \
- && npm run importar \
- && test -s datos/corpus.db \
+ && npm run import:corpus \
+ && test -s data/corpus.db \
  && npm prune --omit=dev \
- && find datos -type f ! -name 'corpus.db*' -delete \
- && rm -rf frontend backend/src backend/test .angular .git e2e evaluaciones \
+ && find data -type f ! -name 'corpus.db*' -delete \
+ && rm -rf frontend backend/src backend/test .angular .git e2e evaluations \
  && rm -rf config .kamal Dockerfile .dockerignore playwright.config.ts render.yaml ./*.md
 
 FROM node:24-bookworm-slim AS runtime
 
 # NODE_ENV only in the final image. auth.config.ts reads it to require
-# AUTH_USUARIO and AUTH_PASSWORD: without them startup fails on purpose.
+# AUTH_USERNAME and AUTH_PASSWORD: without them startup fails on purpose.
 ENV NODE_ENV=production \
     PORT=3000
 
 WORKDIR /app
-# Everything owned by `node`: SQLite needs to write to datos/ (WAL mode and the
+# Everything owned by `node`: SQLite needs to write to data/ (WAL mode and the
 # runtime tables), and the process does not run as root.
 COPY --from=build --chown=node:node /app ./
 
 USER node
-# cwd in backend/ so that '../datos' resolves, same as `npm run start:prod`.
+# cwd in backend/ so that '../data' resolves, same as `npm run start:prod`.
 WORKDIR /app/backend
 EXPOSE 3000
 CMD ["node", "dist/main.js"]

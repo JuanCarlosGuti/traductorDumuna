@@ -75,20 +75,20 @@ env:
     # low cuts output tokens and latency; the prompt already carries the
     # dictionary, the rules and the examples, so long reasoning
     # adds little. It only applies to Claude; Groq does not read it.
-    ANTHROPIC_ESFUERZO: low
+    ANTHROPIC_EFFORT: low
     # Main translation engine: Claude (ANTHROPIC_API_KEY in `secret`,
     # takes priority). Groq stays as a fallback: it is only used if the
     # Anthropic key is missing.
-    TRADUCTOR_BASE_URL: https://api.groq.com/openai/v1
-    TRADUCTOR_MODELO: openai/gpt-oss-120b
+    TRANSLATOR_BASE_URL: https://api.groq.com/openai/v1
+    TRANSLATOR_MODEL: openai/gpt-oss-120b
   secret:
     # Claude (claude-opus-5-5 by default; Max plan API credits).
     - ANTHROPIC_API_KEY
     # Fallback: Groq key.
-    - TRADUCTOR_API_KEY
+    - TRANSLATOR_API_KEY
     # Single app user. Without these two the service does NOT start in
     # production, on purpose.
-    - AUTH_USUARIO
+    - AUTH_USERNAME
     - AUTH_PASSWORD
     # Session signing (30 days). Changing it logs out every
     # device.

@@ -3,14 +3,14 @@ import { CREDENTIALS } from '../playwright.config';
 
 /**
  * Real browser against the backend serving the Angular build, with
- * authentication active, the e2e/datos corpus and NO translation engine
+ * authentication active, the e2e/data corpus and NO translation engine
  * (see playwright.config.ts). Checks that the new views talk to
  * the backend properly once logged in; login itself is covered by
  * session.spec.ts.
  */
 const signIn = async (page: import('@playwright/test').Page) => {
   await page.goto('/entrar');
-  await page.getByLabel('Usuario').fill(CREDENTIALS.usuario);
+  await page.getByLabel('Usuario').fill(CREDENTIALS.username);
   await page.getByLabel('Contraseña').fill(CREDENTIALS.password);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await expect(page).toHaveURL(/\/buscar/);
@@ -28,7 +28,7 @@ test.describe('Without a session', () => {
     expect((await request.get('/api/pending')).status()).toBe(401);
     expect((await request.post('/api/pending/export')).status()).toBe(401);
     expect(
-      (await request.post('/api/translate/validate', { data: { text: 'x', direction: 'espanol_a_damana', translation: 'y', origin: 'confirmada' } })).status(),
+      (await request.post('/api/translate/validate', { data: { text: 'x', direction: 'spanish_to_damana', translation: 'y', origin: 'confirmed' } })).status(),
     ).toBe(401);
   });
 });
@@ -44,7 +44,7 @@ test.describe('Logged in', () => {
 
   test('searching «nʉnka» shows concordances with the ʉ intact', async ({ page }) => {
     await page.goto('/buscar?q=n%CA%89nka');
-    await expect(page.locator('mark, .resaltada').first()).toContainText('nʉnka');
+    await expect(page.locator('mark, .highlighted').first()).toContainText('nʉnka');
   });
 
   test('the translator explains how to configure an engine when there is none', async ({ page }) => {

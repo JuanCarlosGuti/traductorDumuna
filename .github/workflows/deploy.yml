@@ -1,4 +1,4 @@
-name: Pruebas, imagen y despliegue
+name: Tests, image and deploy
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  pruebas:
-    name: Pruebas (backend, API y frontend) y build
+  tests:
+    name: Tests (backend, API and frontend) and build
     runs-on: ubuntu-latest
     env:
       NG_CLI_ANALYTICS: 'false'
@@ -27,11 +27,11 @@ jobs:
       # Building here, apart from the docker build, makes an Angular error
       # show up in its own step instead of hidden in the Docker output.
       - run: npm run build
-      # Playwright (npm run test:navegador) does not run here: it needs to download
+      # Playwright (npm run test:browser) does not run here: it needs to download
       # Chromium and takes minutes; it is run locally before pushing.
 
-  imagen:
-    name: Docker (la imagen construye y trae la SPA y el corpus)
+  image:
+    name: Docker (the image builds and ships the SPA and the corpus)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,17 +39,17 @@ jobs:
       - run: docker build -t corpus-damana:ci .
       # What has saved deployments in the other repos: making sure the built
       # Angular app and the imported database are INSIDE the image.
-      - name: Verificar SPA y corpus dentro de la imagen
+      - name: Check the SPA and corpus inside the image
         run: |
           docker run --rm --entrypoint sh corpus-damana:ci -c \
-            'test -f /app/backend/public/index.html && test -s /app/datos/corpus.db' \
-            || { echo "::error::Falta backend/public/index.html o datos/corpus.db en la imagen"; exit 1; }
+            'test -f /app/backend/public/index.html && test -s /app/data/corpus.db' \
+            || { echo "::error::backend/public/index.html or data/corpus.db is missing from the image"; exit 1; }
 
-  desplegar:
-    name: Desplegar al servidor propio (Kamal)
+  deploy:
+    name: Deploy to the own server (Kamal)
     # Depends on ALL the tests; only from main and only on push, never from
-    # un PR.
-    needs: [pruebas, imagen]
+    # a PR.
+    needs: [tests, image]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -66,9 +66,9 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      # The private key is the infra-servidor one (secret SSH_PRIVATE_KEY); the
+      # The private key is the infra-server one (secret SSH_PRIVATE_KEY); the
       # server only knows the public key.
-      - name: Configurar SSH
+      - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
@@ -79,28 +79,29 @@ jobs:
           ssh-keyscan -t ed25519 "${{ secrets.SERVER_IP }}" >> ~/.ssh/known_hosts
 
       # The public repo only versions a sample corpus (see DATA.md). The
-      # real corpus lives in a private repo and is copied over datos/ here, before
-      # Kamal builds the image (builder.context: .). OBLIGATORIO=1:
+      # real corpus lives in a private repo and is copied over data/ here, before
+      # Kamal builds the image (builder.context: .). REQUIRED=1:
       # if the secret is missing or the clone fails, the deployment stops instead of
       # publishing the app with the sample corpus.
-      - name: Traer el corpus real (repo privado de datos)
+      - name: Fetch the real corpus (private data repo)
         env:
-          CORPUS_DATOS_REPO: ${{ secrets.CORPUS_DATOS_REPO }}
-          CORPUS_DATOS_TOKEN: ${{ secrets.CORPUS_DATOS_TOKEN }}
-          CORPUS_DATOS_OBLIGATORIO: '1'
-        run: node scripts/traer-datos.mjs
+          CORPUS_DATA_REPO: ${{ secrets.CORPUS_DATA_REPO || secrets.CORPUS_DATOS_REPO }}
+          CORPUS_DATA_TOKEN: ${{ secrets.CORPUS_DATA_TOKEN || secrets.CORPUS_DATOS_TOKEN }}
+          CORPUS_DATA_REQUIRED: '1'
+        run: node scripts/fetch-data.mjs
 
-      - name: Desplegar
+      - name: Deploy
         env:
           # config/deploy.yml reads the server IP from here (ERB): the
           # address is not versioned in the public repo.
           SERVER_IP: ${{ secrets.SERVER_IP }}
           KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           # Claude, the main engine. If the secret were missing it would arrive empty and
-          # the app would fall back to Groq (TRADUCTOR_*) on its own.
+          # the app would fall back to Groq (TRANSLATOR_*) on its own.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          TRADUCTOR_API_KEY: ${{ secrets.TRADUCTOR_API_KEY }}
-          AUTH_USUARIO: ${{ secrets.AUTH_USUARIO }}
+          # Secrets created under the old Spanish names keep working as a fallback.
+          TRANSLATOR_API_KEY: ${{ secrets.TRANSLATOR_API_KEY || secrets.TRADUCTOR_API_KEY }}
+          AUTH_USERNAME: ${{ secrets.AUTH_USERNAME || secrets.AUTH_USUARIO }}
           AUTH_PASSWORD: ${{ secrets.AUTH_PASSWORD }}
           AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
         run: kamal deploy
